@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { OpenedMedia } from '@shared/ipc'
+import type { LibraryStats, OpenedMedia } from '@shared/ipc'
 import { Player } from './components/Player'
 import './App.css'
 
 export default function App(): React.JSX.Element {
   const [media, setMedia] = useState<OpenedMedia | null>(null)
+  const [stats, setStats] = useState<LibraryStats | null>(null)
 
   useEffect(() => window.epikodi.onMediaOpened(setMedia), [])
+  useEffect(() => {
+    void window.epikodi.libraryStats().then(setStats)
+  }, [])
 
   const openFile = useCallback(async () => {
     const opened = await window.epikodi.openMediaDialog()
@@ -26,6 +30,11 @@ export default function App(): React.JSX.Element {
           <div className="app__empty">
             <p>Aucun média ouvert.</p>
             <p className="app__hint">Ouvre un fichier vidéo ou audio pour tester la lecture.</p>
+            {stats && (
+              <p className="app__hint">
+                Bibliothèque : {stats.sources} source(s), {stats.media} média(s)
+              </p>
+            )}
           </div>
         )}
       </main>

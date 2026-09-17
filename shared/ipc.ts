@@ -2,8 +2,17 @@
 
 export const IPC = {
   openMediaDialog: 'dialog:open-media',
-  mediaOpened: 'media:opened'
+  mediaOpened: 'media:opened',
+  libraryStats: 'library:stats'
 } as const
+
+export interface LibraryStats {
+  sources: number
+  media: number
+  videos: number
+  audio: number
+  podcasts: number
+}
 
 export interface OpenedMedia {
   /** Chemin absolu sur le disque */
@@ -18,6 +27,7 @@ export interface EpiKodiApi {
   openMediaDialog(): Promise<OpenedMedia | null>
   /** Média ouvert depuis l'extérieur (ligne de commande, "ouvrir avec"). Retourne un désabonnement. */
   onMediaOpened(cb: (media: OpenedMedia) => void): () => void
+  libraryStats(): Promise<LibraryStats>
 }
 
 export const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ogv']

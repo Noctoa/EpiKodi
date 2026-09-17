@@ -3,6 +3,7 @@ import { basename, join, resolve } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { AUDIO_EXTENSIONS, IPC, VIDEO_EXTENSIONS, type OpenedMedia } from '../shared/ipc'
+import { closeLibrary, libraryStats, openLibrary } from './library'
 import { registerMediaProtocol, registerMediaSchemePrivileges, toMediaUrl } from './media-protocol'
 
 registerMediaSchemePrivileges()
@@ -61,6 +62,8 @@ function createWindow(): BrowserWindow {
 }
 
 function registerIpc(): void {
+  ipcMain.handle(IPC.libraryStats, () => libraryStats())
+
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({
       title: 'Ouvrir un média',
@@ -82,6 +85,7 @@ void app.whenReady().then(() => {
   electronApp.setAppUserModelId('fr.epitech.epikodi')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
+  openLibrary()
   registerMediaProtocol()
   registerIpc()
   createWindow()
@@ -94,3 +98,5 @@ void app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+app.on('will-quit', () => closeLibrary())
