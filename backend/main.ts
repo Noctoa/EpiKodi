@@ -29,7 +29,7 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0f1115',
     title: 'EpiKodi',
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/preload.js'),
       sandbox: false,
       contextIsolation: true
     }

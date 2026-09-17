@@ -2,7 +2,7 @@
   "name": "epikodi",
   "version": "0.1.0",
   "description": "Centre multimédia open-source : vidéos, musique, podcasts, plugins et thèmes.",
-  "main": "./out/main/index.js",
+  "main": "./out/main/main.js",
   "author": "Noctoa",
   "license": "MIT",
   "private": true,
@@ -11,7 +11,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p backend && tsc --noEmit -p frontend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -51,5 +51,33 @@
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
     "electron-winstaller@5.4.0": true
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 100,
+    "trailingComma": "none"
+  },
+  "build": {
+    "appId": "fr.epitech.epikodi",
+    "productName": "EpiKodi",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo"
+    },
+    "win": {
+      "target": "nsis"
+    }
   }
 }

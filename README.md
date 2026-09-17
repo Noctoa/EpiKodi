@@ -39,7 +39,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · better-sqlite3 · FFmp
 
 ## Documentation
 
-- [Contribuer](CONTRIBUTING.md) — workflow, commandes, structure du code
+- [Contribuer](docs/CONTRIBUTING.md) — workflow, commandes, structure du code
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence
