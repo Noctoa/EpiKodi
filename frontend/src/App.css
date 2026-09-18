@@ -13,26 +13,28 @@
   border-bottom: 1px solid var(--surface-2);
 }
 
+.app__header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .app__title {
   margin: 0;
   font-size: 20px;
   letter-spacing: 0.04em;
 }
 
-.app__main {
+.app__body {
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
 }
 
-.app__empty {
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.app__hint {
-  font-size: 13px;
+.app__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  padding: 16px;
+  overflow-y: auto;
 }

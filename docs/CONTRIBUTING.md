@@ -26,14 +26,15 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   main.ts           Process principal : fenêtre, IPC, protocole media://
   preload.ts        Pont sécurisé backend ↔ frontend (contextBridge → window.epikodi)
   media-protocol.ts Sert les fichiers locaux au lecteur avec support Range (seek)
-  library.ts        Cycle de vie de la base SQLite
+  library.ts        Façade : base SQLite, sources, scans en arrière-plan
   core/db/          Schéma, migrations, repositories (voir docs/database.md)
+  core/scanner.ts   Indexation d'un dossier (récursif, incrémental, annulable)
   plugins/          Système d'extensions
   tsconfig.json     Config TS côté Node
 frontend/           UI React (fenêtre Electron, pas de navigateur)
   index.html        Page unique
   src/App.tsx       Écran principal
-  src/components/   Composants (Player…)
+  src/components/   Composants (Player, SourcesPanel, MediaList…)
   src/styles/       Thème, variables CSS
   tsconfig.json     Config TS côté navigateur
 shared/             Types et constantes partagés (contrat IPC)

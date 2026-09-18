@@ -8,6 +8,9 @@ intégré à Node (aucune dépendance native à compiler).
 - `PRAGMA foreign_keys = ON` (sinon SQLite ignore les `ON DELETE CASCADE`)
 - Code : `backend/core/db/`
 
+Pour l'ouvrir à la main : `sqlite3 ~/.config/epikodi/epikodi.db` puis `.tables`, `.schema media`,
+`SELECT * FROM sources;`. Le client `sqlite3` s'installe avec `pacman -S sqlite` / `apt install sqlite3`.
+
 ## Schéma (v1)
 
 ```

@@ -3,14 +3,13 @@ import { stat } from 'node:fs/promises'
 import { extname, isAbsolute } from 'node:path'
 import { Readable } from 'node:stream'
 import { protocol } from 'electron'
+import { MEDIA_SCHEME } from '../shared/ipc'
 
 /**
  * Protocole `media://local/<chemin encodé>` : sert les fichiers du disque au renderer
  * avec support des requêtes Range (indispensable pour le seek dans <video>).
  * Le renderer (http://localhost en dev) ne peut pas charger de `file://` directement.
  */
-export const MEDIA_SCHEME = 'media'
-
 const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
   '.m4v': 'video/mp4',
@@ -31,10 +30,6 @@ const MIME: Record<string, string> = {
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp'
-}
-
-export function toMediaUrl(absolutePath: string): string {
-  return `${MEDIA_SCHEME}://local/${encodeURIComponent(absolutePath)}`
 }
 
 export function registerMediaSchemePrivileges(): void {

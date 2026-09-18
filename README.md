@@ -32,14 +32,38 @@ npm run dev
 
 Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
 
+## Utilisation
+
+1. **+ Dossier** dans le panneau Sources : choisis un dossier contenant vidéos ou musiques.
+2. Le scan démarre tout seul et la liste se remplit au fur et à mesure.
+3. Clique un média pour le lire. **Rescanner** met à jour après ajout/suppression de fichiers ;
+   la bibliothèque est aussi rescannée à chaque démarrage.
+
+Extensions reconnues : mp4, mkv, webm, avi, mov, m4v, ogv · mp3, flac, ogg, oga, m4a, wav, aac, opus.
+Les dossiers cachés (`.xxx`) sont ignorés.
+
+## Inspecter la base de données
+
+La bibliothèque est un fichier SQLite créé au premier lancement :
+
+```bash
+sqlite3 ~/.config/epikodi/epikodi.db          # Linux (Windows : %APPDATA%\epikodi\epikodi.db)
+sqlite> .tables
+sqlite> SELECT * FROM sources;
+sqlite> SELECT id, type, title, duration FROM media LIMIT 20;
+```
+
+Schéma et conventions : [docs/database.md](docs/database.md).
+
 ## Stack
 
-Electron 44 · React 19 · TypeScript · electron-vite · better-sqlite3 · FFmpeg
+Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`) · FFmpeg
 — voir [ADR 001](docs/adr/001-stack.md) pour la justification.
 
 ## Documentation
 
 - [Contribuer](docs/CONTRIBUTING.md) — workflow, commandes, structure du code
+- [Base de données](docs/database.md) — schéma, repositories, migrations
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

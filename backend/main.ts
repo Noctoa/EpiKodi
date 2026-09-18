@@ -2,9 +2,27 @@ import { existsSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { AUDIO_EXTENSIONS, IPC, VIDEO_EXTENSIONS, type OpenedMedia } from '../shared/ipc'
-import { closeLibrary, libraryStats, openLibrary } from './library'
-import { registerMediaProtocol, registerMediaSchemePrivileges, toMediaUrl } from './media-protocol'
+import {
+  AUDIO_EXTENSIONS,
+  IPC,
+  VIDEO_EXTENSIONS,
+  toMediaUrl,
+  type MediaListQuery,
+  type OpenedMedia
+} from '../shared/ipc'
+import {
+  addSource,
+  cancelScan,
+  closeLibrary,
+  libraryStats,
+  listMedia,
+  listSources,
+  openLibrary,
+  removeSource,
+  scanAllSources,
+  startScan
+} from './library'
+import { registerMediaProtocol, registerMediaSchemePrivileges } from './media-protocol'
 
 registerMediaSchemePrivileges()
 
@@ -46,6 +64,7 @@ function createWindow(): BrowserWindow {
   const initial = mediaFromArgv(process.argv)
   win.webContents.on('did-finish-load', () => {
     if (initial) win.webContents.send(IPC.mediaOpened, initial)
+    scanAllSources((p) => win.webContents.send(IPC.scanProgress, p))
   })
   if (is.dev) {
     win.webContents.on('console-message', (event) => {
@@ -63,6 +82,25 @@ function createWindow(): BrowserWindow {
 
 function registerIpc(): void {
   ipcMain.handle(IPC.libraryStats, () => libraryStats())
+
+  ipcMain.handle(IPC.sourcesList, () => listSources())
+  ipcMain.handle(IPC.sourcesAdd, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Ajouter un dossier à la bibliothèque',
+      properties: ['openDirectory']
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    const source = addSource(result.filePaths[0])
+    startScan(source.id, (p) => event.sender.send(IPC.scanProgress, p))
+    return source
+  })
+  ipcMain.handle(IPC.sourcesRemove, (_, id: number) => removeSource(id))
+  ipcMain.handle(IPC.sourcesScan, (event, id: number) =>
+    startScan(id, (p) => event.sender.send(IPC.scanProgress, p))
+  )
+  ipcMain.handle(IPC.sourcesCancelScan, (_, id: number) => cancelScan(id))
+  ipcMain.handle(IPC.mediaList, (_, query?: MediaListQuery) => listMedia(query))
 
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({
