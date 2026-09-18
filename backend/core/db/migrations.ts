@@ -87,5 +87,14 @@ export const migrations: Migration[] = [
         last_played_at INTEGER
       );
     `
+  },
+  {
+    version: 2,
+    name: 'media-probed-at',
+    // NULL = pas encore analysé par ffprobe ; remis à NULL par le scanner si le fichier change
+    sql: `
+      ALTER TABLE media ADD COLUMN probed_at INTEGER;
+      CREATE INDEX media_probed_idx ON media(probed_at) WHERE probed_at IS NULL;
+    `
   }
 ]

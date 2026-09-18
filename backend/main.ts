@@ -13,6 +13,8 @@ import {
 import {
   addSource,
   cancelScan,
+  enrichPending,
+  getFfmpegStatus,
   closeLibrary,
   libraryStats,
   listMedia,
@@ -65,6 +67,7 @@ function createWindow(): BrowserWindow {
   win.webContents.on('did-finish-load', () => {
     if (initial) win.webContents.send(IPC.mediaOpened, initial)
     scanAllSources((p) => win.webContents.send(IPC.scanProgress, p))
+    enrichPending()
   })
   if (is.dev) {
     win.webContents.on('console-message', (event) => {
@@ -101,6 +104,7 @@ function registerIpc(): void {
   )
   ipcMain.handle(IPC.sourcesCancelScan, (_, id: number) => cancelScan(id))
   ipcMain.handle(IPC.mediaList, (_, query?: MediaListQuery) => listMedia(query))
+  ipcMain.handle(IPC.systemFfmpeg, () => getFfmpegStatus())
 
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({

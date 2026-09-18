@@ -29,6 +29,8 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   library.ts        Façade : base SQLite, sources, scans en arrière-plan
   core/db/          Schéma, migrations, repositories (voir docs/database.md)
   core/scanner.ts   Indexation d'un dossier (récursif, incrémental, annulable)
+  core/ffmpeg.ts    Wrapper ffprobe / ffmpeg (analyse, miniatures)
+  core/enricher.ts  File d'enrichissement en arrière-plan (voir docs/metadata.md)
   plugins/          Système d'extensions
   tsconfig.json     Config TS côté Node
 frontend/           UI React (fenêtre Electron, pas de navigateur)

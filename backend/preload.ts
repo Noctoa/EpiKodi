@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC, type EpiKodiApi, type OpenedMedia, type ScanProgress } from '../shared/ipc'
+import {
+  IPC,
+  type EpiKodiApi,
+  type LibraryChanged,
+  type OpenedMedia,
+  type ScanProgress
+} from '../shared/ipc'
 
 const api: EpiKodiApi = {
   openMediaDialog: () => ipcRenderer.invoke(IPC.openMediaDialog),
@@ -14,7 +20,13 @@ const api: EpiKodiApi = {
     ipcRenderer.on(IPC.scanProgress, listener)
     return () => ipcRenderer.removeListener(IPC.scanProgress, listener)
   },
+  onLibraryChanged: (cb) => {
+    const listener = (_: Electron.IpcRendererEvent, e: LibraryChanged): void => cb(e)
+    ipcRenderer.on(IPC.libraryChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.libraryChanged, listener)
+  },
   mediaList: (query) => ipcRenderer.invoke(IPC.mediaList, query),
+  systemFfmpeg: () => ipcRenderer.invoke(IPC.systemFfmpeg),
   onMediaOpened: (cb) => {
     const listener = (_: Electron.IpcRendererEvent, media: OpenedMedia): void => cb(media)
     ipcRenderer.on(IPC.mediaOpened, listener)

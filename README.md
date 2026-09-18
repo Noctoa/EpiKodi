@@ -64,6 +64,8 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 
 - [Contribuer](docs/CONTRIBUTING.md) — workflow, commandes, structure du code
 - [Base de données](docs/database.md) — schéma, repositories, migrations
+- [Scanner](docs/scanner.md) — indexation des dossiers
+- [Métadonnées](docs/metadata.md) — ffprobe, miniatures, enrichissement
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

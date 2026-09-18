@@ -21,8 +21,15 @@ export interface Media {
   size: number
   mtime: number
   duration: number | null
+  /** Date d'analyse ffprobe ; null = en attente d'enrichissement */
+  probedAt: number | null
   addedAt: number
   updatedAt: number
+}
+
+/** Média + ses métadonnées enrichies (null tant que ffprobe n'est pas passé) */
+export interface MediaWithMetadata extends Media {
+  metadata: MediaMetadata | null
 }
 
 export interface MediaMetadata {

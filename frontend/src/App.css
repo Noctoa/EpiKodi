@@ -38,3 +38,16 @@
   padding: 16px;
   overflow-y: auto;
 }
+
+.app__status {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.app__warn {
+  color: #ffb454;
+}

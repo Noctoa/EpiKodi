@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { toMediaUrl, type OpenedMedia, type ScanProgress } from '@shared/ipc'
-import type { Media, Source } from '@shared/models'
+import { toMediaUrl, type FfmpegStatus, type OpenedMedia, type ScanProgress } from '@shared/ipc'
+import type { MediaWithMetadata, Source } from '@shared/models'
 import { MediaList } from './components/MediaList'
 import { Player } from './components/Player'
 import { SourcesPanel } from './components/SourcesPanel'
@@ -9,7 +9,9 @@ import './App.css'
 export default function App(): React.JSX.Element {
   const [playing, setPlaying] = useState<OpenedMedia | null>(null)
   const [sources, setSources] = useState<Source[]>([])
-  const [items, setItems] = useState<Media[]>([])
+  const [items, setItems] = useState<MediaWithMetadata[]>([])
+  const [enrichPending, setEnrichPending] = useState(0)
+  const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
   const [scans, setScans] = useState<Record<number, ScanProgress>>({})
 
   const refresh = useCallback(
@@ -35,6 +37,20 @@ export default function App(): React.JSX.Element {
   }, [])
 
   useEffect(() => window.epikodi.onMediaOpened(setPlaying), [])
+
+  useEffect(() => {
+    window.epikodi.systemFfmpeg().then(setFfmpeg)
+  }, [])
+
+  // Enrichissement ffprobe en arrière-plan : la liste se met à jour au fil de l'eau
+  useEffect(
+    () =>
+      window.epikodi.onLibraryChanged((e) => {
+        setEnrichPending(e.enrichPending)
+        void refresh()
+      }),
+    [refresh]
+  )
 
   // Progression des scans : mise à jour de l'état + rafraîchissement de la liste à chaque lot
   useEffect(
@@ -69,7 +85,7 @@ export default function App(): React.JSX.Element {
     [refresh]
   )
 
-  const play = useCallback((m: Media) => {
+  const play = useCallback((m: MediaWithMetadata) => {
     setPlaying({ path: m.path, name: m.title, url: toMediaUrl(m.path) })
   }, [])
 
@@ -77,6 +93,19 @@ export default function App(): React.JSX.Element {
     <div className="app">
       <header className="app__header">
         <h1 className="app__title">EpiKodi</h1>
+        <div className="app__status">
+          {ffmpeg && !ffmpeg.ffprobe && (
+            <span
+              className="app__warn"
+              title="Installe ffmpeg pour les durées, codecs, tags et miniatures"
+            >
+              ⚠ ffmpeg introuvable
+            </span>
+          )}
+          {enrichPending > 0 && (
+            <span className="app__hint">Analyse : {enrichPending} restant(s)</span>
+          )}
+        </div>
         <div className="app__header-actions">
           {playing && (
             <button className="btn--ghost" onClick={() => setPlaying(null)}>

@@ -1,5 +1,5 @@
 /** Contrat IPC partagé entre backend (main + preload) et frontend. */
-import type { Media, MediaType, Source } from './models'
+import type { MediaType, MediaWithMetadata, Source } from './models'
 
 export const IPC = {
   openMediaDialog: 'dialog:open-media',
@@ -11,8 +11,22 @@ export const IPC = {
   sourcesScan: 'sources:scan',
   sourcesCancelScan: 'sources:cancel-scan',
   scanProgress: 'scan:progress',
-  mediaList: 'media:list'
+  libraryChanged: 'library:changed',
+  mediaList: 'media:list',
+  systemFfmpeg: 'system:ffmpeg'
 } as const
+
+export interface FfmpegStatus {
+  ffprobe: boolean
+  ffmpeg: boolean
+  version: string | null
+}
+
+/** Événement : la bibliothèque a changé (scan, enrichissement) → recharger l'affichage. */
+export interface LibraryChanged {
+  /** Médias encore en attente d'analyse ffprobe */
+  enrichPending: number
+}
 
 export interface LibraryStats {
   sources: number
@@ -63,8 +77,10 @@ export interface EpiKodiApi {
   sourcesScan(id: number): Promise<void>
   sourcesCancelScan(id: number): Promise<void>
   onScanProgress(cb: (p: ScanProgress) => void): () => void
+  onLibraryChanged(cb: (e: LibraryChanged) => void): () => void
 
-  mediaList(query?: MediaListQuery): Promise<Media[]>
+  mediaList(query?: MediaListQuery): Promise<MediaWithMetadata[]>
+  systemFfmpeg(): Promise<FfmpegStatus>
 }
 
 export const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ogv']

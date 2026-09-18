@@ -1,32 +1,81 @@
 import { basename, join } from 'node:path'
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { media, openDatabase, sources, type Database } from './core/db'
+import { Enricher } from './core/enricher'
+import { checkFfmpeg } from './core/ffmpeg'
 import { scanSource } from './core/scanner'
-import type { LibraryStats, MediaListQuery, ScanProgress } from '../shared/ipc'
-import type { Media, Source } from '../shared/models'
+import {
+  IPC,
+  type FfmpegStatus,
+  type LibraryChanged,
+  type LibraryStats,
+  type MediaListQuery,
+  type ScanProgress
+} from '../shared/ipc'
+import type { MediaWithMetadata, Source } from '../shared/models'
 
 /**
  * Façade de la bibliothèque : cycle de vie de la base SQLite + opérations exposées à l'IPC.
  * Un seul fichier SQLite par utilisateur, dans le dossier de données de l'app.
  */
 let db: Database | null = null
+let enricher: Enricher | null = null
+let ffmpegStatus: FfmpegStatus | null = null
 
 export function databasePath(): string {
   return join(app.getPath('userData'), 'epikodi.db')
+}
+
+export function thumbnailDir(): string {
+  return join(app.getPath('userData'), 'thumbnails')
 }
 
 export function openLibrary(): Database {
   if (!db) {
     db = openDatabase(databasePath())
     console.log(`[library] base ouverte : ${databasePath()}`)
+    enricher = new Enricher(db, {
+      thumbnailDir: thumbnailDir(),
+      onDone: () => notifyChanged(),
+      onIdle: () => notifyChanged()
+    })
   }
   return db
 }
 
 export function closeLibrary(): void {
   for (const ctrl of running.values()) ctrl.abort()
+  enricher?.stop()
+  enricher = null
   db?.close()
   db = null
+}
+
+export async function getFfmpegStatus(): Promise<FfmpegStatus> {
+  if (!ffmpegStatus) {
+    ffmpegStatus = await checkFfmpeg()
+    if (!ffmpegStatus.ffprobe) console.warn('[library] ffprobe introuvable : pas d’enrichissement')
+  }
+  return ffmpegStatus
+}
+
+/** Met en file l'analyse ffprobe des médias en attente (tous, ou ceux d'une source). */
+export function enrichPending(sourceId?: number): void {
+  void getFfmpegStatus().then((st) => {
+    if (st.ffprobe && enricher) enricher.enqueueUnprobed(sourceId)
+  })
+}
+
+// Prévient toutes les fenêtres que l'affichage doit être rechargé, au plus 2 fois par seconde
+let notifyTimer: NodeJS.Timeout | null = null
+function notifyChanged(): void {
+  if (notifyTimer) return
+  notifyTimer = setTimeout(() => {
+    notifyTimer = null
+    const payload: LibraryChanged = { enrichPending: enricher?.pending ?? 0 }
+    for (const win of BrowserWindow.getAllWindows())
+      win.webContents.send(IPC.libraryChanged, payload)
+  }, 500)
 }
 
 export function libraryStats(): LibraryStats {
@@ -80,6 +129,7 @@ export function startScan(id: number, onProgress: (p: ScanProgress) => void): vo
     .then((p) => {
       if (!ctrl.signal.aborted) sources.markScanned(d, id)
       console.log(`[scan] fin : +${p.added} ~${p.updated} -${p.removed} (${p.scanned} fichiers)`)
+      enrichPending(id)
     })
     .catch((err: Error) => {
       console.error(`[scan] erreur sur ${source.path} :`, err)
@@ -108,6 +158,6 @@ export function cancelScan(id: number): void {
 
 // ---------- media ----------
 
-export function listMedia(query: MediaListQuery = {}): Media[] {
-  return media.list(openLibrary(), query)
+export function listMedia(query: MediaListQuery = {}): MediaWithMetadata[] {
+  return media.listWithMetadata(openLibrary(), query)
 }

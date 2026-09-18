@@ -3,7 +3,8 @@ import type {
   MediaInput,
   MediaMetadata,
   MediaMetadataInput,
-  MediaType
+  MediaType,
+  MediaWithMetadata
 } from '@shared/models'
 import { all, one, run, type Database, type SqlParam } from '../database'
 
@@ -16,6 +17,7 @@ interface Row {
   size: number
   mtime: number
   duration: number | null
+  probed_at: number | null
   added_at: number
   updated_at: number
 }
@@ -29,6 +31,7 @@ const toMedia = (r: Row): Media => ({
   size: r.size,
   mtime: r.mtime,
   duration: r.duration,
+  probedAt: r.probed_at,
   addedAt: r.added_at,
   updatedAt: r.updated_at
 })
@@ -90,6 +93,10 @@ export function upsert(db: Database, input: MediaInput): Media {
        size = excluded.size,
        mtime = excluded.mtime,
        duration = COALESCE(excluded.duration, media.duration),
+       probed_at = CASE
+         WHEN excluded.mtime != media.mtime OR excluded.size != media.size THEN NULL
+         ELSE media.probed_at
+       END,
        updated_at = unixepoch()
      RETURNING id`,
     input.sourceId,
@@ -105,6 +112,81 @@ export function upsert(db: Database, input: MediaInput): Media {
 
 export function remove(db: Database, id: number): boolean {
   return run(db, 'DELETE FROM media WHERE id = ?', id).changes > 0
+}
+
+/** Médias jamais analysés par ffprobe (ou invalidés par le scanner). */
+export function listUnprobed(db: Database, sourceId?: number, limit = 10_000): number[] {
+  const rows =
+    sourceId === undefined
+      ? all<{ id: number }>(db, 'SELECT id FROM media WHERE probed_at IS NULL LIMIT ?', limit)
+      : all<{ id: number }>(
+          db,
+          'SELECT id FROM media WHERE probed_at IS NULL AND source_id = ? LIMIT ?',
+          sourceId,
+          limit
+        )
+  return rows.map((r) => r.id)
+}
+
+/** Résultat de l'analyse : durée, titre corrigé éventuel, et marquage "analysé" (même en cas d'échec). */
+export function markProbed(
+  db: Database,
+  id: number,
+  patch: { duration?: number | null; title?: string } = {}
+): void {
+  run(
+    db,
+    `UPDATE media SET
+       probed_at = unixepoch(),
+       duration = COALESCE(?, duration),
+       title = COALESCE(?, title),
+       updated_at = unixepoch()
+     WHERE id = ?`,
+    patch.duration ?? null,
+    patch.title ?? null,
+    id
+  )
+}
+
+/** Liste avec métadonnées jointes, mêmes filtres que `list`. */
+export function listWithMetadata(db: Database, opts: ListOptions = {}): MediaWithMetadata[] {
+  const where: string[] = []
+  const params: SqlParam[] = []
+  if (opts.type) {
+    where.push('m.type = ?')
+    params.push(opts.type)
+  }
+  if (opts.sourceId !== undefined) {
+    where.push('m.source_id = ?')
+    params.push(opts.sourceId)
+  }
+  if (opts.search) {
+    where.push(
+      '(m.title LIKE ? COLLATE NOCASE OR md.artist LIKE ? COLLATE NOCASE OR md.album LIKE ? COLLATE NOCASE)'
+    )
+    const like = `%${opts.search}%`
+    params.push(like, like, like)
+  }
+  const sql =
+    `SELECT m.*, md.media_id AS md_media_id, md.container, md.video_codec, md.audio_codec, md.width, md.height,
+            md.bitrate, md.artist, md.album, md.album_artist, md.year, md.track, md.genre, md.overview,
+            md.rating, md.external_id, md.thumbnail_path, md.poster_path, md.updated_at AS md_updated_at
+     FROM media m LEFT JOIN media_metadata md ON md.media_id = m.id` +
+    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
+    ' ORDER BY m.title COLLATE NOCASE LIMIT ? OFFSET ?'
+  params.push(opts.limit ?? 500, opts.offset ?? 0)
+  return all<Row & JoinedMetaRow>(db, sql, ...params).map((r) => ({
+    ...toMedia(r),
+    metadata:
+      r.md_media_id === null
+        ? null
+        : toMetadata({ ...r, media_id: r.md_media_id, updated_at: r.md_updated_at })
+  }))
+}
+
+type JoinedMetaRow = Omit<MetaRow, 'media_id' | 'updated_at'> & {
+  md_media_id: number | null
+  md_updated_at: number
 }
 
 /** Supprime les médias d'une source dont le chemin n'est pas dans `keepPaths` (fichiers disparus). */
