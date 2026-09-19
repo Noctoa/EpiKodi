@@ -13,8 +13,22 @@ export const IPC = {
   scanProgress: 'scan:progress',
   libraryChanged: 'library:changed',
   mediaList: 'media:list',
-  systemFfmpeg: 'system:ffmpeg'
+  systemFfmpeg: 'system:ffmpeg',
+  playerSubtitles: 'player:subtitles',
+  playerSubtitleVtt: 'player:subtitle-vtt'
 } as const
+
+/** Une piste de sous-titres proposée par le lecteur. */
+export interface SubtitleTrack {
+  id: string
+  label: string
+  language: string | null
+  source: 'internal' | 'external'
+  /** interne : index du flux ffmpeg */
+  streamIndex?: number
+  /** externe : fichier à côté de la vidéo */
+  path?: string
+}
 
 export interface FfmpegStatus {
   ffprobe: boolean
@@ -81,6 +95,11 @@ export interface EpiKodiApi {
 
   mediaList(query?: MediaListQuery): Promise<MediaWithMetadata[]>
   systemFfmpeg(): Promise<FfmpegStatus>
+
+  /** Pistes de sous-titres disponibles pour un fichier (internes + .srt/.vtt à côté). */
+  playerSubtitles(path: string): Promise<SubtitleTrack[]>
+  /** Contenu WebVTT d'une piste. */
+  playerSubtitleVtt(path: string, track: SubtitleTrack): Promise<string>
 }
 
 export const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ogv']

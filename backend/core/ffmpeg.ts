@@ -38,6 +38,7 @@ export interface ProbeJson {
     tags?: Record<string, string>
   }
   streams?: {
+    index?: number
     codec_type?: string
     codec_name?: string
     width?: number
@@ -47,6 +48,18 @@ export interface ProbeJson {
   }[]
 }
 
+/** Une piste (audio ou sous-titre) embarquée dans le conteneur. */
+export interface StreamTrack {
+  /** Index absolu du flux dans le fichier (pour `-map 0:<index>`) */
+  index: number
+  codec: string
+  language: string | null
+  title: string | null
+}
+
+/** Sous-titres texte que ffmpeg sait convertir en WebVTT (pas les bitmaps PGS / DVD). */
+const TEXT_SUBTITLE_CODECS = new Set(['subrip', 'srt', 'ass', 'ssa', 'webvtt', 'mov_text', 'text'])
+
 export interface ProbeResult {
   duration: number | null
   metadata: MediaMetadataInput
@@ -55,6 +68,8 @@ export interface ProbeResult {
   /** Une pochette est embarquée (flux image "attached_pic") */
   hasCover: boolean
   hasVideo: boolean
+  audioTracks: StreamTrack[]
+  subtitleTracks: StreamTrack[]
 }
 
 /** Les tags ffprobe ne sont pas normalisés (TITLE / title / Title…) : lecture insensible à la casse. */
@@ -83,11 +98,22 @@ export function parseProbe(json: ProbeJson): ProbeResult {
   const tags = json.format?.tags
   const duration = json.format?.duration ? parseFloat(json.format.duration) : null
 
+  const track = (s: NonNullable<ProbeJson['streams']>[number]): StreamTrack => ({
+    index: s.index ?? 0,
+    codec: s.codec_name ?? '',
+    language: tag(s.tags, 'language'),
+    title: tag(s.tags, 'title')
+  })
+
   return {
     duration: duration && Number.isFinite(duration) ? duration : null,
     title: tag(tags, 'title'),
     hasCover: Boolean(cover),
     hasVideo: Boolean(video),
+    audioTracks: streams.filter((s) => s.codec_type === 'audio').map(track),
+    subtitleTracks: streams
+      .filter((s) => s.codec_type === 'subtitle' && TEXT_SUBTITLE_CODECS.has(s.codec_name ?? ''))
+      .map(track),
     metadata: {
       // "mov,mp4,m4a,3gp,3g2,mj2" → "mp4" : on garde le nom le plus parlant
       container: json.format?.format_name?.split(',').find((n) => n !== 'mov') ?? null,
@@ -113,6 +139,14 @@ export async function probe(file: string): Promise<ProbeResult> {
     { maxBuffer: 4 * 1024 * 1024 }
   )
   return parseProbe(JSON.parse(stdout) as ProbeJson)
+}
+
+/** Lance ffmpeg et renvoie sa sortie standard (texte). */
+export async function ffmpegToString(args: string[]): Promise<string> {
+  const { stdout } = await exec(bin.ffmpeg, ['-v', 'error', ...args], {
+    maxBuffer: 16 * 1024 * 1024
+  })
+  return stdout
 }
 
 // ---------- images ----------

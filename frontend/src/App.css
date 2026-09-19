@@ -51,3 +51,8 @@
 .app__warn {
   color: #ffb454;
 }
+
+.app__main--player {
+  padding: 0;
+  overflow: hidden;
+}

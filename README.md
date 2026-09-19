@@ -38,6 +38,8 @@ Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
 2. Le scan démarre tout seul et la liste se remplit au fur et à mesure.
 3. Clique un média pour le lire. **Rescanner** met à jour après ajout/suppression de fichiers ;
    la bibliothèque est aussi rescannée à chaque démarrage.
+4. Dans le lecteur : Espace, ← →, ↑ ↓, F (plein écran), M (muet), Échap. Menu **CC** pour les
+   sous-titres (`.srt` à côté de la vidéo ou pistes internes), **🎧** pour la piste audio.
 
 Extensions reconnues : mp4, mkv, webm, avi, mov, m4v, ogv · mp3, flac, ogg, oga, m4a, wav, aac, opus.
 Les dossiers cachés (`.xxx`) sont ignorés.
@@ -66,6 +68,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Base de données](docs/database.md) — schéma, repositories, migrations
 - [Scanner](docs/scanner.md) — indexation des dossiers
 - [Métadonnées](docs/metadata.md) — ffprobe, miniatures, enrichissement
+- [Lecteur](docs/player.md) — contrôles, raccourcis, sous-titres, pistes audio
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

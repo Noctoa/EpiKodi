@@ -27,6 +27,8 @@ const api: EpiKodiApi = {
   },
   mediaList: (query) => ipcRenderer.invoke(IPC.mediaList, query),
   systemFfmpeg: () => ipcRenderer.invoke(IPC.systemFfmpeg),
+  playerSubtitles: (path) => ipcRenderer.invoke(IPC.playerSubtitles, path),
+  playerSubtitleVtt: (path, track) => ipcRenderer.invoke(IPC.playerSubtitleVtt, path, track),
   onMediaOpened: (cb) => {
     const listener = (_: Electron.IpcRendererEvent, media: OpenedMedia): void => cb(media)
     ipcRenderer.on(IPC.mediaOpened, listener)

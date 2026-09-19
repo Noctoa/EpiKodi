@@ -1,37 +1,236 @@
 .player {
+  position: relative;
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.player__media {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
   background: #000;
   border-radius: var(--radius);
-}
-
-.player__media--audio {
-  flex: 0 0 60px;
-  margin-top: auto;
-  background: var(--surface);
-}
-
-.player__info {
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
 }
 
-.player__name {
-  font-weight: 600;
+.player:fullscreen {
+  border-radius: 0;
 }
 
-.player__path {
+.player--hidden {
+  cursor: none;
+}
+
+.player__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.player--audio .player__video {
+  display: none;
+}
+
+.player__audio-art {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 96px;
+  color: #62d39c;
+}
+
+.player__error {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+}
+
+/* ---------- contrôles ---------- */
+
+.player__controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 40px 16px 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  transition: opacity 0.25s;
+  opacity: 1;
+}
+
+.player--hidden .player__controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.player__title {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player__seek {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.player__seek:hover {
+  height: 8px;
+}
+
+.player__seek-buffered,
+.player__seek-played {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+
+.player__seek-buffered {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.player__seek-played {
+  background: var(--accent);
+}
+
+.player__seek input {
+  position: absolute;
+  inset: -6px 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.player__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.player__btn {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 15px;
+  min-width: 36px;
+  cursor: pointer;
+}
+
+.player__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.player__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.player__btn--active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.player__btn--on {
+  color: var(--accent-hover);
+  font-weight: 700;
+}
+
+.player__time {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.player__spacer {
+  flex: 1;
+}
+
+.player__volume {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.player__menu-wrap {
+  position: relative;
+}
+
+.player__menu {
+  position: absolute;
+  bottom: 44px;
+  right: 0;
+  min-width: 180px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.player__menu li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.player__menu li:hover {
+  background: var(--surface-2);
+}
+
+.player__menu-empty {
+  cursor: default;
   color: var(--text-muted);
   font-size: 12px;
-  word-break: break-all;
+  white-space: normal !important;
+  max-width: 260px;
+  line-height: 1.4;
+}
+
+.player__menu-empty:hover {
+  background: transparent !important;
+}
+
+.player__menu-empty code {
+  color: var(--text);
+}
+
+.player__menu-item--active {
+  color: var(--accent-hover);
+}
+
+.player__menu-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* sous-titres WebVTT */
+.player__video::cue {
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 1.1em;
 }

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
@@ -8,7 +8,8 @@ import {
   VIDEO_EXTENSIONS,
   toMediaUrl,
   type MediaListQuery,
-  type OpenedMedia
+  type OpenedMedia,
+  type SubtitleTrack
 } from '../shared/ipc'
 import {
   addSource,
@@ -25,8 +26,11 @@ import {
   startScan
 } from './library'
 import { registerMediaProtocol, registerMediaSchemePrivileges } from './media-protocol'
+import { listSubtitles, loadSubtitleVtt } from './core/subtitles'
 
 registerMediaSchemePrivileges()
+// Expose HTMLMediaElement.audioTracks (choix VF/VO) : API Chromium encore derrière un flag
+app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks')
 
 /** `epikodi --open <fichier>` ou `epikodi <fichier>` : lecture directe au démarrage. */
 function mediaFromArgv(argv: string[]): OpenedMedia | null {
@@ -73,6 +77,17 @@ function createWindow(): BrowserWindow {
     win.webContents.on('console-message', (event) => {
       console.log(`[renderer:${event.level}] ${event.message}`)
     })
+    // Crochet e2e : EPIKODI_E2E=script.js → exécuté dans la fenêtre, résultat sur stdout
+    const e2e = process.env['EPIKODI_E2E']
+    if (e2e) {
+      win.webContents.once('did-finish-load', () => {
+        void win.webContents
+          .executeJavaScript(readFileSync(e2e, 'utf8'))
+          .then((r) => console.log('[e2e]', JSON.stringify(r)))
+          .catch((err) => console.log('[e2e] ERROR', String(err)))
+          .finally(() => app.quit())
+      })
+    }
   }
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -105,6 +120,10 @@ function registerIpc(): void {
   ipcMain.handle(IPC.sourcesCancelScan, (_, id: number) => cancelScan(id))
   ipcMain.handle(IPC.mediaList, (_, query?: MediaListQuery) => listMedia(query))
   ipcMain.handle(IPC.systemFfmpeg, () => getFfmpegStatus())
+  ipcMain.handle(IPC.playerSubtitles, (_, path: string) => listSubtitles(path))
+  ipcMain.handle(IPC.playerSubtitleVtt, (_, path: string, track: SubtitleTrack) =>
+    loadSubtitleVtt(path, track)
+  )
 
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({

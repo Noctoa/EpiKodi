@@ -124,8 +124,12 @@ export default function App(): React.JSX.Element {
           onCancel={(id) => void window.epikodi.sourcesCancelScan(id)}
           onRemove={removeSource}
         />
-        <main className="app__main">
-          {playing ? <Player media={playing} /> : <MediaList items={items} onPlay={play} />}
+        <main className={`app__main ${playing ? 'app__main--player' : ''}`}>
+          {playing ? (
+            <Player media={playing} onClose={() => setPlaying(null)} />
+          ) : (
+            <MediaList items={items} onPlay={play} />
+          )}
         </main>
       </div>
     </div>
