@@ -40,6 +40,8 @@ Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
    la bibliothèque est aussi rescannée à chaque démarrage.
 4. Dans le lecteur : Espace, ← →, ↑ ↓, F (plein écran), M (muet), Échap. Menu **CC** pour les
    sous-titres (`.srt` à côté de la vidéo ou pistes internes), **🎧** pour la piste audio.
+5. Musique : un clic lance l'album dans l'ordre des pistes ; le mini-lecteur en bas reste visible
+   pendant la navigation. **⤴** lire ensuite, **+** ajouter à la file, **☰** voir la file.
 
 Extensions reconnues : mp4, mkv, webm, avi, mov, m4v, ogv · mp3, flac, ogg, oga, m4a, wav, aac, opus.
 Les dossiers cachés (`.xxx`) sont ignorés.
@@ -69,6 +71,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Scanner](docs/scanner.md) — indexation des dossiers
 - [Métadonnées](docs/metadata.md) — ffprobe, miniatures, enrichissement
 - [Lecteur](docs/player.md) — contrôles, raccourcis, sous-titres, pistes audio
+- [Lecteur audio](docs/audio.md) — file d'attente, mini-lecteur, aléatoire / répétition
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

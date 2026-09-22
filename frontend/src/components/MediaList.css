@@ -13,7 +13,7 @@
 
 .media-item {
   display: grid;
-  grid-template-columns: 96px 1fr auto;
+  grid-template-columns: 96px 1fr auto auto;
   align-items: center;
   gap: 14px;
   padding: 8px 12px;
@@ -73,4 +73,33 @@
 .media-item__pending {
   font-style: italic;
   color: var(--accent-hover);
+}
+
+.media-item--current .media-item__title {
+  color: var(--accent-hover);
+}
+
+.media-item__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.media-item:hover .media-item__actions {
+  opacity: 1;
+}
+
+.media-item__action {
+  background: transparent;
+  border: 1px solid var(--surface-2);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.media-item__action:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+  background: var(--surface-2);
 }

@@ -1,13 +1,46 @@
 import { useCallback, useEffect, useState } from 'react'
-import { toMediaUrl, type FfmpegStatus, type OpenedMedia, type ScanProgress } from '@shared/ipc'
+import {
+  AUDIO_EXTENSIONS,
+  toMediaUrl,
+  type FfmpegStatus,
+  type OpenedMedia,
+  type ScanProgress
+} from '@shared/ipc'
 import type { MediaWithMetadata, Source } from '@shared/models'
 import { MediaList } from './components/MediaList'
+import { MiniPlayer } from './components/MiniPlayer'
 import { Player } from './components/Player'
 import { SourcesPanel } from './components/SourcesPanel'
+import { useAudioPlayer } from './player/AudioPlayerContext'
+import { albumOrder, fromMedia, fromOpened } from './player/items'
 import './App.css'
 
+const isAudioFile = (name: string): boolean =>
+  AUDIO_EXTENSIONS.includes(name.split('.').pop()?.toLowerCase() ?? '')
+
 export default function App(): React.JSX.Element {
-  const [playing, setPlaying] = useState<OpenedMedia | null>(null)
+  const audio = useAudioPlayer()
+  const [playing, setPlayingState] = useState<OpenedMedia | null>(null)
+
+  // Ouvrir une vidéo met la musique en pause : un seul son à la fois
+  const setPlaying = useCallback(
+    (m: OpenedMedia | null) => {
+      if (m) audio.pause()
+      setPlayingState(m)
+    },
+    [audio]
+  )
+
+  /** Fichier hors bibliothèque (dialogue, --open) : audio → mini-lecteur, vidéo → lecteur plein. */
+  const openExternal = useCallback(
+    (o: OpenedMedia) => {
+      if (isAudioFile(o.name)) {
+        setPlayingState(null)
+        audio.play([fromOpened(o)])
+      } else setPlaying(o)
+    },
+    [audio, setPlaying]
+  )
   const [sources, setSources] = useState<Source[]>([])
   const [items, setItems] = useState<MediaWithMetadata[]>([])
   const [enrichPending, setEnrichPending] = useState(0)
@@ -36,7 +69,7 @@ export default function App(): React.JSX.Element {
     }
   }, [])
 
-  useEffect(() => window.epikodi.onMediaOpened(setPlaying), [])
+  useEffect(() => window.epikodi.onMediaOpened(openExternal), [openExternal])
 
   useEffect(() => {
     window.epikodi.systemFfmpeg().then(setFfmpeg)
@@ -64,8 +97,8 @@ export default function App(): React.JSX.Element {
 
   const openFile = useCallback(async () => {
     const opened = await window.epikodi.openMediaDialog()
-    if (opened) setPlaying(opened)
-  }, [])
+    if (opened) openExternal(opened)
+  }, [openExternal])
 
   const addSource = useCallback(async () => {
     const s = await window.epikodi.sourcesAdd()
@@ -85,9 +118,24 @@ export default function App(): React.JSX.Element {
     [refresh]
   )
 
-  const play = useCallback((m: MediaWithMetadata) => {
-    setPlaying({ path: m.path, name: m.title, url: toMediaUrl(m.path) })
-  }, [])
+  // Audio : la file devient toutes les pistes affichées, en ordre album, à partir de celle cliquée.
+  // Vidéo : lecteur plein écran.
+  const play = useCallback(
+    (m: MediaWithMetadata) => {
+      if (m.type === 'audio') {
+        setPlayingState(null)
+        const tracks = albumOrder(items.filter((i) => i.type === 'audio'))
+        audio.play(
+          tracks.map(fromMedia),
+          tracks.findIndex((t) => t.id === m.id)
+        )
+      } else setPlaying({ path: m.path, name: m.title, url: toMediaUrl(m.path) })
+    },
+    [items, audio, setPlaying]
+  )
+
+  const enqueue = useCallback((m: MediaWithMetadata) => audio.enqueue([fromMedia(m)]), [audio])
+  const playNext = useCallback((m: MediaWithMetadata) => audio.playNext(fromMedia(m)), [audio])
 
   return (
     <div className="app">
@@ -128,10 +176,17 @@ export default function App(): React.JSX.Element {
           {playing ? (
             <Player media={playing} onClose={() => setPlaying(null)} />
           ) : (
-            <MediaList items={items} onPlay={play} />
+            <MediaList
+              items={items}
+              onPlay={play}
+              onEnqueue={enqueue}
+              onPlayNext={playNext}
+              currentKey={audio.current?.key ?? null}
+            />
           )}
         </main>
       </div>
+      <MiniPlayer />
     </div>
   )
 }

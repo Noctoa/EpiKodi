@@ -37,7 +37,8 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
 frontend/           UI React (fenêtre Electron, pas de navigateur)
   index.html        Page unique
   src/App.tsx       Écran principal
-  src/components/   Composants (Player, SourcesPanel, MediaList…)
+  src/components/   Composants (Player, MiniPlayer, QueuePanel, SourcesPanel, MediaList…)
+  src/player/       Lecteur audio : file d'attente (pure), contexte React, conversions
   src/styles/       Thème, variables CSS
   tsconfig.json     Config TS côté navigateur
 shared/             Types et constantes partagés (contrat IPC)

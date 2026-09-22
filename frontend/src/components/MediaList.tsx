@@ -5,6 +5,10 @@ import './MediaList.css'
 interface Props {
   items: MediaWithMetadata[]
   onPlay: (m: MediaWithMetadata) => void
+  onEnqueue?: (m: MediaWithMetadata) => void
+  onPlayNext?: (m: MediaWithMetadata) => void
+  /** Clé de la piste audio en cours (pour la surligner) */
+  currentKey?: string | null
 }
 
 export const fmtDuration = (s: number | null): string => {
@@ -34,14 +38,24 @@ function subtitle(m: MediaWithMetadata): string {
   )
 }
 
-export function MediaList({ items, onPlay }: Props): React.JSX.Element {
+export function MediaList({
+  items,
+  onPlay,
+  onEnqueue,
+  onPlayNext,
+  currentKey
+}: Props): React.JSX.Element {
   if (items.length === 0) {
     return <p className="media-list__empty">Aucun média indexé.</p>
   }
   return (
     <ul className="media-list">
       {items.map((m) => (
-        <li key={m.id} className="media-item" onClick={() => onPlay(m)}>
+        <li
+          key={m.id}
+          className={`media-item ${currentKey === `media:${m.id}` ? 'media-item--current' : ''}`}
+          onClick={() => onPlay(m)}
+        >
           <div className={`media-item__thumb media-item__thumb--${m.type}`}>
             {m.metadata?.thumbnailPath ? (
               <img src={toMediaUrl(m.metadata.thumbnailPath)} alt="" loading="lazy" />
@@ -53,6 +67,24 @@ export function MediaList({ items, onPlay }: Props): React.JSX.Element {
             <span className="media-item__title">{m.title}</span>
             <span className="media-item__sub">{subtitle(m)}</span>
           </div>
+          {m.type === 'audio' && onEnqueue && onPlayNext && (
+            <span className="media-item__actions" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="media-item__action"
+                onClick={() => onPlayNext(m)}
+                title="Lire ensuite"
+              >
+                ⤴
+              </button>
+              <button
+                className="media-item__action"
+                onClick={() => onEnqueue(m)}
+                title="Ajouter à la file"
+              >
+                +
+              </button>
+            </span>
+          )}
           <span className="media-item__meta">
             {m.probedAt === null ? (
               <span className="media-item__pending">analyse…</span>

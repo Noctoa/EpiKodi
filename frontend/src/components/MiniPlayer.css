@@ -1,0 +1,135 @@
+.mini {
+  flex: 0 0 auto;
+  background: var(--surface);
+  border-top: 1px solid var(--surface-2);
+  position: relative;
+}
+
+.mini__seek {
+  height: 4px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.mini__seek:hover {
+  height: 6px;
+  margin-top: -2px;
+}
+
+.mini__seek-played {
+  height: 100%;
+  background: var(--accent);
+}
+
+.mini__row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+}
+
+.mini__now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mini__art {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: #62d39c;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mini__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mini__text {
+  min-width: 0;
+}
+
+.mini__title,
+.mini__sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini__title {
+  font-weight: 600;
+}
+
+.mini__sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.mini__controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mini__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.mini__btn {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.mini__btn:hover {
+  background: var(--surface-2);
+}
+
+.mini__btn--play {
+  font-size: 20px;
+  min-width: 44px;
+}
+
+.mini__btn--small {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.mini__btn--on {
+  color: var(--accent-hover);
+}
+
+.mini__time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.mini__volume {
+  width: 80px;
+  accent-color: var(--accent);
+}
+
+.mini__error {
+  padding: 4px 16px 8px;
+  font-size: 12px;
+  color: #ff6b6b;
+}
