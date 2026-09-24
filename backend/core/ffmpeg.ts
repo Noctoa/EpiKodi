@@ -85,8 +85,23 @@ function tag(tags: Record<string, string> | undefined, ...names: string[]): stri
 
 const toInt = (v: string | null): number | null => {
   if (!v) return null
-  const n = parseInt(v, 10) // "2019-05-01" → 2019, "3/12" → 3
+  const n = parseInt(v, 10) // "3/12" → 3
   return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Année de sortie depuis un tag `date` : les formats rencontrés vont de « 1997 » à
+ * « 2019-05-01 » en passant par « 20260920 » (date d'upload YouTube, à ne pas lire comme
+ * un entier). On retient le premier groupe de 4 chiffres qui ressemble à une année.
+ */
+export function toYear(v: string | null): number | null {
+  if (!v) return null
+  const max = new Date().getFullYear() + 1
+  for (const [digits] of v.matchAll(/\d{4}/g)) {
+    const year = Number(digits)
+    if (year >= 1800 && year <= max) return year
+  }
+  return null
 }
 
 /** Transforme le JSON brut de ffprobe en métadonnées exploitables. Pure, testée. */
@@ -125,7 +140,7 @@ export function parseProbe(json: ProbeJson): ProbeResult {
       artist: tag(tags, 'artist', 'ARTIST'),
       album: tag(tags, 'album'),
       albumArtist: tag(tags, 'album_artist', 'albumartist'),
-      year: toInt(tag(tags, 'date', 'year', 'TDRC')),
+      year: toYear(tag(tags, 'date', 'year', 'TDRC')),
       track: toInt(tag(tags, 'track', 'tracknumber')),
       genre: tag(tags, 'genre')
     }

@@ -137,5 +137,17 @@ export const migrations: Migration[] = [
          WHERE rowid = new.media_id;
       END;
     `
+  },
+  {
+    version: 4,
+    name: 'fix-youtube-year',
+    // Les tags « date » au format AAAAMMJJ avaient été lus en entier (20260920 au lieu de 2026)
+    sql: `
+      UPDATE media_metadata
+         SET year = CAST(SUBSTR(CAST(year AS TEXT), 1, 4) AS INTEGER)
+       WHERE year > 9999;
+
+      UPDATE media_metadata SET year = NULL WHERE year IS NOT NULL AND year < 1800;
+    `
   }
 ]

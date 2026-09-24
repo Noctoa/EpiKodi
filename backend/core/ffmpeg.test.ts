@@ -53,6 +53,17 @@ describe('parseProbe', () => {
     expect(r.metadata.track).toBe(3)
   })
 
+  it('lit l’année quel que soit le format de date', () => {
+    const year = (date: string): number | null =>
+      parseProbe({ format: { tags: { date } }, streams: [] }).metadata.year ?? null
+    expect(year('1997')).toBe(1997)
+    expect(year('2019-05-01')).toBe(2019)
+    expect(year('20260920')).toBe(2026) // date d'upload YouTube
+    expect(year('01/02/2019')).toBe(2019)
+    expect(year('inconnu')).toBeNull()
+    expect(year('0000')).toBeNull()
+  })
+
   it('ne plante pas sur un JSON vide', () => {
     const r = parseProbe({})
     expect(r.duration).toBeNull()
