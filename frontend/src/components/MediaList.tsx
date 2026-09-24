@@ -1,5 +1,6 @@
 import { toMediaUrl } from '@shared/ipc'
 import type { MediaWithMetadata } from '@shared/models'
+import { fmtDuration, fmtResolution, fmtSize } from '@frontend/format'
 import './MediaList.css'
 
 interface Props {
@@ -7,24 +8,13 @@ interface Props {
   onPlay: (m: MediaWithMetadata) => void
   onEnqueue?: (m: MediaWithMetadata) => void
   onPlayNext?: (m: MediaWithMetadata) => void
+  /** Ouvre la vue détail (clic sur le titre) */
+  onOpenDetail?: (m: MediaWithMetadata) => void
   /** Clé de la piste audio en cours (pour la surligner) */
   currentKey?: string | null
+  /** Affiche le numéro de piste à la place de la miniature (vue album) */
+  showTrackNumbers?: boolean
 }
-
-export const fmtDuration = (s: number | null): string => {
-  if (s === null) return '—'
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = Math.floor(s % 60)
-  return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
-}
-
-const fmtSize = (bytes: number): string =>
-  bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} Go` : `${Math.round(bytes / 1e6)} Mo`
-
-/** "1080p", "4K"… à partir de la hauteur */
-const fmtResolution = (h: number | null): string | null =>
-  h === null ? null : h >= 2160 ? '4K' : h >= 1080 ? '1080p' : h >= 720 ? '720p' : `${h}p`
 
 function subtitle(m: MediaWithMetadata): string {
   const md = m.metadata
@@ -43,32 +33,49 @@ export function MediaList({
   onPlay,
   onEnqueue,
   onPlayNext,
-  currentKey
+  onOpenDetail,
+  currentKey,
+  showTrackNumbers
 }: Props): React.JSX.Element {
   if (items.length === 0) {
     return <p className="media-list__empty">Aucun média indexé.</p>
   }
   return (
-    <ul className="media-list">
-      {items.map((m) => (
+    <ul className={`media-list ${showTrackNumbers ? 'media-list--tracks' : ''}`}>
+      {items.map((m, i) => (
         <li
           key={m.id}
           className={`media-item ${currentKey === `media:${m.id}` ? 'media-item--current' : ''}`}
-          onClick={() => onPlay(m)}
+          onDoubleClick={() => onPlay(m)}
         >
-          <div className={`media-item__thumb media-item__thumb--${m.type}`}>
-            {m.metadata?.thumbnailPath ? (
-              <img src={toMediaUrl(m.metadata.thumbnailPath)} alt="" loading="lazy" />
-            ) : (
-              <span>{m.type === 'video' ? '▶' : '♪'}</span>
-            )}
-          </div>
-          <div className="media-item__text">
+          {showTrackNumbers ? (
+            <span className="media-item__num">{m.metadata?.track ?? i + 1}</span>
+          ) : (
+            <div className={`media-item__thumb media-item__thumb--${m.type}`}>
+              {m.metadata?.thumbnailPath ? (
+                <img src={toMediaUrl(m.metadata.thumbnailPath)} alt="" loading="lazy" />
+              ) : (
+                <span>{m.type === 'video' ? '▶' : '♪'}</span>
+              )}
+            </div>
+          )}
+
+          <button className="media-item__text" onClick={() => onPlay(m)}>
             <span className="media-item__title">{m.title}</span>
-            <span className="media-item__sub">{subtitle(m)}</span>
-          </div>
-          {m.type === 'audio' && onEnqueue && onPlayNext && (
-            <span className="media-item__actions" onClick={(e) => e.stopPropagation()}>
+            {!showTrackNumbers && <span className="media-item__sub">{subtitle(m)}</span>}
+          </button>
+
+          <span className="media-item__actions">
+            {onOpenDetail && (
+              <button
+                className="media-item__action"
+                onClick={() => onOpenDetail(m)}
+                title="Détails"
+              >
+                ⓘ
+              </button>
+            )}
+            {m.type === 'audio' && onPlayNext && (
               <button
                 className="media-item__action"
                 onClick={() => onPlayNext(m)}
@@ -76,6 +83,8 @@ export function MediaList({
               >
                 ⤴
               </button>
+            )}
+            {m.type === 'audio' && onEnqueue && (
               <button
                 className="media-item__action"
                 onClick={() => onEnqueue(m)}
@@ -83,8 +92,9 @@ export function MediaList({
               >
                 +
               </button>
-            </span>
-          )}
+            )}
+          </span>
+
           <span className="media-item__meta">
             {m.probedAt === null ? (
               <span className="media-item__pending">analyse…</span>

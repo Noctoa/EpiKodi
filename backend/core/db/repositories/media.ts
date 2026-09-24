@@ -3,6 +3,9 @@ import type {
   MediaInput,
   MediaMetadata,
   MediaMetadataInput,
+  Facets,
+  MediaQuery,
+  MediaSort,
   MediaType,
   MediaWithMetadata
 } from '@shared/models'
@@ -46,36 +49,132 @@ export function getByPath(db: Database, sourceId: number, path: string): Media |
   return row ? toMedia(row) : null
 }
 
-export interface ListOptions {
-  type?: MediaType
-  sourceId?: number
-  /** Recherche insensible à la casse sur le titre */
-  search?: string
-  limit?: number
-  offset?: number
+export type ListOptions = MediaQuery
+
+/**
+ * Convertit une saisie libre en requête FTS5 : chaque mot devient une phrase entre guillemets
+ * (les opérateurs saisis sont donc inertes) et le dernier mot accepte un préfixe, pour la
+ * recherche au fil de la frappe. Retourne null si la saisie ne contient aucun mot utile.
+ */
+export function toFtsQuery(input: string): string | null {
+  const tokens = input
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .slice(0, 12)
+  if (tokens.length === 0) return null
+  return tokens.map((t, i) => (i === tokens.length - 1 ? `"${t}"*` : `"${t}"`)).join(' AND ')
 }
 
-export function list(db: Database, opts: ListOptions = {}): Media[] {
+const SORT_COLUMNS: Record<Exclude<MediaSort, 'relevance'>, string> = {
+  title: 'm.title COLLATE NOCASE',
+  addedAt: 'm.added_at',
+  duration: 'm.duration',
+  year: 'md.year'
+}
+
+interface Query {
+  where: string
+  params: SqlParam[]
+  orderBy: string
+  /** La recherche FTS impose une jointure supplémentaire */
+  join: string
+}
+
+function buildQuery(opts: ListOptions): Query {
   const where: string[] = []
   const params: SqlParam[] = []
+  let join = ''
+  let relevance = false
+
+  const fts = opts.search ? toFtsQuery(opts.search) : null
+  if (fts) {
+    join = ' JOIN media_fts f ON f.rowid = m.id'
+    where.push('media_fts MATCH ?')
+    params.push(fts)
+    relevance = true
+  } else if (opts.search) {
+    // Saisie sans aucun mot indexable (que de la ponctuation) : aucun résultat
+    where.push('0')
+  }
   if (opts.type) {
-    where.push('type = ?')
+    where.push('m.type = ?')
     params.push(opts.type)
   }
   if (opts.sourceId !== undefined) {
-    where.push('source_id = ?')
+    where.push('m.source_id = ?')
     params.push(opts.sourceId)
   }
-  if (opts.search) {
-    where.push('title LIKE ? COLLATE NOCASE')
-    params.push(`%${opts.search}%`)
+  if (opts.genre) {
+    where.push('md.genre = ?')
+    params.push(opts.genre)
   }
-  const sql =
-    'SELECT * FROM media' +
-    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
-    ' ORDER BY title COLLATE NOCASE LIMIT ? OFFSET ?'
-  params.push(opts.limit ?? 500, opts.offset ?? 0)
+  if (opts.year !== undefined) {
+    where.push('md.year = ?')
+    params.push(opts.year)
+  }
+  if (opts.unwatched) {
+    where.push('COALESCE(ps.completed, 0) = 0')
+  }
+
+  const sort = opts.sort ?? (relevance ? 'relevance' : 'title')
+  const dir = opts.order ?? (sort === 'addedAt' || sort === 'year' ? 'desc' : 'asc')
+  const orderBy =
+    sort === 'relevance' && relevance
+      ? 'f.rank, m.title COLLATE NOCASE'
+      : `${SORT_COLUMNS[sort === 'relevance' ? 'title' : sort]} ${dir.toUpperCase()} NULLS LAST, m.title COLLATE NOCASE`
+
+  return { where: where.length ? ` WHERE ${where.join(' AND ')}` : '', params, orderBy, join }
+}
+
+/** Jointures communes : métadonnées (filtres genre/année) et état de lecture (« non vus »). */
+const BASE_FROM =
+  ' FROM media m LEFT JOIN media_metadata md ON md.media_id = m.id' +
+  ' LEFT JOIN playback_state ps ON ps.media_id = m.id'
+
+function select(columns: string, opts: ListOptions): { sql: string; params: SqlParam[] } {
+  const q = buildQuery(opts)
+  const sql = `SELECT ${columns}${BASE_FROM}${q.join}${q.where} ORDER BY ${q.orderBy} LIMIT ? OFFSET ?`
+  return { sql, params: [...q.params, opts.limit ?? 500, opts.offset ?? 0] }
+}
+
+export function list(db: Database, opts: ListOptions = {}): Media[] {
+  const { sql, params } = select('m.*', opts)
   return all<Row>(db, sql, ...params).map(toMedia)
+}
+
+/** Liste avec métadonnées jointes, mêmes filtres que `list`. */
+export function listWithMetadata(db: Database, opts: ListOptions = {}): MediaWithMetadata[] {
+  const { sql, params } = select(
+    `m.*, md.media_id AS md_media_id, md.container, md.video_codec, md.audio_codec, md.width, md.height,
+     md.bitrate, md.artist, md.album, md.album_artist, md.year, md.track, md.genre, md.overview,
+     md.rating, md.external_id, md.thumbnail_path, md.poster_path, md.updated_at AS md_updated_at`,
+    opts
+  )
+  return all<Row & JoinedMetaRow>(db, sql, ...params).map((r) => ({
+    ...toMedia(r),
+    metadata:
+      r.md_media_id === null
+        ? null
+        : toMetadata({ ...r, media_id: r.md_media_id, updated_at: r.md_updated_at })
+  }))
+}
+
+type JoinedMetaRow = Omit<MetaRow, 'media_id' | 'updated_at'> & {
+  md_media_id: number | null
+  md_updated_at: number
+}
+
+export function facets(db: Database): Facets {
+  return {
+    genres: all<{ genre: string }>(
+      db,
+      "SELECT DISTINCT genre FROM media_metadata WHERE genre IS NOT NULL AND genre != '' ORDER BY genre COLLATE NOCASE"
+    ).map((r) => r.genre),
+    years: all<{ year: number }>(
+      db,
+      'SELECT DISTINCT year FROM media_metadata WHERE year IS NOT NULL ORDER BY year DESC'
+    ).map((r) => r.year)
+  }
 }
 
 /**
@@ -148,47 +247,6 @@ export function markProbed(
   )
 }
 
-/** Liste avec métadonnées jointes, mêmes filtres que `list`. */
-export function listWithMetadata(db: Database, opts: ListOptions = {}): MediaWithMetadata[] {
-  const where: string[] = []
-  const params: SqlParam[] = []
-  if (opts.type) {
-    where.push('m.type = ?')
-    params.push(opts.type)
-  }
-  if (opts.sourceId !== undefined) {
-    where.push('m.source_id = ?')
-    params.push(opts.sourceId)
-  }
-  if (opts.search) {
-    where.push(
-      '(m.title LIKE ? COLLATE NOCASE OR md.artist LIKE ? COLLATE NOCASE OR md.album LIKE ? COLLATE NOCASE)'
-    )
-    const like = `%${opts.search}%`
-    params.push(like, like, like)
-  }
-  const sql =
-    `SELECT m.*, md.media_id AS md_media_id, md.container, md.video_codec, md.audio_codec, md.width, md.height,
-            md.bitrate, md.artist, md.album, md.album_artist, md.year, md.track, md.genre, md.overview,
-            md.rating, md.external_id, md.thumbnail_path, md.poster_path, md.updated_at AS md_updated_at
-     FROM media m LEFT JOIN media_metadata md ON md.media_id = m.id` +
-    (where.length ? ` WHERE ${where.join(' AND ')}` : '') +
-    ' ORDER BY m.title COLLATE NOCASE LIMIT ? OFFSET ?'
-  params.push(opts.limit ?? 500, opts.offset ?? 0)
-  return all<Row & JoinedMetaRow>(db, sql, ...params).map((r) => ({
-    ...toMedia(r),
-    metadata:
-      r.md_media_id === null
-        ? null
-        : toMetadata({ ...r, media_id: r.md_media_id, updated_at: r.md_updated_at })
-  }))
-}
-
-type JoinedMetaRow = Omit<MetaRow, 'media_id' | 'updated_at'> & {
-  md_media_id: number | null
-  md_updated_at: number
-}
-
 /** Supprime les médias d'une source dont le chemin n'est pas dans `keepPaths` (fichiers disparus). */
 export function removeMissing(db: Database, sourceId: number, keepPaths: string[]): number {
   const keep = new Set(keepPaths)
@@ -203,11 +261,11 @@ export function removeMissing(db: Database, sourceId: number, keepPaths: string[
   return count
 }
 
-export function count(db: Database, type?: MediaType): number {
-  const row = type
-    ? one<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM media WHERE type = ?', type)
-    : one<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM media')
-  return row!.n
+export function count(db: Database, opts: ListOptions | MediaType = {}): number {
+  const o: ListOptions = typeof opts === 'string' ? { type: opts } : opts
+  const q = buildQuery(o)
+  return one<{ n: number }>(db, `SELECT COUNT(*) AS n${BASE_FROM}${q.join}${q.where}`, ...q.params)!
+    .n
 }
 
 // ---------- métadonnées ----------

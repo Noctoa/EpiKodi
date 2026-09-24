@@ -12,7 +12,7 @@ import {
   type MediaListQuery,
   type ScanProgress
 } from '../shared/ipc'
-import type { MediaWithMetadata, Source } from '../shared/models'
+import type { Facets, MediaWithMetadata, Source } from '../shared/models'
 
 /**
  * Façade de la bibliothèque : cycle de vie de la base SQLite + opérations exposées à l'IPC.
@@ -160,4 +160,8 @@ export function cancelScan(id: number): void {
 
 export function listMedia(query: MediaListQuery = {}): MediaWithMetadata[] {
   return media.listWithMetadata(openLibrary(), query)
+}
+
+export function mediaFacets(): Facets {
+  return media.facets(openLibrary())
 }

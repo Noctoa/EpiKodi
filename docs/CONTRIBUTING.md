@@ -37,7 +37,11 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
 frontend/           UI React (fenêtre Electron, pas de navigateur)
   index.html        Page unique
   src/App.tsx       Écran principal
-  src/components/   Composants (Player, MiniPlayer, QueuePanel, SourcesPanel, MediaList…)
+  src/components/   Composants réutilisables (Sidebar, Grid, FilterBar, MediaDetail, Player…)
+  src/views/        Une vue par section (Accueil, Musique, Sources, Paramètres…)
+  src/navigation.ts Pile de vues et barre latérale (pure, testée)
+  src/library/      Regroupement artistes / albums (pur, testé)
+  src/format.ts     Formatage des durées, tailles, résolutions
   src/player/       Lecteur audio : file d'attente (pure), contexte React, conversions
   src/styles/       Thème, variables CSS
   tsconfig.json     Config TS côté navigateur

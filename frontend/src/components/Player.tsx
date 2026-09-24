@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AUDIO_EXTENSIONS, type OpenedMedia, type SubtitleTrack } from '@shared/ipc'
-import { fmtDuration } from './MediaList'
+import { fmtDuration } from '@frontend/format'
 import './Player.css'
 
 interface PlayerProps {

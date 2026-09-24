@@ -69,6 +69,30 @@ export interface PlaybackState {
   lastPlayedAt: number | null
 }
 
+export type MediaSort = 'relevance' | 'title' | 'addedAt' | 'duration' | 'year'
+
+/** Filtres, recherche et tri de la bibliothèque (partagés backend ↔ frontend). */
+export interface MediaQuery {
+  type?: MediaType
+  sourceId?: number
+  /** Recherche plein texte : titre, artiste, album, chemin */
+  search?: string
+  genre?: string
+  year?: number
+  /** Exclut les médias marqués comme terminés */
+  unwatched?: boolean
+  sort?: MediaSort
+  order?: 'asc' | 'desc'
+  limit?: number
+  offset?: number
+}
+
+/** Valeurs disponibles pour alimenter les menus de filtres. */
+export interface Facets {
+  genres: string[]
+  years: number[]
+}
+
 /** Ce que le scanner fournit pour créer ou mettre à jour un média. */
 export type MediaInput = Pick<Media, 'sourceId' | 'path' | 'type' | 'title' | 'size' | 'mtime'> &
   Partial<Pick<Media, 'duration'>>

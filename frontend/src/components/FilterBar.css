@@ -1,0 +1,54 @@
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.filters__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filters select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.filters select:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
+}
+
+.filters__check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.filters__check input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.filters__spacer {
+  flex: 1;
+}
+
+.filters__count {
+  font-variant-numeric: tabular-nums;
+}

@@ -26,7 +26,9 @@ const api: EpiKodiApi = {
     return () => ipcRenderer.removeListener(IPC.libraryChanged, listener)
   },
   mediaList: (query) => ipcRenderer.invoke(IPC.mediaList, query),
+  mediaFacets: () => ipcRenderer.invoke(IPC.mediaFacets),
   systemFfmpeg: () => ipcRenderer.invoke(IPC.systemFfmpeg),
+  systemInfo: () => ipcRenderer.invoke(IPC.systemInfo),
   playerSubtitles: (path) => ipcRenderer.invoke(IPC.playerSubtitles, path),
   playerSubtitleVtt: (path, track) => ipcRenderer.invoke(IPC.playerSubtitleVtt, path, track),
   onMediaOpened: (cb) => {

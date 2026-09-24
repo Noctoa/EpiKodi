@@ -7,36 +7,72 @@
 .app__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
+  gap: 16px;
+  padding: 12px 20px;
   background: var(--surface);
   border-bottom: 1px solid var(--surface-2);
 }
 
-.app__header-actions {
-  display: flex;
-  gap: 8px;
-}
-
 .app__title {
   margin: 0;
-  font-size: 20px;
+  width: 178px;
+  flex: 0 0 auto;
+  font-size: 19px;
   letter-spacing: 0.04em;
 }
 
-.app__body {
-  flex: 1;
-  min-height: 0;
+.app__search {
+  position: relative;
+  flex: 0 1 420px;
   display: flex;
+  align-items: center;
 }
 
-.app__main {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  padding: 16px;
-  overflow-y: auto;
+.app__search input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 30px 8px 30px;
+}
+
+.app__search input::placeholder {
+  color: var(--text-muted);
+}
+
+.app__search input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.app__search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.app__search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.app__search-clear {
+  position: absolute;
+  right: 4px;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.app__search-clear:hover {
+  background: transparent;
+  color: var(--text);
 }
 
 .app__status {
@@ -52,7 +88,60 @@
   color: #ffb454;
 }
 
+.app__header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.app__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
 .app__main--player {
   padding: 0;
   overflow: hidden;
+}
+
+.app__view-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.app__view-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.app__back {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 16px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.app__back:hover {
+  background: var(--surface);
+}
+
+.app__view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }

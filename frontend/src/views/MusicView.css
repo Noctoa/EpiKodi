@@ -1,0 +1,42 @@
+.album {
+  width: 100%;
+}
+
+.album__head {
+  display: flex;
+  gap: 22px;
+  align-items: flex-end;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.album__art {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: var(--text-muted);
+}
+
+.album__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.album__info h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.album__byline {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 14px;
+}

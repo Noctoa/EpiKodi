@@ -17,12 +17,15 @@ describe('migrations', () => {
   })
 
   it('crée toutes les tables', () => {
+    // On ignore les tables internes de FTS5 (media_fts_data, _idx, _docsize…)
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
-      .map((r) => r.name)
+      .map((r) => r.name as string)
+      .filter((n) => !n.startsWith('media_fts_'))
     expect(tables).toEqual([
       'media',
+      'media_fts',
       'media_metadata',
       'playback_state',
       'playlist_items',

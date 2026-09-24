@@ -1,5 +1,5 @@
 /** Contrat IPC partagé entre backend (main + preload) et frontend. */
-import type { MediaType, MediaWithMetadata, Source } from './models'
+import type { Facets, MediaQuery, MediaWithMetadata, Source } from './models'
 
 export const IPC = {
   openMediaDialog: 'dialog:open-media',
@@ -13,7 +13,9 @@ export const IPC = {
   scanProgress: 'scan:progress',
   libraryChanged: 'library:changed',
   mediaList: 'media:list',
+  mediaFacets: 'media:facets',
   systemFfmpeg: 'system:ffmpeg',
+  systemInfo: 'system:info',
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt'
 } as const
@@ -28,6 +30,13 @@ export interface SubtitleTrack {
   streamIndex?: number
   /** externe : fichier à côté de la vidéo */
   path?: string
+}
+
+export interface SystemInfo {
+  version: string
+  databasePath: string
+  thumbnailDir: string
+  ffmpeg: FfmpegStatus
 }
 
 export interface FfmpegStatus {
@@ -70,13 +79,8 @@ export interface ScanProgress {
   error?: string
 }
 
-export interface MediaListQuery {
-  type?: MediaType
-  sourceId?: number
-  search?: string
-  limit?: number
-  offset?: number
-}
+/** Alias historique : la requête de bibliothèque est définie dans `models.ts`. */
+export type MediaListQuery = MediaQuery
 
 export interface EpiKodiApi {
   openMediaDialog(): Promise<OpenedMedia | null>
@@ -94,7 +98,10 @@ export interface EpiKodiApi {
   onLibraryChanged(cb: (e: LibraryChanged) => void): () => void
 
   mediaList(query?: MediaListQuery): Promise<MediaWithMetadata[]>
+  /** Genres et années présents en bibliothèque, pour les menus de filtres. */
+  mediaFacets(): Promise<Facets>
   systemFfmpeg(): Promise<FfmpegStatus>
+  systemInfo(): Promise<SystemInfo>
 
   /** Pistes de sous-titres disponibles pour un fichier (internes + .srt/.vtt à côté). */
   playerSubtitles(path: string): Promise<SubtitleTrack[]>

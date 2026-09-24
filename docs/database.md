@@ -11,7 +11,7 @@ intégré à Node (aucune dépendance native à compiler).
 Pour l'ouvrir à la main : `sqlite3 ~/.config/epikodi/epikodi.db` puis `.tables`, `.schema media`,
 `SELECT * FROM sources;`. Le client `sqlite3` s'installe avec `pacman -S sqlite` / `apt install sqlite3`.
 
-## Schéma (v2)
+## Schéma (v3)
 
 ```
 sources 1 ──< media 1 ──1 media_metadata
@@ -37,6 +37,7 @@ Conventions :
 - Toutes les tables filles sont en `ON DELETE CASCADE` : supprimer une source nettoie tout.
 - `media.mtime` + `media.size` servent à détecter un fichier modifié sans le hasher.
 - `media.probed_at` (v2) : `NULL` = en attente d'analyse ffprobe ; remis à `NULL` si le fichier change.
+- `media_fts` (v3) : voir [docs/search.md](search.md) — index FTS5 synchronisé par triggers.
 - Côté TypeScript, les colonnes `snake_case` deviennent `camelCase` (`shared/models.ts`).
 
 ## Couche d'accès

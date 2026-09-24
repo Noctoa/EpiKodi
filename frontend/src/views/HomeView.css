@@ -1,0 +1,41 @@
+.home {
+  width: 100%;
+}
+
+.home__stats {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 22px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.home__stats strong {
+  color: var(--text);
+  font-size: 18px;
+  margin-right: 4px;
+}
+
+.home__section {
+  margin: 0 0 14px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.home__welcome {
+  max-width: 520px;
+  margin: auto;
+  text-align: center;
+}
+
+.home__welcome h2 {
+  margin: 0 0 12px;
+}
+
+.home__welcome p {
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin: 0 0 20px;
+}

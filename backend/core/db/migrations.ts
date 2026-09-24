@@ -96,5 +96,46 @@ export const migrations: Migration[] = [
       ALTER TABLE media ADD COLUMN probed_at INTEGER;
       CREATE INDEX media_probed_idx ON media(probed_at) WHERE probed_at IS NULL;
     `
+  },
+  {
+    version: 3,
+    name: 'media-search-index',
+    // Index plein texte : titre, artiste, album et chemin (le tokenizer découpe sur les « / »,
+    // donc le nom de fichier et les dossiers parents sont cherchables).
+    sql: `
+      CREATE VIRTUAL TABLE media_fts USING fts5(
+        title, artist, album, path,
+        tokenize = 'unicode61 remove_diacritics 2'
+      );
+
+      INSERT INTO media_fts (rowid, title, artist, album, path)
+        SELECT m.id, m.title, COALESCE(md.artist, md.album_artist, ''), COALESCE(md.album, ''), m.path
+        FROM media m LEFT JOIN media_metadata md ON md.media_id = m.id;
+
+      CREATE TRIGGER media_fts_insert AFTER INSERT ON media BEGIN
+        INSERT INTO media_fts (rowid, title, artist, album, path)
+        VALUES (new.id, new.title, '', '', new.path);
+      END;
+
+      CREATE TRIGGER media_fts_update AFTER UPDATE OF title, path ON media BEGIN
+        UPDATE media_fts SET title = new.title, path = new.path WHERE rowid = new.id;
+      END;
+
+      CREATE TRIGGER media_fts_delete AFTER DELETE ON media BEGIN
+        DELETE FROM media_fts WHERE rowid = old.id;
+      END;
+
+      CREATE TRIGGER media_meta_fts_insert AFTER INSERT ON media_metadata BEGIN
+        UPDATE media_fts
+           SET artist = COALESCE(new.artist, new.album_artist, ''), album = COALESCE(new.album, '')
+         WHERE rowid = new.media_id;
+      END;
+
+      CREATE TRIGGER media_meta_fts_update AFTER UPDATE ON media_metadata BEGIN
+        UPDATE media_fts
+           SET artist = COALESCE(new.artist, new.album_artist, ''), album = COALESCE(new.album, '')
+         WHERE rowid = new.media_id;
+      END;
+    `
   }
 ]

@@ -16,13 +16,24 @@
   grid-template-columns: 96px 1fr auto auto;
   align-items: center;
   gap: 14px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: var(--radius);
-  cursor: pointer;
+}
+
+.media-list--tracks .media-item {
+  grid-template-columns: 32px 1fr auto auto;
+  gap: 10px;
 }
 
 .media-item:hover {
   background: var(--surface);
+}
+
+.media-item__num {
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .media-item__thumb {
@@ -55,6 +66,17 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  align-items: flex-start;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.media-item__text:hover {
+  background: transparent;
 }
 
 .media-item__title,
@@ -62,6 +84,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .media-item__sub,
@@ -85,7 +108,8 @@
   opacity: 0;
 }
 
-.media-item:hover .media-item__actions {
+.media-item:hover .media-item__actions,
+.media-item__actions:focus-within {
   opacity: 1;
 }
 

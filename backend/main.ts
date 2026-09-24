@@ -9,21 +9,25 @@ import {
   toMediaUrl,
   type MediaListQuery,
   type OpenedMedia,
-  type SubtitleTrack
+  type SubtitleTrack,
+  type SystemInfo
 } from '../shared/ipc'
 import {
   addSource,
   cancelScan,
+  databasePath,
   enrichPending,
   getFfmpegStatus,
   closeLibrary,
   libraryStats,
   listMedia,
+  mediaFacets,
   listSources,
   openLibrary,
   removeSource,
   scanAllSources,
-  startScan
+  startScan,
+  thumbnailDir
 } from './library'
 import { registerMediaProtocol, registerMediaSchemePrivileges } from './media-protocol'
 import { listSubtitles, loadSubtitleVtt } from './core/subtitles'
@@ -119,7 +123,14 @@ function registerIpc(): void {
   )
   ipcMain.handle(IPC.sourcesCancelScan, (_, id: number) => cancelScan(id))
   ipcMain.handle(IPC.mediaList, (_, query?: MediaListQuery) => listMedia(query))
+  ipcMain.handle(IPC.mediaFacets, () => mediaFacets())
   ipcMain.handle(IPC.systemFfmpeg, () => getFfmpegStatus())
+  ipcMain.handle(IPC.systemInfo, async (): Promise<SystemInfo> => ({
+    version: app.getVersion(),
+    databasePath: databasePath(),
+    thumbnailDir: thumbnailDir(),
+    ffmpeg: await getFfmpegStatus()
+  }))
   ipcMain.handle(IPC.playerSubtitles, (_, path: string) => listSubtitles(path))
   ipcMain.handle(IPC.playerSubtitleVtt, (_, path: string, track: SubtitleTrack) =>
     loadSubtitleVtt(path, track)

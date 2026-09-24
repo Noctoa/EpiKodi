@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAudioPlayer } from '@frontend/player/AudioPlayerContext'
-import { fmtDuration } from './MediaList'
+import { fmtDuration } from '@frontend/format'
 import { QueuePanel } from './QueuePanel'
 import './MiniPlayer.css'
 
