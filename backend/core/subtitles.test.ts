@@ -2,6 +2,7 @@ import { copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mediaFixtures } from './__fixtures__/media'
 import { checkFfmpeg, parseProbe } from './ffmpeg'
 import {
   findSidecarSubtitles,
@@ -12,7 +13,7 @@ import {
 } from './subtitles'
 
 const status = await checkFfmpeg()
-const FIX = join(__dirname, '__fixtures__')
+const FIX = status.ffmpeg ? await mediaFixtures() : null
 
 const SRT = `1\r\n00:00:01,000 --> 00:00:02,500\r\nBonjour <i>le monde</i>\r\n\r\n2\r\n00:00:03,000 --> 00:00:05,000\r\nDeux\r\nlignes\r\n`
 
@@ -73,8 +74,8 @@ describe('fichiers à côté de la vidéo', () => {
 describe('pistes internes (mkv multi-pistes)', () => {
   it('parseProbe expose pistes audio et sous-titres texte', async () => {
     const { probe } = await import('./ffmpeg')
-    if (!status.ffprobe) return
-    const p = await probe(join(FIX, 'multi.mkv'))
+    if (!status.ffprobe || !FIX) return
+    const p = await probe(FIX.multiMkv)
     expect(p.audioTracks.map((t) => [t.language, t.title])).toEqual([
       ['fre', 'Français'],
       ['eng', 'English']
@@ -94,10 +95,10 @@ describe('pistes internes (mkv multi-pistes)', () => {
     expect(p.subtitleTracks.map((t) => t.index)).toEqual([2])
   })
 
-  it.skipIf(!status.ffmpeg)('liste et extrait une piste interne en VTT', async () => {
+  it.skipIf(!status.ffmpeg || !FIX)('liste et extrait une piste interne en VTT', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'epikodi-subs-'))
     const video = join(dir, 'multi.mkv')
-    await copyFile(join(FIX, 'multi.mkv'), video)
+    await copyFile(FIX!.multiMkv, video)
     await writeFile(join(dir, 'multi.en.srt'), SRT)
     const tracks = await listSubtitles(video)
     expect(tracks.map((t) => [t.source, t.label])).toEqual([

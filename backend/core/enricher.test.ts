@@ -4,11 +4,12 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { media, openDatabase, sources, type Database } from './db'
 import { Enricher, enrichOne } from './enricher'
+import { mediaFixtures } from './__fixtures__/media'
 import { checkFfmpeg } from './ffmpeg'
 import { scanSource } from './scanner'
 
 const status = await checkFfmpeg()
-const FIX = join(__dirname, '__fixtures__')
+const FIX = status.ffmpeg ? await mediaFixtures() : null
 
 let db: Database
 let dir: string
@@ -18,9 +19,9 @@ beforeEach(async () => {
 })
 afterEach(() => rm(dir, { recursive: true, force: true }))
 
-describe.skipIf(!status.ffmpeg || !status.ffprobe)('enrichissement', () => {
+describe.skipIf(!status.ffmpeg || !status.ffprobe || !FIX)('enrichissement', () => {
   it('remplit métadonnées, durée, titre et pochette d’un mp3 taggé', async () => {
-    await copyFile(join(FIX, 'tagged.mp3'), join(dir, '07_track.mp3'))
+    await copyFile(FIX!.taggedMp3, join(dir, '07_track.mp3'))
     const s = sources.create(db, { type: 'local', path: dir, name: 't' })
     await scanSource(db, s)
     const [m] = media.list(db)
@@ -40,7 +41,7 @@ describe.skipIf(!status.ffmpeg || !status.ffprobe)('enrichissement', () => {
   })
 
   it('génère une miniature vidéo et garde le titre du fichier', async () => {
-    await copyFile(join(FIX, 'tiny.mp4'), join(dir, 'Mon.Film.mp4'))
+    await copyFile(FIX!.tinyMp4, join(dir, 'Mon.Film.mp4'))
     const s = sources.create(db, { type: 'local', path: dir, name: 't' })
     await scanSource(db, s)
     const [m] = media.list(db)
@@ -52,7 +53,7 @@ describe.skipIf(!status.ffmpeg || !status.ffprobe)('enrichissement', () => {
   })
 
   it('la file traite tout, marque les fichiers corrompus sans les réessayer', async () => {
-    await copyFile(join(FIX, 'tagged.mp3'), join(dir, 'ok.mp3'))
+    await copyFile(FIX!.taggedMp3, join(dir, 'ok.mp3'))
     await writeFile(join(dir, 'broken.mp4'), 'pas une vidéo')
     const s = sources.create(db, { type: 'local', path: dir, name: 't' })
     await scanSource(db, s)
@@ -77,7 +78,7 @@ describe.skipIf(!status.ffmpeg || !status.ffprobe)('enrichissement', () => {
   })
 
   it('un fichier modifié est remis en file par le scanner', async () => {
-    await copyFile(join(FIX, 'tagged.mp3'), join(dir, 'a.mp3'))
+    await copyFile(FIX!.taggedMp3, join(dir, 'a.mp3'))
     const s = sources.create(db, { type: 'local', path: dir, name: 't' })
     await scanSource(db, s)
     const [m] = media.list(db)

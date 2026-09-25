@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { mediaFixtures } from './__fixtures__/media'
 import { checkFfmpeg, parseProbe, probe, type ProbeJson } from './ffmpeg'
 
 const fixture = (name: string): ProbeJson =>
@@ -73,8 +74,10 @@ describe('parseProbe', () => {
 
 describe('ffprobe réel', async () => {
   const status = await checkFfmpeg()
-  it.skipIf(!status.ffprobe)('analyse un vrai fichier', async () => {
-    const r = await probe(join(__dirname, '__fixtures__', 'tagged.mp3'))
+  const fixtures = status.ffmpeg ? await mediaFixtures() : null
+
+  it.skipIf(!status.ffprobe || !fixtures)('analyse un vrai fichier', async () => {
+    const r = await probe(fixtures!.taggedMp3)
     expect(r.metadata.artist).toBe('Daft Punk')
     expect(r.duration).toBeCloseTo(3, 0)
   })
