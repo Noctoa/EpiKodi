@@ -1,8 +1,8 @@
-import { opendir, stat } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { basename, extname } from 'node:path'
 import { AUDIO_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/ipc'
 import type { MediaType, Source } from '@shared/models'
 import { media, transaction, type Database } from './db'
+import { createProvider, type StorageProvider } from './storage'
 
 export interface ScanProgress {
   sourceId: number
@@ -20,6 +20,8 @@ export interface ScanOptions {
   signal?: AbortSignal
   /** Nombre de fichiers par transaction */
   batchSize?: number
+  /** Accès au stockage ; par défaut déduit de la source (local, SMB, HTTP). */
+  provider?: StorageProvider
 }
 
 const VIDEO = new Set(VIDEO_EXTENSIONS)
@@ -54,30 +56,34 @@ interface FoundFile {
   mtime: number
 }
 
-/** Parcours récursif asynchrone ; les dossiers illisibles sont ignorés, pas fatals. */
-async function* walk(dir: string, signal?: AbortSignal): AsyncGenerator<FoundFile> {
-  let handle
+/**
+ * Parcours récursif. Le listing d'un dossier ramène déjà taille et date de chaque entrée :
+ * sur un partage réseau, cela évite un aller-retour par fichier. Un dossier illisible est
+ * ignoré, il ne fait pas échouer le scan.
+ */
+async function* walk(
+  provider: StorageProvider,
+  dir: string,
+  signal?: AbortSignal
+): AsyncGenerator<FoundFile> {
+  let entries
   try {
-    handle = await opendir(dir)
-  } catch {
+    entries = await provider.list(dir)
+  } catch (err) {
+    // Un sous-dossier illisible est ignoré, mais si la racine échoue la source est injoignable :
+    // le scan doit le dire plutôt que de rapporter « 0 fichier ».
+    if (dir === '') throw err
     return
   }
-  for await (const entry of handle) {
+  for (const entry of entries) {
     if (signal?.aborted) return
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) {
+    const path = dir ? `${dir}/${entry.name}` : entry.name
+    if (entry.isDirectory) {
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue
-      yield* walk(full, signal)
-    } else if (entry.isFile() || entry.isSymbolicLink()) {
+      yield* walk(provider, path, signal)
+    } else {
       const type = mediaTypeOf(entry.name)
-      if (!type) continue
-      try {
-        const s = await stat(full)
-        if (!s.isFile()) continue
-        yield { path: full, type, size: s.size, mtime: Math.floor(s.mtimeMs) }
-      } catch {
-        /* lien mort ou fichier disparu entre-temps */
-      }
+      if (type) yield { path, type, size: entry.size, mtime: entry.mtime }
     }
   }
 }
@@ -91,6 +97,8 @@ export async function scanSource(
   source: Source,
   opts: ScanOptions = {}
 ): Promise<ScanProgress> {
+  const provider = opts.provider ?? createProvider(source)
+  const ownsProvider = opts.provider === undefined
   const batchSize = opts.batchSize ?? 200
   const progress: ScanProgress = {
     sourceId: source.id,
@@ -117,7 +125,7 @@ export async function scanSource(
       for (const f of batch) {
         media.upsert(db, {
           sourceId: source.id,
-          path: f.path,
+          path: provider.locate(f.path),
           type: f.type,
           title: titleFromFilename(f.path),
           size: f.size,
@@ -129,11 +137,12 @@ export async function scanSource(
     report()
   }
 
-  for await (const file of walk(source.path, opts.signal)) {
+  for await (const file of walk(provider, '', opts.signal)) {
     progress.scanned++
-    progress.current = file.path
-    seen.push(file.path)
-    const prev = known.get(file.path)
+    const locator = provider.locate(file.path)
+    progress.current = locator
+    seen.push(locator)
+    const prev = known.get(locator)
     if (!prev) {
       progress.added++
       batch.push(file)
@@ -151,5 +160,6 @@ export async function scanSource(
   }
   progress.done = true
   report()
+  if (ownsProvider) provider.close()
   return progress
 }

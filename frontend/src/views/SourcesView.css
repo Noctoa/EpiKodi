@@ -76,3 +76,83 @@
 .scan--error {
   color: #ff6b6b;
 }
+
+.sources-view__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.source-card__kind,
+.source-card__offline {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 400;
+}
+
+.source-card__kind {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.source-card__offline {
+  background: rgba(255, 107, 107, 0.18);
+  color: #ff6b6b;
+}
+
+.network-form {
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.network-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.network-form input {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.network-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.network-form__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.network-form__error {
+  margin: 0;
+  font-size: 13px;
+  color: #ff6b6b;
+}
+
+.network-form__actions {
+  display: flex;
+  gap: 8px;
+}

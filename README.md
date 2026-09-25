@@ -12,7 +12,7 @@ thèmes.
 
 - Lecture vidéo et audio : formats courants en natif, remux ou transcodage FFmpeg à la volée
   pour le reste (avi, xvid, ac3…), avec accélération matérielle si disponible
-- Bibliothèque indexée (SQLite) depuis des dossiers locaux et partages réseau
+- Bibliothèque indexée (SQLite) depuis des dossiers locaux et des partages réseau (SMB, WebDAV)
 - Podcasts (RSS), métadonnées enrichies via TheMovieDB
 - Système de plugins et de thèmes
 - Télécommande : manette et contrôle depuis un smartphone
@@ -36,6 +36,8 @@ Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
 ## Utilisation
 
 1. **Sources → + Ajouter un dossier** : choisis un dossier contenant vidéos ou musiques.
+   **+ Partage réseau** ajoute un partage Samba (`smb://utilisateur@nas/media`) ou un serveur
+   WebDAV ; le mot de passe est chiffré par le trousseau du système.
 2. Le scan démarre tout seul et la liste se remplit au fur et à mesure.
 3. Navigue avec la barre latérale (Accueil, Vidéos, Musique, Podcasts, Sources, Paramètres).
    Une vignette ouvre le détail, ▶ lit directement. Au clavier : flèches, Entrée, Échap. **Rescanner** met à jour après ajout/suppression de fichiers ;
@@ -80,6 +82,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Interface](docs/ui.md) — navigation, grille, vues, raccourcis clavier
 - [Recherche](docs/search.md) — index FTS5, filtres, tri
 - [Transcodage](docs/transcoding.md) — formats non supportés, remux, accélération matérielle
+- [Stockage réseau](docs/network-storage.md) — partages SMB, WebDAV, identifiants, pont ffmpeg
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

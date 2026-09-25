@@ -14,6 +14,7 @@ import {
   type SystemInfo
 } from '../shared/ipc'
 import {
+  addNetworkSource,
   addSource,
   cancelScan,
   databasePath,
@@ -27,6 +28,7 @@ import {
   openLibrary,
   removeSource,
   scanAllSources,
+  sourcesAvailability,
   startScan,
   thumbnailDir
 } from './library'
@@ -123,6 +125,12 @@ function registerIpc(): void {
     startScan(source.id, (p) => event.sender.send(IPC.scanProgress, p))
     return source
   })
+  ipcMain.handle(IPC.sourcesAddNetwork, (event, url: string, password: string | null) => {
+    const source = addNetworkSource(url, password)
+    startScan(source.id, (p) => event.sender.send(IPC.scanProgress, p))
+    return source
+  })
+  ipcMain.handle(IPC.sourcesAvailability, () => sourcesAvailability())
   ipcMain.handle(IPC.sourcesRemove, (_, id: number) => removeSource(id))
   ipcMain.handle(IPC.sourcesScan, (event, id: number) =>
     startScan(id, (p) => event.sender.send(IPC.scanProgress, p))

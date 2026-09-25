@@ -7,6 +7,8 @@ export const IPC = {
   libraryStats: 'library:stats',
   sourcesList: 'sources:list',
   sourcesAdd: 'sources:add',
+  sourcesAddNetwork: 'sources:add-network',
+  sourcesAvailability: 'sources:availability',
   sourcesRemove: 'sources:remove',
   sourcesScan: 'sources:scan',
   sourcesCancelScan: 'sources:cancel-scan',
@@ -92,6 +94,10 @@ export interface EpiKodiApi {
   sourcesList(): Promise<Source[]>
   /** Ouvre le sélecteur de dossier ; null si annulé. Lance un premier scan automatiquement. */
   sourcesAdd(): Promise<Source | null>
+  /** Déclare un partage réseau : `smb://user@nas/media/Films`, `https://dav.example/media`. */
+  sourcesAddNetwork(url: string, password: string | null): Promise<Source>
+  /** État de chaque source : false = injoignable pour le moment. */
+  sourcesAvailability(): Promise<Record<number, boolean>>
   sourcesRemove(id: number): Promise<void>
   sourcesScan(id: number): Promise<void>
   sourcesCancelScan(id: number): Promise<void>

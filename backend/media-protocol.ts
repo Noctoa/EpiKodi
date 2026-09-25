@@ -1,10 +1,9 @@
-import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
 import { extname, isAbsolute } from 'node:path'
 import { Readable } from 'node:stream'
 import { protocol } from 'electron'
 import { MEDIA_SCHEME } from '../shared/ipc'
 import { planPlayback, type PlaybackPlan } from './core/compat'
+import { ffmpegUrlFor, readMedia, statMedia } from './library'
 import { probe } from './core/ffmpeg'
 import { detectHwEncoder, startStream } from './core/transcode'
 
@@ -56,7 +55,7 @@ const plans = new Map<string, Promise<PlaybackPlan>>()
 export function playbackPlan(filePath: string): Promise<PlaybackPlan> {
   let cached = plans.get(filePath)
   if (!cached) {
-    cached = probe(filePath).then(planPlayback)
+    cached = ffmpegUrlFor(filePath).then(probe).then(planPlayback)
     plans.set(filePath, cached)
   }
   return cached
@@ -71,14 +70,16 @@ async function handleStream(filePath: string, request: Request): Promise<Respons
   const seek = Number(new URL(request.url).searchParams.get('t') ?? 0)
   let plan: PlaybackPlan
   let info: Awaited<ReturnType<typeof probe>>
+  let input: string
   try {
-    ;[plan, info] = await Promise.all([playbackPlan(filePath), probe(filePath)])
+    input = await ffmpegUrlFor(filePath)
+    ;[plan, info] = await Promise.all([playbackPlan(filePath), probe(input)])
   } catch {
     return new Response('Unreadable media', { status: 415 })
   }
 
   const { stdout, stop } = startStream({
-    input: filePath,
+    input,
     plan,
     videoCodec: info.metadata.videoCodec ?? null,
     audioCodec: info.metadata.audioCodec ?? null,
@@ -101,19 +102,23 @@ async function handleStream(filePath: string, request: Request): Promise<Respons
 export function registerMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const url = new URL(request.url)
-    const filePath = decodeURIComponent(url.pathname.replace(/^\//, ''))
+    const locator = decodeURIComponent(url.pathname.replace(/^\//, ''))
     // TODO(#4): n'autoriser que les fichiers appartenant à une source de la bibliothèque.
-    if (!isAbsolute(filePath)) return new Response('Bad path', { status: 400 })
-    if (url.host === 'stream') return handleStream(filePath, request)
+    if (!isAbsolute(locator) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(locator)) {
+      return new Response('Bad path', { status: 400 })
+    }
+    if (url.host === 'stream') return handleStream(locator, request)
 
+    // Le fichier peut être local ou sur un partage réseau : la source est résolue par la
+    // bibliothèque, qui sait lire une plage d'octets dans les deux cas.
     let size: number
     try {
-      size = (await stat(filePath)).size
+      size = (await statMedia(locator)).size
     } catch {
       return new Response('Not found', { status: 404 })
     }
 
-    const mime = MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+    const mime = MIME[extname(locator).toLowerCase()] ?? 'application/octet-stream'
     const headers: Record<string, string> = {
       'Content-Type': mime,
       'Accept-Ranges': 'bytes'
@@ -121,20 +126,28 @@ export function registerMediaProtocol(): void {
 
     const range = request.headers.get('range')
     const match = range ? /bytes=(\d*)-(\d*)/.exec(range) : null
-    if (match) {
-      const start = match[1] ? Number(match[1]) : 0
-      const end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1
-      if (start >= size || start > end) {
-        return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } })
+    try {
+      if (match) {
+        const start = match[1] ? Number(match[1]) : 0
+        const end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1
+        if (start >= size || start > end) {
+          return new Response(null, {
+            status: 416,
+            headers: { 'Content-Range': `bytes */${size}` }
+          })
+        }
+        headers['Content-Range'] = `bytes ${start}-${end}/${size}`
+        headers['Content-Length'] = String(end - start + 1)
+        const stream = await readMedia(locator, { start, end })
+        return new Response(Readable.toWeb(stream) as ReadableStream, { status: 206, headers })
       }
-      headers['Content-Range'] = `bytes ${start}-${end}/${size}`
-      headers['Content-Length'] = String(end - start + 1)
-      const stream = Readable.toWeb(createReadStream(filePath, { start, end })) as ReadableStream
-      return new Response(stream, { status: 206, headers })
-    }
 
-    headers['Content-Length'] = String(size)
-    const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream
-    return new Response(stream, { status: 200, headers })
+      headers['Content-Length'] = String(size)
+      const stream = await readMedia(locator)
+      return new Response(Readable.toWeb(stream) as ReadableStream, { status: 200, headers })
+    } catch (err) {
+      console.warn(`[media] lecture impossible de ${locator} :`, (err as Error).message)
+      return new Response('Unavailable', { status: 503 })
+    }
   })
 }

@@ -8,6 +8,7 @@ interface Row {
   name: string
   created_at: number
   last_scan_at: number | null
+  credentials: Uint8Array | null
 }
 
 const toSource = (r: Row): Source => ({
@@ -44,6 +45,18 @@ export function create(
 
 export function remove(db: Database, id: number): boolean {
   return run(db, 'DELETE FROM sources WHERE id = ?', id).changes > 0
+}
+
+/** Mot de passe chiffré, tel quel : le déchiffrement appartient au process principal. */
+export function credentials(db: Database, id: number): Uint8Array | null {
+  return (
+    one<{ credentials: Uint8Array | null }>(db, 'SELECT credentials FROM sources WHERE id = ?', id)
+      ?.credentials ?? null
+  )
+}
+
+export function setCredentials(db: Database, id: number, encrypted: Uint8Array | null): void {
+  run(db, 'UPDATE sources SET credentials = ? WHERE id = ?', encrypted as unknown as null, id)
 }
 
 export function markScanned(db: Database, id: number, at = Math.floor(Date.now() / 1000)): void {

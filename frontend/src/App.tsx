@@ -56,6 +56,7 @@ export default function App(): React.JSX.Element {
   const [facets, setFacets] = useState<Facets>(EMPTY_FACETS)
   const [stats, setStats] = useState<LibraryStats | null>(null)
   const [scans, setScans] = useState<Record<number, ScanProgress>>({})
+  const [availability, setAvailability] = useState<Record<number, boolean>>({})
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
 
@@ -84,6 +85,8 @@ export default function App(): React.JSX.Element {
         setStats(st)
         setFacets(f)
         setRevision((r) => r + 1)
+        // Les sources réseau sont testées à part : une qui ne répond pas ne doit rien retarder
+        void window.epikodi.sourcesAvailability().then(setAvailability)
       }),
     []
   )
@@ -219,6 +222,24 @@ export default function App(): React.JSX.Element {
     if (s) await reloadLibrary()
   }, [reloadLibrary])
 
+  /** Retourne un message d'erreur à afficher dans le formulaire, ou null si l'ajout a réussi. */
+  const addNetworkSource = useCallback(
+    async (url: string, password: string | null): Promise<string | null> => {
+      try {
+        const source = await window.epikodi.sourcesAddNetwork(url, password)
+        await reloadLibrary()
+        const état = await window.epikodi.sourcesAvailability()
+        setAvailability(état)
+        return état[source.id] === false
+          ? 'Source ajoutée, mais injoignable : vérifie l’adresse et les identifiants.'
+          : null
+      } catch (err) {
+        return (err as Error).message
+      }
+    },
+    [reloadLibrary]
+  )
+
   const removeSource = useCallback(
     async (id: number) => {
       await window.epikodi.sourcesRemove(id)
@@ -322,7 +343,9 @@ export default function App(): React.JSX.Element {
           <SourcesView
             sources={sources}
             scans={scans}
+            availability={availability}
             onAdd={addSource}
+            onAddNetwork={addNetworkSource}
             onScan={(id) => void window.epikodi.sourcesScan(id)}
             onCancel={(id) => void window.epikodi.sourcesCancelScan(id)}
             onRemove={removeSource}

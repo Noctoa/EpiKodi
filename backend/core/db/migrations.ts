@@ -149,5 +149,11 @@ export const migrations: Migration[] = [
 
       UPDATE media_metadata SET year = NULL WHERE year IS NOT NULL AND year < 1800;
     `
+  },
+  {
+    version: 5,
+    name: 'source-credentials',
+    // Chiffrés par safeStorage (trousseau du système) : jamais de mot de passe en clair en base
+    sql: `ALTER TABLE sources ADD COLUMN credentials BLOB;`
   }
 ]

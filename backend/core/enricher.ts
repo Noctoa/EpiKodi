@@ -8,6 +8,11 @@ export interface EnrichOptions {
   concurrency?: number
   /** Appelé après chaque média traité (succès ou échec) */
   onDone?: (mediaId: number, ok: boolean) => void
+  /**
+   * Traduit le localisateur stocké en base en URL lisible par ffmpeg. Un fichier local se suffit
+   * à lui-même ; un fichier SMB passe par le pont HTTP local.
+   */
+  resolveUrl?: (locator: string) => Promise<string>
   onIdle?: () => void
 }
 
@@ -70,7 +75,7 @@ export class Enricher {
     if (!m || m.probedAt !== null) return
     let ok = false
     try {
-      ok = await enrichOne(this.db, id, this.opts.thumbnailDir)
+      ok = await enrichOne(this.db, id, this.opts.thumbnailDir, this.opts.resolveUrl)
     } catch (err) {
       console.warn(`[enrich] échec sur ${m.path} :`, (err as Error).message)
       // Marqué quand même : on ne réessaie pas un fichier corrompu à chaque démarrage
@@ -81,11 +86,17 @@ export class Enricher {
 }
 
 /** Analyse un média et écrit le résultat en base. Retourne false si le fichier a disparu. */
-export async function enrichOne(db: Database, id: number, thumbnailDir: string): Promise<boolean> {
+export async function enrichOne(
+  db: Database,
+  id: number,
+  thumbnailDir: string,
+  resolveUrl: (locator: string) => Promise<string> = async (l) => l
+): Promise<boolean> {
   const m = media.get(db, id)
   if (!m) return false
 
-  const result = await probe(m.path)
+  const input = await resolveUrl(m.path)
+  const result = await probe(input)
   media.setMetadata(db, id, result.metadata)
 
   // Les tags audio sont fiables ("Around the World") ; ceux des vidéos rarement → TMDB (#14)
@@ -96,10 +107,10 @@ export async function enrichOne(db: Database, id: number, thumbnailDir: string):
   const out = join(thumbnailDir, `${id}.jpg`)
   try {
     if (m.type === 'video' && result.hasVideo) {
-      await videoThumbnail(m.path, out, result.duration)
+      await videoThumbnail(input, out, result.duration)
       media.setMetadata(db, id, { thumbnailPath: out })
     } else if (result.hasCover) {
-      await extractCover(m.path, out)
+      await extractCover(input, out)
       media.setMetadata(db, id, { thumbnailPath: out })
     }
   } catch (err) {

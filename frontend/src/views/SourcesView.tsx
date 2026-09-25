@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ScanProgress } from '@shared/ipc'
 import type { Source } from '@shared/models'
 import './SourcesView.css'
@@ -5,7 +6,10 @@ import './SourcesView.css'
 interface Props {
   sources: Source[]
   scans: Record<number, ScanProgress>
+  /** false = source injoignable pour le moment */
+  availability: Record<number, boolean>
   onAdd: () => void
+  onAddNetwork: (url: string, password: string | null) => Promise<string | null>
   onScan: (id: number) => void
   onCancel: (id: number) => void
   onRemove: (id: number) => void
@@ -32,10 +36,81 @@ const fmtDate = (ts: number | null): string =>
     ? 'jamais'
     : new Date(ts * 1000).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
 
+function NetworkForm({
+  onSubmit
+}: {
+  onSubmit: (url: string, password: string | null) => Promise<string | null>
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const [url, setUrl] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  if (!open) {
+    return (
+      <button className="btn--ghost" onClick={() => setOpen(true)}>
+        + Partage réseau
+      </button>
+    )
+  }
+
+  const submit = (e: React.FormEvent): void => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    void onSubmit(url.trim(), password || null).then((err) => {
+      setBusy(false)
+      if (err) return setError(err)
+      setOpen(false)
+      setUrl('')
+      setPassword('')
+    })
+  }
+
+  return (
+    <form className="network-form" onSubmit={submit}>
+      <label>
+        Adresse
+        <input
+          autoFocus
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="smb://utilisateur@nas/media/Films"
+        />
+      </label>
+      <label>
+        Mot de passe
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="facultatif"
+        />
+      </label>
+      <p className="network-form__hint">
+        Partages Windows/Samba (<code>smb://</code>) et serveurs WebDAV (<code>https://</code>). Un
+        export NFS se monte côté système puis s'ajoute comme un dossier ordinaire.
+      </p>
+      {error && <p className="network-form__error">{error}</p>}
+      <div className="network-form__actions">
+        <button type="submit" disabled={busy || !url.trim()}>
+          {busy ? 'Connexion…' : 'Ajouter'}
+        </button>
+        <button type="button" className="btn--ghost" onClick={() => setOpen(false)}>
+          Annuler
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export function SourcesView({
   sources,
   scans,
+  availability,
   onAdd,
+  onAddNetwork,
   onScan,
   onCancel,
   onRemove
@@ -44,9 +119,13 @@ export function SourcesView({
     <div className="sources-view">
       <div className="sources-view__head">
         <p className="sources-view__intro">
-          Les dossiers surveillés par la bibliothèque. Ils sont rescannés à chaque démarrage.
+          Les dossiers et partages surveillés par la bibliothèque. Ils sont rescannés à chaque
+          démarrage.
         </p>
-        <button onClick={onAdd}>+ Ajouter un dossier</button>
+        <div className="sources-view__actions">
+          <NetworkForm onSubmit={onAddNetwork} />
+          <button onClick={onAdd}>+ Ajouter un dossier</button>
+        </div>
       </div>
 
       {sources.length === 0 ? (
@@ -62,7 +141,18 @@ export function SourcesView({
             return (
               <li key={s.id} className="source-card">
                 <div className="source-card__main">
-                  <div className="source-card__name">{s.name}</div>
+                  <div className="source-card__name">
+                    {s.name}
+                    {s.type !== 'local' && <span className="source-card__kind">{s.type}</span>}
+                    {availability[s.id] === false && (
+                      <span
+                        className="source-card__offline"
+                        title="Source injoignable pour le moment"
+                      >
+                        hors ligne
+                      </span>
+                    )}
+                  </div>
                   <div className="source-card__path" title={s.path}>
                     {s.path}
                   </div>

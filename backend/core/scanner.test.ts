@@ -100,9 +100,21 @@ describe('scanSource', () => {
     expect(media.count(db)).toBe(2)
   })
 
-  it('un dossier source inexistant donne un scan vide sans erreur', async () => {
+  it('une source injoignable lève, au lieu de rapporter un scan vide', async () => {
     const s = sources.create(db, { type: 'local', path: join(dir, 'nope'), name: 'x' })
-    const p = await scanSource(db, s)
-    expect(p).toMatchObject({ scanned: 0, done: true })
+    await expect(scanSource(db, s)).rejects.toThrow()
+  })
+
+  it('une source devenue injoignable ne vide pas la bibliothèque', async () => {
+    await touch('a.mp4')
+    await touch('b.mp4')
+    const s = source()
+    await scanSource(db, s)
+    expect(media.count(db)).toBe(2)
+
+    // disque débranché, partage éteint… : le dossier disparaît entre deux scans
+    await rm(dir, { recursive: true, force: true })
+    await expect(scanSource(db, s)).rejects.toThrow()
+    expect(media.count(db)).toBe(2)
   })
 })
