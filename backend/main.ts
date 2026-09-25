@@ -9,6 +9,7 @@ import {
   toMediaUrl,
   type MediaListQuery,
   type OpenedMedia,
+  type PlaybackPlanInfo,
   type SubtitleTrack,
   type SystemInfo
 } from '../shared/ipc'
@@ -29,8 +30,13 @@ import {
   startScan,
   thumbnailDir
 } from './library'
-import { registerMediaProtocol, registerMediaSchemePrivileges } from './media-protocol'
+import {
+  playbackPlan,
+  registerMediaProtocol,
+  registerMediaSchemePrivileges
+} from './media-protocol'
 import { listSubtitles, loadSubtitleVtt } from './core/subtitles'
+import { stopAllStreams } from './core/transcode'
 
 registerMediaSchemePrivileges()
 // Expose HTMLMediaElement.audioTracks (choix VF/VO) : API Chromium encore derrière un flag
@@ -131,6 +137,14 @@ function registerIpc(): void {
     thumbnailDir: thumbnailDir(),
     ffmpeg: await getFfmpegStatus()
   }))
+  ipcMain.handle(IPC.playerPlan, async (_, path: string): Promise<PlaybackPlanInfo> => {
+    try {
+      const { mode, reason, duration } = await playbackPlan(path)
+      return { mode, reason, duration }
+    } catch {
+      return { mode: 'direct', reason: 'analyse impossible', duration: null }
+    }
+  })
   ipcMain.handle(IPC.playerSubtitles, (_, path: string) => listSubtitles(path))
   ipcMain.handle(IPC.playerSubtitleVtt, (_, path: string, track: SubtitleTrack) =>
     loadSubtitleVtt(path, track)
@@ -171,4 +185,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('will-quit', () => closeLibrary())
+app.on('will-quit', () => {
+  stopAllStreams()
+  closeLibrary()
+})

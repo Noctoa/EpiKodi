@@ -16,6 +16,7 @@ export const IPC = {
   mediaFacets: 'media:facets',
   systemFfmpeg: 'system:ffmpeg',
   systemInfo: 'system:info',
+  playerPlan: 'player:plan',
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt'
 } as const
@@ -103,6 +104,8 @@ export interface EpiKodiApi {
   systemFfmpeg(): Promise<FfmpegStatus>
   systemInfo(): Promise<SystemInfo>
 
+  /** Indique si le fichier est lisible tel quel, ou doit être remuxé / ré-encodé. */
+  playerPlan(path: string): Promise<PlaybackPlanInfo>
   /** Pistes de sous-titres disponibles pour un fichier (internes + .srt/.vtt à côté). */
   playerSubtitles(path: string): Promise<SubtitleTrack[]>
   playerSubtitleVtt(path: string, track: SubtitleTrack): Promise<string>
@@ -116,4 +119,20 @@ export const MEDIA_SCHEME = 'media'
 
 export function toMediaUrl(absolutePath: string): string {
   return `${MEDIA_SCHEME}://local/${encodeURIComponent(absolutePath)}`
+}
+
+/** Flux transcodé à la volée, repris à `seek` secondes. */
+export function toStreamUrl(absolutePath: string, seek = 0): string {
+  return `${MEDIA_SCHEME}://stream/${encodeURIComponent(absolutePath)}?t=${seek.toFixed(3)}`
+}
+
+export type PlaybackMode = 'direct' | 'remux' | 'transcode'
+
+/** Comment le backend compte servir un fichier au lecteur. */
+export interface PlaybackPlanInfo {
+  mode: PlaybackMode
+  /** Explication affichable : « audio ac3 non supporté → ré-encodage » */
+  reason: string
+  /** Durée connue par ffprobe : le lecteur ne peut pas la déduire d'un flux transcodé */
+  duration: number | null
 }

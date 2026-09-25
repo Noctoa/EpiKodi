@@ -80,6 +80,17 @@
   text-overflow: ellipsis;
 }
 
+.player__badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: rgba(255, 180, 84, 0.18);
+  color: #ffb454;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .player__seek {
   position: relative;
   height: 6px;

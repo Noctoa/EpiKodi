@@ -10,7 +10,8 @@ thèmes.
 
 ## Fonctionnalités visées
 
-- Lecture vidéo et audio (formats courants natifs, transcodage FFmpeg pour le reste)
+- Lecture vidéo et audio : formats courants en natif, remux ou transcodage FFmpeg à la volée
+  pour le reste (avi, xvid, ac3…), avec accélération matérielle si disponible
 - Bibliothèque indexée (SQLite) depuis des dossiers locaux et partages réseau
 - Podcasts (RSS), métadonnées enrichies via TheMovieDB
 - Système de plugins et de thèmes
@@ -78,6 +79,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Lecteur audio](docs/audio.md) — file d'attente, mini-lecteur, aléatoire / répétition
 - [Interface](docs/ui.md) — navigation, grille, vues, raccourcis clavier
 - [Recherche](docs/search.md) — index FTS5, filtres, tri
+- [Transcodage](docs/transcoding.md) — formats non supportés, remux, accélération matérielle
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

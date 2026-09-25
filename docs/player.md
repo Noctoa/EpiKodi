@@ -5,10 +5,13 @@ Code : `frontend/src/components/Player.tsx` (UI), `backend/core/subtitles.ts` (s
 
 ## Décodage
 
-Le décodage est fait par Chromium (`<video>`), qui embarque une partie de FFmpeg : h264, vp8/vp9,
-av1, aac, mp3, opus, flac, vorbis, dans les conteneurs mp4, webm, mkv, ogg. Le fichier est servi par
-le protocole `media://` avec support des requêtes Range (seek instantané). Ce que Chromium ne sait
-pas lire (avi/xvid, hevc, ac3, dts…) passera par le transcodage FFmpeg (#10).
+Le décodage est fait par Chromium (`<video>`), qui embarque une partie de FFmpeg : h264, hevc,
+vp8/vp9, av1, aac, mp3, opus, flac, vorbis, dans les conteneurs mp4, webm, mkv, ogg. Le fichier est
+servi par le protocole `media://` avec support des requêtes Range (seek instantané).
+
+Ce que Chromium refuse (avi, mpeg4 part 2, ac3…) est remuxé ou ré-encodé à la volée par ffmpeg :
+voir [docs/transcoding.md](transcoding.md). Le lecteur affiche alors une pastille « remux » ou
+« transcodage » avec la raison.
 
 ## Contrôles
 

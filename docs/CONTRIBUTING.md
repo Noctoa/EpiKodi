@@ -32,6 +32,8 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   core/ffmpeg.ts    Wrapper ffprobe / ffmpeg (analyse, miniatures)
   core/enricher.ts  File d'enrichissement en arrière-plan (voir docs/metadata.md)
   core/subtitles.ts Sous-titres : .srt/.vtt externes, pistes internes → WebVTT
+  core/compat.ts    Décide direct / remux / transcode selon les codecs
+  core/transcode.ts Flux ffmpeg, détection de l'encodeur matériel
   plugins/          Système d'extensions
   tsconfig.json     Config TS côté Node
 frontend/           UI React (fenêtre Electron, pas de navigateur)

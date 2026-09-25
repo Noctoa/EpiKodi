@@ -410,7 +410,7 @@ export default function App(): React.JSX.Element {
         <Sidebar view={view} counts={counts} onNavigate={(s) => go({ name: s } as View)} />
         <main className={`app__main ${playing ? 'app__main--player' : ''}`}>
           {playing ? (
-            <Player media={playing} onClose={() => setPlayingState(null)} />
+            <Player key={playing.path} media={playing} onClose={() => setPlayingState(null)} />
           ) : (
             <>
               <div className="app__view-head">

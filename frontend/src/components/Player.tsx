@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AUDIO_EXTENSIONS, type OpenedMedia, type SubtitleTrack } from '@shared/ipc'
+import {
+  AUDIO_EXTENSIONS,
+  toStreamUrl,
+  type OpenedMedia,
+  type PlaybackPlanInfo,
+  type SubtitleTrack
+} from '@shared/ipc'
 import { fmtDuration } from '@frontend/format'
 import './Player.css'
 
@@ -43,6 +49,10 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
   const [controlsVisible, setControlsVisible] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [plan, setPlan] = useState<PlaybackPlanInfo | null>(null)
+  /** Position de départ du flux ffmpeg courant : en transcodé, le saut relance l'encodage ici */
+  const [offset, setOffset] = useState(0)
+
   const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([])
   const [subtitleId, setSubtitleId] = useState<string | null>(null)
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null)
@@ -50,21 +60,30 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
   const [menu, setMenu] = useState<'subtitles' | 'audio' | null>(null)
 
   const audio = isAudio(media.name)
+  const transcoded = plan !== null && plan.mode !== 'direct'
+  // Tant que le plan n'est pas connu, on ne charge rien : inutile de faire échouer une lecture
+  // directe sur un .avi pour la relancer aussitôt en transcodé.
+  const src = plan === null ? null : transcoded ? toStreamUrl(media.path, offset) : media.url
+
+  useEffect(() => {
+    let cancelled = false
+    window.epikodi.playerPlan(media.path).then((p) => {
+      if (!cancelled) setPlan(p)
+    })
+    if (!audio) void window.epikodi.playerSubtitles(media.path).then(setSubtitles)
+    return () => {
+      cancelled = true
+    }
+  }, [media.path, audio])
 
   useEffect(() => {
     const el = videoRef.current
-    if (!el) return
-    setError(null)
-    setSubtitleId(null)
-    setSubtitleUrl(null)
-    setAudioTracks([])
+    if (!el || !src) return
     el.load()
     void el.play().catch(() => {
       /* autoplay refusé : l'utilisateur cliquera sur Play */
     })
-    if (audio) return
-    void window.epikodi.playerSubtitles(media.path).then(setSubtitles)
-  }, [media.path, media.url, audio])
+  }, [src])
 
   useEffect(() => {
     const el = videoRef.current
@@ -108,6 +127,21 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     return () => document.removeEventListener('fullscreenchange', onFs)
   }, [])
 
+  // Un flux transcodé recommence à 0 après chaque saut : le temps réel est décalé, et la durée
+  // vient de ffprobe puisque le conteneur fragmenté ne l'annonce pas.
+  const displayDuration = transcoded ? (plan?.duration ?? 0) : duration
+  // `-ss` recule jusqu'à l'image clé précédente : le flux démarre un peu avant la position
+  // demandée, donc le temps calculé peut dépasser la durée réelle. On le borne.
+  const clamp = (t: number): number => (displayDuration ? Math.min(t, displayDuration) : t)
+  const displayTime = transcoded ? clamp(offset + time) : time
+  const displayBuffered = transcoded ? clamp(offset + buffered) : buffered
+
+  // Lues par les actions et les raccourcis, qui doivent rester stables entre deux rendus
+  const live = useRef({ time: 0, duration: 0, transcoded: false })
+  useEffect(() => {
+    live.current = { time: displayTime, duration: displayDuration, transcoded }
+  }, [displayTime, displayDuration, transcoded])
+
   const togglePlay = useCallback(() => {
     const el = videoRef.current
     if (!el) return
@@ -115,16 +149,19 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     else el.pause()
   }, [])
 
-  const seekBy = useCallback((delta: number) => {
-    const el = videoRef.current
-    if (!el) return
-    el.currentTime = Math.min(Math.max(0, el.currentTime + delta), el.duration || 0)
-  }, [])
-
   const seekTo = useCallback((t: number) => {
     const el = videoRef.current
-    if (el) el.currentTime = t
+    if (!el) return
+    const target = Math.max(0, Math.min(t, live.current.duration || t))
+    if (live.current.transcoded) {
+      // On ne peut pas se déplacer dans un flux : on en redemande un qui commence à `target`
+      setTime(0)
+      setBuffered(0)
+      setOffset(target)
+    } else el.currentTime = target
   }, [])
+
+  const seekBy = useCallback((delta: number) => seekTo(live.current.time + delta), [seekTo])
 
   const changeVolume = useCallback((v: number) => {
     const el = videoRef.current
@@ -220,8 +257,8 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [togglePlay, seekBy, changeVolume, toggleFullscreen, toggleMute, showControls, onClose, menu])
 
-  const pct = duration ? (time / duration) * 100 : 0
-  const bufPct = duration ? (buffered / duration) * 100 : 0
+  const pct = displayDuration ? (displayTime / displayDuration) * 100 : 0
+  const bufPct = displayDuration ? (displayBuffered / displayDuration) * 100 : 0
   const hidden = !controlsVisible && playing && !audio
 
   return (
@@ -234,7 +271,7 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
       <video
         ref={videoRef}
         className="player__video"
-        src={media.url}
+        src={src ?? undefined}
         autoPlay
         onClick={togglePlay}
         onDoubleClick={audio ? undefined : toggleFullscreen}
@@ -251,13 +288,20 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
       {error && <div className="player__error">{error}</div>}
 
       <div className="player__controls" onClick={(e) => e.stopPropagation()}>
-        <div className="player__title">{media.name}</div>
+        <div className="player__title">
+          {media.name}
+          {transcoded && (
+            <span className="player__badge" title={plan.reason}>
+              {plan.mode === 'remux' ? 'remux' : 'transcodage'}
+            </span>
+          )}
+        </div>
 
         <div
           className="player__seek"
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect()
-            seekTo(((e.clientX - r.left) / r.width) * duration)
+            seekTo(((e.clientX - r.left) / r.width) * displayDuration)
           }}
         >
           <div className="player__seek-buffered" style={{ width: `${bufPct}%` }} />
@@ -265,9 +309,9 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
           <input
             type="range"
             min={0}
-            max={duration || 0}
+            max={displayDuration || 0}
             step={0.1}
-            value={time}
+            value={displayTime}
             onChange={(e) => seekTo(Number(e.target.value))}
             aria-label="Position"
           />
@@ -284,7 +328,7 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
             ↻
           </button>
           <span className="player__time">
-            {fmtDuration(time)} / {fmtDuration(duration || null)}
+            {fmtDuration(displayTime)} / {fmtDuration(displayDuration || null)}
           </span>
 
           <div className="player__spacer" />
