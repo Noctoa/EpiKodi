@@ -45,7 +45,6 @@ export function savePosition(
   )
 }
 
-/** À appeler quand une lecture démarre. */
 export function incrementPlayCount(db: Database, mediaId: number): void {
   run(
     db,

@@ -8,7 +8,6 @@ const exec = promisify(execFile)
 /** Chemins des binaires ; surchargeables (binaire embarqué dans l'AppImage, tests). */
 export const bin = { ffprobe: 'ffprobe', ffmpeg: 'ffmpeg' }
 
-/** Vérifie une fois que ffmpeg/ffprobe sont présents dans le PATH. */
 export async function checkFfmpeg(): Promise<FfmpegStatus> {
   const status: FfmpegStatus = { ffprobe: false, ffmpeg: false, version: null }
   try {
@@ -26,8 +25,6 @@ export async function checkFfmpeg(): Promise<FfmpegStatus> {
   }
   return status
 }
-
-// ---------- ffprobe ----------
 
 /** Sous-ensemble du JSON de `ffprobe -show_format -show_streams` qui nous intéresse. */
 export interface ProbeJson {
@@ -156,15 +153,12 @@ export async function probe(file: string): Promise<ProbeResult> {
   return parseProbe(JSON.parse(stdout) as ProbeJson)
 }
 
-/** Lance ffmpeg et renvoie sa sortie standard (texte). */
 export async function ffmpegToString(args: string[]): Promise<string> {
   const { stdout } = await exec(bin.ffmpeg, ['-v', 'error', ...args], {
     maxBuffer: 16 * 1024 * 1024
   })
   return stdout
 }
-
-// ---------- images ----------
 
 const THUMB_WIDTH = 480
 

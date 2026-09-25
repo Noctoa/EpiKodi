@@ -78,7 +78,6 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
     [tiles, focus, columns, onOpen, onPlay]
   )
 
-  // Suit le focus clavier dans le DOM (et fait défiler la carte dans la vue)
   useEffect(() => {
     const el = ref.current?.querySelectorAll<HTMLElement>('.tile')[focus]
     if (el && ref.current?.contains(document.activeElement)) {

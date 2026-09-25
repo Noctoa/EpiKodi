@@ -59,7 +59,6 @@ export default function App(): React.JSX.Element {
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
 
-  // Recherche et filtres
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<MediaQuery>({})
   const debouncedSearch = useDebounced(search)
@@ -71,8 +70,6 @@ export default function App(): React.JSX.Element {
   const artists = useMemo(() => groupByArtist(results), [results])
   const byId = useMemo(() => new Map(items.map((m) => [m.id, m])), [items])
   const currentKey = audio.current?.key ?? null
-
-  // ---------- données ----------
 
   const reloadLibrary = useCallback(
     () =>
@@ -133,8 +130,6 @@ export default function App(): React.JSX.Element {
     [reloadLibrary]
   )
 
-  // ---------- navigation ----------
-
   const go = useCallback((v: View) => setNav((n) => navigate(n, v)), [])
   const open = useCallback((v: View) => setNav((n) => push(n, v)), [])
   const goBack = useCallback(() => setNav((n) => back(n)), [])
@@ -169,8 +164,6 @@ export default function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [goBack, playing])
-
-  // ---------- lecture ----------
 
   const showVideo = useCallback(
     (m: OpenedMedia | null) => {
@@ -221,8 +214,6 @@ export default function App(): React.JSX.Element {
     if (opened) openExternal(opened)
   }, [openExternal])
 
-  // ---------- sources ----------
-
   const addSource = useCallback(async () => {
     const s = await window.epikodi.sourcesAdd()
     if (s) await reloadLibrary()
@@ -240,8 +231,6 @@ export default function App(): React.JSX.Element {
     },
     [reloadLibrary]
   )
-
-  // ---------- contenu de la vue ----------
 
   const detailMedia = view.name === 'detail' ? byId.get(view.mediaId) : undefined
   const openDetail = useCallback(

@@ -268,8 +268,6 @@ export function count(db: Database, opts: ListOptions | MediaType = {}): number 
     .n
 }
 
-// ---------- métadonnées ----------
-
 interface MetaRow {
   media_id: number
   container: string | null

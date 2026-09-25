@@ -121,9 +121,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
     queueRef.current = queue
   }, [queue])
 
-  // ---------- source ----------
-
-  // Charge et lance la piste courante dès qu'elle change (et seulement elle)
   const currentUrl = current?.url ?? null
   useEffect(() => {
     const el = ref.current
@@ -139,8 +136,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
       /* autoplay refusé : Play manuel */
     })
   }, [currentUrl, prefs.volume])
-
-  // ---------- événements DOM → état ----------
 
   useEffect(() => {
     const el = ref.current
@@ -173,8 +168,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
     return () => handlers.forEach(([e, h]) => el.removeEventListener(e, h))
   }, [])
 
-  // ---------- préférences ----------
-
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -185,8 +178,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
       /* stockage indisponible */
     }
   }, [status.volume, queue.repeat, queue.shuffle])
-
-  // ---------- actions ----------
 
   const el = (): HTMLAudioElement | null => ref.current
 
@@ -253,8 +244,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
     },
     [api]
   )
-
-  // ---------- touches média du clavier / OS ----------
 
   useEffect(() => {
     const ms = navigator.mediaSession

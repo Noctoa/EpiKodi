@@ -4,12 +4,10 @@ import { media, type Database } from './db'
 import { extractCover, probe, videoThumbnail } from './ffmpeg'
 
 export interface EnrichOptions {
-  /** Dossier où écrire miniatures et pochettes */
   thumbnailDir: string
   concurrency?: number
   /** Appelé après chaque média traité (succès ou échec) */
   onDone?: (mediaId: number, ok: boolean) => void
-  /** Appelé quand la file est vide */
   onIdle?: () => void
 }
 

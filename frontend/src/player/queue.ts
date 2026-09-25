@@ -63,7 +63,6 @@ function reshuffle(q: QueueState, rng?: () => number): number[] {
   return order
 }
 
-/** Remplace la file et démarre à `start`. */
 export function setQueue(
   q: QueueState,
   items: QueueItem[],

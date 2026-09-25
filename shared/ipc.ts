@@ -105,7 +105,6 @@ export interface EpiKodiApi {
 
   /** Pistes de sous-titres disponibles pour un fichier (internes + .srt/.vtt à côté). */
   playerSubtitles(path: string): Promise<SubtitleTrack[]>
-  /** Contenu WebVTT d'une piste. */
   playerSubtitleVtt(path: string, track: SubtitleTrack): Promise<string>
 }
 

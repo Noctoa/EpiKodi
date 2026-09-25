@@ -6,7 +6,6 @@ import { media, transaction, type Database } from './db'
 
 export interface ScanProgress {
   sourceId: number
-  /** Fichiers média rencontrés jusqu'ici */
   scanned: number
   added: number
   updated: number

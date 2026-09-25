@@ -89,8 +89,6 @@ export function libraryStats(): LibraryStats {
   }
 }
 
-// ---------- sources ----------
-
 export function listSources(): Source[] {
   return sources.list(openLibrary())
 }
@@ -106,8 +104,6 @@ export function removeSource(id: number): void {
   cancelScan(id)
   sources.remove(openLibrary(), id)
 }
-
-// ---------- scan ----------
 
 /** Un scan en cours par source, annulable */
 const running = new Map<number, AbortController>()
@@ -147,7 +143,6 @@ export function startScan(id: number, onProgress: (p: ScanProgress) => void): vo
     .finally(() => running.delete(id))
 }
 
-/** Au démarrage : remet la bibliothèque à jour sans intervention de l'utilisateur. */
 export function scanAllSources(onProgress: (p: ScanProgress) => void): void {
   for (const s of listSources()) startScan(s.id, onProgress)
 }
@@ -155,8 +150,6 @@ export function scanAllSources(onProgress: (p: ScanProgress) => void): void {
 export function cancelScan(id: number): void {
   running.get(id)?.abort()
 }
-
-// ---------- media ----------
 
 export function listMedia(query: MediaListQuery = {}): MediaWithMetadata[] {
   return media.listWithMetadata(openLibrary(), query)

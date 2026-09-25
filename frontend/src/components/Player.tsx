@@ -51,8 +51,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
 
   const audio = isAudio(media.name)
 
-  // ---------- chargement ----------
-
   useEffect(() => {
     const el = videoRef.current
     if (!el) return
@@ -67,8 +65,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     if (audio) return
     void window.epikodi.playerSubtitles(media.path).then(setSubtitles)
   }, [media.path, media.url, audio])
-
-  // ---------- événements vidéo ----------
 
   useEffect(() => {
     const el = videoRef.current
@@ -111,8 +107,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     document.addEventListener('fullscreenchange', onFs)
     return () => document.removeEventListener('fullscreenchange', onFs)
   }, [])
-
-  // ---------- actions ----------
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current
@@ -175,8 +169,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     setMenu(null)
   }, [])
 
-  // ---------- masquage des contrôles ----------
-
   const armHideTimer = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current)
     hideTimer.current = setTimeout(() => {
@@ -196,8 +188,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
       if (hideTimer.current) clearTimeout(hideTimer.current)
     }
   }, [armHideTimer, playing])
-
-  // ---------- clavier ----------
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -229,8 +219,6 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [togglePlay, seekBy, changeVolume, toggleFullscreen, toggleMute, showControls, onClose, menu])
-
-  // ---------- rendu ----------
 
   const pct = duration ? (time / duration) * 100 : 0
   const bufPct = duration ? (buffered / duration) * 100 : 0
