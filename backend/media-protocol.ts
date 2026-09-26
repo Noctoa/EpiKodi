@@ -125,7 +125,11 @@ export function registerMediaProtocol(): void {
     }
 
     const range = request.headers.get('range')
-    const match = range ? /bytes=(\d*)-(\d*)/.exec(range) : null
+    // Taille inconnue (hébergeur qui n'annonce rien de fiable) : on sert le fichier d'un bloc
+    // plutôt que de répondre 416 sur une arithmétique de plages impossible à faire.
+    const match = size > 0 && range ? /bytes=(\d*)-(\d*)/.exec(range) : null
+    if (size > 0) headers['Content-Length'] = String(size)
+    else headers['Accept-Ranges'] = 'none'
     try {
       if (match) {
         const start = match[1] ? Number(match[1]) : 0
@@ -142,7 +146,6 @@ export function registerMediaProtocol(): void {
         return new Response(Readable.toWeb(stream) as ReadableStream, { status: 206, headers })
       }
 
-      headers['Content-Length'] = String(size)
       const stream = await readMedia(locator)
       return new Response(Readable.toWeb(stream) as ReadableStream, { status: 200, headers })
     } catch (err) {

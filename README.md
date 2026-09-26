@@ -13,7 +13,7 @@ thèmes.
 - Lecture vidéo et audio : formats courants en natif, remux ou transcodage FFmpeg à la volée
   pour le reste (avi, xvid, ac3…), avec accélération matérielle si disponible
 - Bibliothèque indexée (SQLite) depuis des dossiers locaux et des partages réseau (SMB, WebDAV)
-- Podcasts (RSS), métadonnées enrichies via TheMovieDB
+- Podcasts : abonnement RSS, recherche par nom, écoute hors ligne et reprise de lecture
 - Système de plugins et de thèmes
 - Télécommande : manette et contrôle depuis un smartphone
 
@@ -83,6 +83,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Recherche](docs/search.md) — index FTS5, filtres, tri
 - [Transcodage](docs/transcoding.md) — formats non supportés, remux, accélération matérielle
 - [Stockage réseau](docs/network-storage.md) — partages SMB, WebDAV, identifiants, pont ffmpeg
+- [Podcasts](docs/podcasts.md) — flux RSS, reprise de lecture, écoute hors ligne
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

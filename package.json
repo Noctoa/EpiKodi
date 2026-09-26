@@ -25,6 +25,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@tryjsky/v9u-smb2": "^1.1.0",
+    "fast-xml-parser": "^5.11.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

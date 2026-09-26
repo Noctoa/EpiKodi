@@ -98,3 +98,39 @@ export type MediaInput = Pick<Media, 'sourceId' | 'path' | 'type' | 'title' | 's
   Partial<Pick<Media, 'duration'>>
 
 export type MediaMetadataInput = Partial<Omit<MediaMetadata, 'mediaId' | 'updatedAt'>>
+
+/** Abonnement à un flux RSS de podcast. */
+export interface Podcast {
+  id: number
+  feedUrl: string
+  title: string
+  description: string | null
+  author: string | null
+  website: string | null
+  /** Pochette mise en cache sur disque */
+  imagePath: string | null
+  imageUrl: string | null
+  addedAt: number
+  lastFetchAt: number | null
+  /** Message du dernier rafraîchissement raté, sinon null */
+  lastError: string | null
+}
+
+export interface PodcastEpisode {
+  id: number
+  podcastId: number
+  guid: string
+  title: string
+  description: string | null
+  audioUrl: string
+  mime: string | null
+  size: number | null
+  duration: number | null
+  publishedAt: number | null
+  imagePath: string | null
+  /** Copie téléchargée pour l'écoute hors ligne */
+  localPath: string | null
+  /** Reprise de lecture, en secondes */
+  position: number
+  completed: boolean
+}

@@ -1,15 +1,17 @@
 import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
-import { media, openDatabase, sources, type Database } from './core/db'
+import { media, openDatabase, podcasts, sources, type Database } from './core/db'
 import { Enricher } from './core/enricher'
 import { checkFfmpeg } from './core/ffmpeg'
 import { scanSource } from './core/scanner'
 import { startBridge, type Bridge } from './core/storage/bridge'
+import * as podcastService from './core/podcasts/service'
 import {
   createProvider,
   LocalProvider,
   parseLocation,
+  RemoteFileProvider,
   suggestName,
   type ByteRange,
   type StorageProvider,
@@ -23,7 +25,7 @@ import {
   type MediaListQuery,
   type ScanProgress
 } from '../shared/ipc'
-import type { Facets, MediaWithMetadata, Source } from '../shared/models'
+import type { Facets, MediaWithMetadata, Podcast, PodcastEpisode, Source } from '../shared/models'
 
 /**
  * Façade de la bibliothèque : cycle de vie de la base SQLite + opérations exposées à l'IPC.
@@ -39,6 +41,16 @@ export function databasePath(): string {
 
 export function thumbnailDir(): string {
   return join(app.getPath('userData'), 'thumbnails')
+}
+
+/** Épisodes téléchargés pour l'écoute hors ligne. */
+export function podcastDir(): string {
+  return join(app.getPath('userData'), 'podcasts')
+}
+
+/** Pochettes des podcasts, mises en cache pour s'afficher sans réseau. */
+export function podcastImageDir(): string {
+  return join(app.getPath('userData'), 'podcast-covers')
 }
 
 export function openLibrary(): Database {
@@ -90,11 +102,22 @@ export function providerFor(source: Source): StorageProvider {
   return provider
 }
 
-/** Miniatures et affiches : fichiers de l'application, hors de toute source déclarée. */
+/** Fichiers produits par l'application elle-même, hors de toute source déclarée. */
 let thumbnails: LocalProvider | null = null
+let covers: LocalProvider | null = null
+let downloads: LocalProvider | null = null
+
 function thumbnailProvider(): LocalProvider {
   thumbnails ??= new LocalProvider(thumbnailDir())
   return thumbnails
+}
+function coverProvider(): LocalProvider {
+  covers ??= new LocalProvider(podcastImageDir())
+  return covers
+}
+function downloadProvider(): LocalProvider {
+  downloads ??= new LocalProvider(podcastDir())
+  return downloads
 }
 
 /**
@@ -108,7 +131,21 @@ function resolve(locator: string): { provider: StorageProvider; path: string } |
     if (path !== null) return { provider, path }
   }
   const thumb = thumbnailProvider().relative(locator)
-  return thumb === null ? null : { provider: thumbnailProvider(), path: thumb }
+  if (thumb !== null) return { provider: thumbnailProvider(), path: thumb }
+
+  const cover = coverProvider().relative(locator)
+  if (cover !== null) return { provider: coverProvider(), path: cover }
+
+  // Épisode de podcast : soit sa copie téléchargée, soit le flux distant
+  const episode = podcasts.episodeByUrl(openLibrary(), locator)
+  if (episode) {
+    if (episode.localPath === locator) {
+      const local = downloadProvider().relative(locator)
+      if (local !== null) return { provider: downloadProvider(), path: local }
+    }
+    return { provider: new RemoteFileProvider(episode.audioUrl), path: '' }
+  }
+  return null
 }
 
 export async function readMedia(locator: string, range?: ByteRange): Promise<Readable> {
@@ -302,4 +339,58 @@ export function listMedia(query: MediaListQuery = {}): MediaWithMetadata[] {
 
 export function mediaFacets(): Facets {
   return media.facets(openLibrary())
+}
+
+// ---- podcasts ----
+
+export function listPodcasts(): Podcast[] {
+  return podcasts.list(openLibrary())
+}
+
+export function podcastEpisodes(podcastId: number): PodcastEpisode[] {
+  return podcasts.episodes(openLibrary(), podcastId)
+}
+
+export function podcastUnplayed(podcastId: number): number {
+  return podcasts.unplayedCount(openLibrary(), podcastId)
+}
+
+export function subscribePodcast(feedUrl: string): Promise<podcastService.RefreshResult> {
+  return podcastService.subscribe(openLibrary(), feedUrl.trim(), podcastImageDir())
+}
+
+export function refreshPodcast(id: number): Promise<podcastService.RefreshResult> {
+  return podcastService.refresh(openLibrary(), id, podcastImageDir())
+}
+
+/** Au démarrage : met les abonnements à jour en tâche de fond, sans bloquer l'interface. */
+export function refreshPodcasts(): Promise<podcastService.RefreshResult[]> {
+  return podcastService.refreshAll(openLibrary(), podcastImageDir())
+}
+
+export function removePodcast(id: number): void {
+  podcasts.remove(openLibrary(), id)
+}
+
+export function downloadEpisode(
+  id: number,
+  onProgress?: (p: podcastService.DownloadProgress) => void
+): Promise<string> {
+  return podcastService.downloadEpisode(openLibrary(), id, podcastDir(), onProgress)
+}
+
+export function removeEpisodeDownload(id: number): Promise<void> {
+  return podcastService.removeDownload(openLibrary(), id)
+}
+
+export function saveEpisodeProgress(id: number, position: number, completed?: boolean): void {
+  podcasts.saveProgress(openLibrary(), id, position, completed)
+}
+
+export function setEpisodeCompleted(id: number, completed: boolean): void {
+  podcasts.setCompleted(openLibrary(), id, completed)
+}
+
+export function searchPodcasts(term: string): Promise<podcastService.PodcastSearchResult[]> {
+  return podcastService.search(term)
 }

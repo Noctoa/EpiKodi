@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AUDIO_EXTENSIONS,
   toMediaUrl,
   type FfmpegStatus,
   type LibraryStats,
+  type EpisodeDownload,
   type OpenedMedia,
+  type PodcastWithCounts,
   type ScanProgress
 } from '@shared/ipc'
-import type { Facets, MediaQuery, MediaWithMetadata, Source } from '@shared/models'
+import type { Facets, MediaQuery, MediaWithMetadata, PodcastEpisode, Source } from '@shared/models'
 import { FilterBar } from './components/FilterBar'
 import { Grid } from './components/Grid'
 import { MediaDetail } from './components/MediaDetail'
@@ -31,7 +33,7 @@ import { useAudioPlayer } from './player/AudioPlayerContext'
 import { fromMedia, fromOpened } from './player/items'
 import { HomeView, tileOf } from './views/HomeView'
 import { AlbumsView, AlbumTracksView, ArtistsView } from './views/MusicView'
-import { PodcastsView } from './views/PodcastsView'
+import { PodcastEpisodesView, PodcastsView, useEpisodes } from './views/PodcastsView'
 import { SearchView } from './views/SearchView'
 import { SettingsView } from './views/SettingsView'
 import { SourcesView } from './views/SourcesView'
@@ -57,6 +59,8 @@ export default function App(): React.JSX.Element {
   const [stats, setStats] = useState<LibraryStats | null>(null)
   const [scans, setScans] = useState<Record<number, ScanProgress>>({})
   const [availability, setAvailability] = useState<Record<number, boolean>>({})
+  const [podcasts, setPodcasts] = useState<PodcastWithCounts[]>([])
+  const [downloads, setDownloads] = useState<Record<number, EpisodeDownload>>({})
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
 
@@ -71,6 +75,9 @@ export default function App(): React.JSX.Element {
   const artists = useMemo(() => groupByArtist(results), [results])
   const byId = useMemo(() => new Map(items.map((m) => [m.id, m])), [items])
   const currentKey = audio.current?.key ?? null
+  const openPodcast =
+    view.name === 'podcast' ? podcasts.find((p) => p.id === view.podcastId) : undefined
+  const [episodes, reloadEpisodes] = useEpisodes(openPodcast?.id ?? null)
 
   const reloadLibrary = useCallback(
     () =>
@@ -114,6 +121,31 @@ export default function App(): React.JSX.Element {
       cancelled = true
     }
   }, [filters, debouncedSearch, revision])
+
+  const reloadPodcasts = useCallback(() => window.epikodi.podcastsList().then(setPodcasts), [])
+
+  useEffect(() => {
+    let cancelled = false
+    window.epikodi.podcastsList().then((list) => {
+      if (!cancelled) setPodcasts(list)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Progression des téléchargements d'épisodes
+  useEffect(
+    () =>
+      window.epikodi.onEpisodeDownload((p) => {
+        setDownloads((prev) => ({ ...prev, [p.episodeId]: p }))
+        if (p.done) {
+          reloadEpisodes()
+          void reloadPodcasts()
+        }
+      }),
+    [reloadEpisodes, reloadPodcasts]
+  )
 
   useEffect(
     () =>
@@ -259,6 +291,61 @@ export default function App(): React.JSX.Element {
     [open]
   )
   const enqueue = useCallback((m: MediaWithMetadata) => audio.enqueue([fromMedia(m)]), [audio])
+
+  /** Un épisode se lit depuis sa copie locale si elle existe, sinon en flux. */
+  const playEpisode = useCallback(
+    (e: PodcastEpisode) => {
+      if (!openPodcast) return
+      setPlayingState(null)
+      const cover = e.imagePath ?? openPodcast.imagePath
+      audio.play([
+        {
+          key: `episode:${e.id}`,
+          path: e.localPath ?? e.audioUrl,
+          url: toMediaUrl(e.localPath ?? e.audioUrl),
+          title: e.title,
+          artist: openPodcast.title,
+          album: null,
+          duration: e.duration,
+          thumbnailUrl: cover ? toMediaUrl(cover) : (openPodcast.imageUrl ?? null),
+          startAt: e.completed ? 0 : e.position
+        }
+      ])
+    },
+    [audio, openPodcast]
+  )
+
+  // Reprise de lecture : la position d'un épisode est enregistrée toutes les 5 secondes, et
+  // l'épisode est marqué écouté lorsqu'il arrive à son terme.
+  const playingKey = audio.current?.key
+  const { time: playTime, duration: playDuration } = audio.status
+  const lastSaved = useRef(0)
+
+  useEffect(() => {
+    if (!playingKey?.startsWith('episode:')) return
+    const id = Number(playingKey.slice('episode:'.length))
+    const finished = playDuration > 0 && playTime >= playDuration - 1
+    if (!finished && Math.abs(playTime - lastSaved.current) < 5) return
+    lastSaved.current = playTime
+    void window.epikodi.episodeProgress(id, finished ? 0 : playTime, finished || undefined)
+    if (finished) {
+      reloadEpisodes()
+      void reloadPodcasts()
+    }
+  }, [playingKey, playTime, playDuration, reloadEpisodes, reloadPodcasts])
+
+  const subscribePodcast = useCallback(
+    async (url: string): Promise<string | null> => {
+      try {
+        const result = await window.epikodi.podcastsSubscribe(url)
+        await reloadPodcasts()
+        return result.error
+      } catch (err) {
+        return (err as Error).message
+      }
+    },
+    [reloadPodcasts]
+  )
   const playNext = useCallback((m: MediaWithMetadata) => audio.playNext(fromMedia(m)), [audio])
 
   function content(): React.JSX.Element {
@@ -336,7 +423,48 @@ export default function App(): React.JSX.Element {
       }
 
       case 'podcasts':
-        return <PodcastsView />
+        return (
+          <PodcastsView
+            podcasts={podcasts}
+            onSubscribe={subscribePodcast}
+            onOpen={(p) => open({ name: 'podcast', podcastId: p.id, title: p.title })}
+          />
+        )
+
+      case 'podcast':
+        return openPodcast ? (
+          <PodcastEpisodesView
+            podcast={openPodcast}
+            episodes={episodes}
+            downloads={downloads}
+            currentKey={currentKey}
+            onPlay={playEpisode}
+            onDownload={(e) => void window.epikodi.episodeDownload(e.id)}
+            onRemoveDownload={(e) =>
+              void window.epikodi.episodeRemoveDownload(e.id).then(reloadEpisodes)
+            }
+            onToggleCompleted={(e) =>
+              void window.epikodi
+                .episodeCompleted(e.id, !e.completed)
+                .then(reloadEpisodes)
+                .then(reloadPodcasts)
+            }
+            onRefresh={() =>
+              void window.epikodi
+                .podcastsRefresh(openPodcast.id)
+                .then(reloadEpisodes)
+                .then(reloadPodcasts)
+            }
+            onUnsubscribe={() =>
+              void window.epikodi.podcastsRemove(openPodcast.id).then(() => {
+                void reloadPodcasts()
+                goBack()
+              })
+            }
+          />
+        ) : (
+          <div className="grid__empty">Abonnement introuvable.</div>
+        )
 
       case 'sources':
         return (
@@ -374,7 +502,8 @@ export default function App(): React.JSX.Element {
   const counts: Partial<Record<SectionName, number>> = {
     videos: videos.length,
     music: audioCount,
-    sources: sources.length
+    sources: sources.length,
+    podcasts: podcasts.length
   }
   // Le compteur de la barre de filtres décrit ce que la vue affiche, pas le total tous types
   const filterCount =

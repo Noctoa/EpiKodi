@@ -30,6 +30,8 @@ describe('migrations', () => {
       'playback_state',
       'playlist_items',
       'playlists',
+      'podcast_episodes',
+      'podcasts',
       'sources'
     ])
   })

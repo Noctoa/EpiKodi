@@ -1,0 +1,262 @@
+.podcasts,
+.podcast {
+  width: 100%;
+}
+
+.podcasts__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.podcasts__warn {
+  font-size: 13px;
+  color: #ffb454;
+}
+
+/* ---- formulaire d'abonnement ---- */
+
+.add-podcast {
+  flex: 1;
+}
+
+.add-podcast form {
+  display: flex;
+  gap: 8px;
+}
+
+.add-podcast input {
+  flex: 1;
+  max-width: 460px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.add-podcast input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.add-podcast__error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #ff6b6b;
+}
+
+.add-podcast__results {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.add-podcast__results li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.add-podcast__results li:hover {
+  background: var(--surface-2);
+}
+
+.add-podcast__results img {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.add-podcast__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.add-podcast__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-podcast__author {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---- en-tête d'un abonnement ---- */
+
+.podcast__head {
+  display: flex;
+  gap: 22px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.podcast__cover {
+  width: 180px;
+  height: 180px;
+  flex: 0 0 180px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.podcast__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.podcast__info {
+  flex: 1;
+  min-width: 280px;
+}
+
+.podcast__info h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+
+.podcast__author {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.podcast__description {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 70ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.podcast__error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #ff6b6b;
+}
+
+.podcast__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- liste d'épisodes ---- */
+
+.episodes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.episode {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border-radius: var(--radius);
+  border-top: 1px solid var(--surface-2);
+}
+
+.episode:hover {
+  background: var(--surface);
+}
+
+.episode--completed .episode__title {
+  color: var(--text-muted);
+}
+
+.episode--current .episode__title {
+  color: var(--accent-hover);
+}
+
+.episode__play {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.episode__play:hover {
+  background: var(--accent);
+}
+
+.episode__body {
+  min-width: 0;
+}
+
+.episode__title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.episode__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.episode__description {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.episode__progress {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.episode__progress div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.episode__progress--download div {
+  background: #62d39c;
+}
+
+.episode__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.episode__actions button:disabled {
+  opacity: 0.4;
+}

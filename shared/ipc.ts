@@ -1,5 +1,12 @@
 /** Contrat IPC partagé entre backend (main + preload) et frontend. */
-import type { Facets, MediaQuery, MediaWithMetadata, Source } from './models'
+import type {
+  Facets,
+  MediaQuery,
+  MediaWithMetadata,
+  Podcast,
+  PodcastEpisode,
+  Source
+} from './models'
 
 export const IPC = {
   openMediaDialog: 'dialog:open-media',
@@ -18,6 +25,18 @@ export const IPC = {
   mediaFacets: 'media:facets',
   systemFfmpeg: 'system:ffmpeg',
   systemInfo: 'system:info',
+  podcastsList: 'podcasts:list',
+  podcastsEpisodes: 'podcasts:episodes',
+  podcastsSubscribe: 'podcasts:subscribe',
+  podcastsRefresh: 'podcasts:refresh',
+  podcastsRefreshAll: 'podcasts:refresh-all',
+  podcastsRemove: 'podcasts:remove',
+  podcastsSearch: 'podcasts:search',
+  episodeDownload: 'episode:download',
+  episodeRemoveDownload: 'episode:remove-download',
+  episodeProgress: 'episode:progress',
+  episodeCompleted: 'episode:completed',
+  episodeDownloadProgress: 'episode:download-progress',
   playerPlan: 'player:plan',
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt'
@@ -40,6 +59,37 @@ export interface SystemInfo {
   databasePath: string
   thumbnailDir: string
   ffmpeg: FfmpegStatus
+}
+
+/** Résultat d'un abonnement ou d'un rafraîchissement de flux. */
+export interface PodcastRefresh {
+  podcastId: number
+  title: string
+  added: number
+  total: number
+  error: string | null
+}
+
+export interface PodcastSearchResult {
+  title: string
+  author: string | null
+  feedUrl: string
+  imageUrl: string | null
+  episodeCount: number | null
+}
+
+/** Un abonnement et son nombre d'épisodes non écoutés, pour l'affichage. */
+export interface PodcastWithCounts extends Podcast {
+  episodeCount: number
+  unplayed: number
+}
+
+export interface EpisodeDownload {
+  episodeId: number
+  received: number
+  total: number
+  done: boolean
+  error?: string
 }
 
 export interface FfmpegStatus {
@@ -109,6 +159,23 @@ export interface EpiKodiApi {
   mediaFacets(): Promise<Facets>
   systemFfmpeg(): Promise<FfmpegStatus>
   systemInfo(): Promise<SystemInfo>
+
+  podcastsList(): Promise<PodcastWithCounts[]>
+  podcastsEpisodes(podcastId: number): Promise<PodcastEpisode[]>
+  /** S'abonne à un flux RSS et récupère ses épisodes. */
+  podcastsSubscribe(feedUrl: string): Promise<PodcastRefresh>
+  podcastsRefresh(podcastId: number): Promise<PodcastRefresh>
+  podcastsRefreshAll(): Promise<PodcastRefresh[]>
+  podcastsRemove(podcastId: number): Promise<void>
+  /** Recherche dans l'annuaire public d'Apple ; renvoie directement les URL de flux. */
+  podcastsSearch(term: string): Promise<PodcastSearchResult[]>
+
+  /** Télécharge un épisode pour l'écoute hors ligne. */
+  episodeDownload(episodeId: number): Promise<void>
+  episodeRemoveDownload(episodeId: number): Promise<void>
+  episodeProgress(episodeId: number, position: number, completed?: boolean): Promise<void>
+  episodeCompleted(episodeId: number, completed: boolean): Promise<void>
+  onEpisodeDownload(cb: (p: EpisodeDownload) => void): () => void
 
   /** Indique si le fichier est lisible tel quel, ou doit être remuxé / ré-encodé. */
   playerPlan(path: string): Promise<PlaybackPlanInfo>

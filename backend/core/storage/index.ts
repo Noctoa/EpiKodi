@@ -9,6 +9,7 @@ export * from './types'
 export { formatLocation, parseLocation, suggestName, type ParsedLocation } from './url'
 export { parsePropfind } from './http'
 export { LocalProvider } from './local'
+export { RemoteFileProvider } from './remote-file'
 
 /**
  * Construit le provider correspondant à une source.

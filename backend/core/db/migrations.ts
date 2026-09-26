@@ -155,5 +155,48 @@ export const migrations: Migration[] = [
     name: 'source-credentials',
     // Chiffrés par safeStorage (trousseau du système) : jamais de mot de passe en clair en base
     sql: `ALTER TABLE sources ADD COLUMN credentials BLOB;`
+  },
+  {
+    version: 6,
+    name: 'podcasts',
+    // Les épisodes vivent dans leurs propres tables plutôt que dans `media` : ils portent des
+    // champs qui leur sont propres (guid, flux distant, copie téléchargée) et ne sont pas des
+    // fichiers d'une source scannée.
+    sql: `
+      CREATE TABLE podcasts (
+        id            INTEGER PRIMARY KEY,
+        feed_url      TEXT    NOT NULL UNIQUE,
+        title         TEXT    NOT NULL,
+        description   TEXT,
+        author        TEXT,
+        website       TEXT,
+        image_path    TEXT,                          -- pochette mise en cache sur disque
+        image_url     TEXT,
+        added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_fetch_at INTEGER,
+        last_error    TEXT
+      );
+
+      CREATE TABLE podcast_episodes (
+        id           INTEGER PRIMARY KEY,
+        podcast_id   INTEGER NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
+        guid         TEXT    NOT NULL,               -- identifiant du flux, sert à dédoublonner
+        title        TEXT    NOT NULL,
+        description  TEXT,
+        audio_url    TEXT    NOT NULL,
+        mime         TEXT,
+        size         INTEGER,
+        duration     REAL,
+        published_at INTEGER,
+        image_path   TEXT,
+        local_path   TEXT,                           -- copie hors ligne, si téléchargée
+        position     REAL    NOT NULL DEFAULT 0,     -- reprise de lecture
+        completed    INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (podcast_id, guid)
+      );
+
+      CREATE INDEX podcast_episodes_feed_idx ON podcast_episodes(podcast_id, published_at DESC);
+      CREATE INDEX podcast_episodes_url_idx  ON podcast_episodes(audio_url);
+    `
   }
 ]

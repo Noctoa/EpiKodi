@@ -13,6 +13,8 @@ export interface QueueItem {
   album: string | null
   duration: number | null
   thumbnailUrl: string | null
+  /** Reprise : position en secondes au démarrage de la piste */
+  startAt?: number
 }
 
 export type RepeatMode = 'off' | 'all' | 'one'

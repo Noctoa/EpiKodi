@@ -11,6 +11,7 @@ export type View =
   | { name: 'settings' }
   | { name: 'detail'; mediaId: number }
   | { name: 'search' }
+  | { name: 'podcast'; podcastId: number; title: string }
 
 /** Entrées de la barre latérale, dans l'ordre d'affichage. */
 export const SECTIONS = [
@@ -39,6 +40,8 @@ export function activeSection(view: View): SectionName {
     case 'artist':
     case 'album':
       return 'music'
+    case 'podcast':
+      return 'podcasts'
     case 'detail':
     case 'search':
       return 'home'
@@ -87,5 +90,7 @@ export function viewTitle(view: View, mediaTitle?: string): string {
       return mediaTitle ?? 'Détail'
     case 'search':
       return 'Recherche'
+    case 'podcast':
+      return view.title
   }
 }

@@ -122,6 +122,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
   }, [queue])
 
   const currentUrl = current?.url ?? null
+  const startAt = current?.startAt ?? 0
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -132,10 +133,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
     }
     el.src = currentUrl
     el.volume = prefs.volume
+    // Reprise d'un épisode entamé : on se positionne dès que la durée est connue
+    const resume = startAt
+    if (resume && resume > 0) {
+      const seek = (): void => {
+        el.currentTime = resume
+        el.removeEventListener('loadedmetadata', seek)
+      }
+      el.addEventListener('loadedmetadata', seek)
+    }
     void el.play().catch(() => {
       /* autoplay refusé : Play manuel */
     })
-  }, [currentUrl, prefs.volume])
+  }, [currentUrl, prefs.volume, startAt])
 
   useEffect(() => {
     const el = ref.current

@@ -18,15 +18,27 @@ import {
   addSource,
   cancelScan,
   databasePath,
+  downloadEpisode,
   enrichPending,
   getFfmpegStatus,
   closeLibrary,
   libraryStats,
   listMedia,
+  listPodcasts,
   mediaFacets,
   listSources,
   openLibrary,
+  podcastEpisodes,
+  podcastUnplayed,
+  refreshPodcast,
+  refreshPodcasts,
+  removeEpisodeDownload,
+  removePodcast,
   removeSource,
+  saveEpisodeProgress,
+  searchPodcasts,
+  setEpisodeCompleted,
+  subscribePodcast,
   scanAllSources,
   sourcesAvailability,
   startScan,
@@ -84,6 +96,8 @@ function createWindow(): BrowserWindow {
     if (initial) win.webContents.send(IPC.mediaOpened, initial)
     scanAllSources((p) => win.webContents.send(IPC.scanProgress, p))
     enrichPending()
+    // Les abonnements se mettent à jour en tâche de fond : l'interface n'attend pas le réseau
+    void refreshPodcasts()
   })
   if (is.dev) {
     win.webContents.on('console-message', (event) => {
@@ -139,6 +153,32 @@ function registerIpc(): void {
   ipcMain.handle(IPC.mediaList, (_, query?: MediaListQuery) => listMedia(query))
   ipcMain.handle(IPC.mediaFacets, () => mediaFacets())
   ipcMain.handle(IPC.systemFfmpeg, () => getFfmpegStatus())
+  ipcMain.handle(IPC.podcastsList, () =>
+    listPodcasts().map((p) => ({
+      ...p,
+      episodeCount: podcastEpisodes(p.id).length,
+      unplayed: podcastUnplayed(p.id)
+    }))
+  )
+  ipcMain.handle(IPC.podcastsEpisodes, (_, id: number) => podcastEpisodes(id))
+  ipcMain.handle(IPC.podcastsSubscribe, (_, url: string) => subscribePodcast(url))
+  ipcMain.handle(IPC.podcastsRefresh, (_, id: number) => refreshPodcast(id))
+  ipcMain.handle(IPC.podcastsRefreshAll, () => refreshPodcasts())
+  ipcMain.handle(IPC.podcastsRemove, (_, id: number) => removePodcast(id))
+  ipcMain.handle(IPC.podcastsSearch, (_, term: string) => searchPodcasts(term))
+  ipcMain.handle(IPC.episodeDownload, (event, id: number) =>
+    downloadEpisode(id, (p) => event.sender.send(IPC.episodeDownloadProgress, p)).then(
+      () => undefined
+    )
+  )
+  ipcMain.handle(IPC.episodeRemoveDownload, (_, id: number) => removeEpisodeDownload(id))
+  ipcMain.handle(IPC.episodeProgress, (_, id: number, position: number, completed?: boolean) =>
+    saveEpisodeProgress(id, position, completed)
+  )
+  ipcMain.handle(IPC.episodeCompleted, (_, id: number, completed: boolean) =>
+    setEpisodeCompleted(id, completed)
+  )
+
   ipcMain.handle(IPC.systemInfo, async (): Promise<SystemInfo> => ({
     version: app.getVersion(),
     databasePath: databasePath(),
