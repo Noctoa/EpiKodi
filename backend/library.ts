@@ -8,6 +8,7 @@ import { scanSource } from './core/scanner'
 import { startBridge, type Bridge } from './core/storage/bridge'
 import {
   createProvider,
+  LocalProvider,
   parseLocation,
   suggestName,
   type ByteRange,
@@ -89,14 +90,25 @@ export function providerFor(source: Source): StorageProvider {
   return provider
 }
 
-/** Retrouve la source à laquelle appartient un fichier, et son chemin relatif. */
+/** Miniatures et affiches : fichiers de l'application, hors de toute source déclarée. */
+let thumbnails: LocalProvider | null = null
+function thumbnailProvider(): LocalProvider {
+  thumbnails ??= new LocalProvider(thumbnailDir())
+  return thumbnails
+}
+
+/**
+ * Retrouve la source à laquelle appartient un fichier, et son chemin relatif. Seuls les fichiers
+ * d'une source déclarée — ou les miniatures produites par l'application — sont servis.
+ */
 function resolve(locator: string): { provider: StorageProvider; path: string } | null {
   for (const source of sources.list(openLibrary())) {
     const provider = providerFor(source)
     const path = provider.relative(locator)
     if (path !== null) return { provider, path }
   }
-  return null
+  const thumb = thumbnailProvider().relative(locator)
+  return thumb === null ? null : { provider: thumbnailProvider(), path: thumb }
 }
 
 export async function readMedia(locator: string, range?: ByteRange): Promise<Readable> {
