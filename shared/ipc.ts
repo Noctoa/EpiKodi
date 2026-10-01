@@ -194,6 +194,14 @@ export function toMediaUrl(absolutePath: string): string {
   return `${MEDIA_SCHEME}://local/${encodeURIComponent(absolutePath)}`
 }
 
+/**
+ * Image distante (pochette d'un résultat de recherche, illustration d'un flux) servie par le
+ * backend. Passer par `media://` évite d'ouvrir la politique de sécurité à tout le web.
+ */
+export function toImageUrl(remoteUrl: string): string {
+  return `${MEDIA_SCHEME}://image/${encodeURIComponent(remoteUrl)}`
+}
+
 /** Flux transcodé à la volée, repris à `seek` secondes. */
 export function toStreamUrl(absolutePath: string, seek = 0): string {
   return `${MEDIA_SCHEME}://stream/${encodeURIComponent(absolutePath)}?t=${seek.toFixed(3)}`

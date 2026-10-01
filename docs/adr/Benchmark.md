@@ -1,14 +1,11 @@
 # ADR 001 — Choix de la stack technique
 
-**Date** : 2026-09-17 · **Statut** : accepté · **Issue** : #1
-
 ## Contexte
 
 Le sujet EpiKodi suggère « Electron / Qt / Tauri pour l'interface, FFmpeg pour le traitement
 multimédia, APIs REST pour les intégrations externes, base de données locale pour les
-métadonnées ». Le projet est réalisé **en solo sur ~2 semaines** (dépôt phase 2 le 01/10),
-avec des exigences transverses lourdes : lecture vidéo/audio, système de plugins, thèmes,
-télécommande réseau, packaging.
+métadonnées ». Le projet est réalisé en solo sur ~2 semaines,avec des exigences transverses lourdes : lecture vidéo/audio,
+système de plugins, thèmes, télécommande réseau, packaging.
 
 ## Options évaluées
 
@@ -19,15 +16,15 @@ télécommande réseau, packaging.
 | Plugins                      | Import dynamique JS, sandbox possible      | Plugins Rust = recompilation ; JS côté front   | QPluginLoader (.so), ABI fragile        |
 | Thèmes                       | CSS custom properties                      | CSS custom properties                          | QSS / QML, plus lourd                   |
 | Télécommande (HTTP + WS)     | `http` + `ws` Node natifs                  | `axum`/`tokio` à ajouter                       | QHttpServer + QWebSocket                |
-| BDD locale                   | `better-sqlite3`                           | `rusqlite` / plugin SQL                        | QtSql                                   |
+| BDD locale                   | `better-sqlite3`                           | `rusqlite` / plugin SQL                        |  QtSql                                   |
 | Packaging Linux/Windows      | electron-builder (AppImage, deb, nsis)     | tauri-bundler (idem)                           | linuxdeployqt / windeployqt, manuel     |
 | Poids du binaire             | ~90 Mo                                     | ~10 Mo                                         | ~30 Mo                                  |
-| Vitesse de dev solo (2 sem.) | *****                                      | ***                                         | **                                   |
+| Vitesse de dev solo (2 sem.) | *****                                      | ***                                            | **                                      |
 
 ## Décision
 
-**Electron 44 + React 19 + TypeScript**, outillé par **electron-vite** (Vite 7), avec
-**better-sqlite3** pour les métadonnées et **FFmpeg/ffprobe** en process externes.
+Electron 44 + React 19 + TypeScript, outillé par electron-vite (Vite 7), avec
+better-sqlite3 pour les métadonnées et FFmpeg/ffprobe en process externes.
 
 Raisons principales :
 

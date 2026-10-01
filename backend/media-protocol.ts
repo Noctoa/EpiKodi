@@ -99,10 +99,53 @@ async function handleStream(filePath: string, request: Request): Promise<Respons
   })
 }
 
+const IMAGE_TIMEOUT_MS = 15_000
+/** Une pochette de podcast dépasse rarement le mégaoctet ; au-delà on refuse. */
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024
+
+/**
+ * `media://image/<url>` : relaie une image distante. Seules les URL http(s) sont acceptées, la
+ * réponse doit être une image, et sa taille est plafonnée — un flux malveillant ne peut donc pas
+ * faire télécharger n'importe quoi à l'application.
+ */
+async function handleImage(remoteUrl: string): Promise<Response> {
+  let parsed: URL
+  try {
+    parsed = new URL(remoteUrl)
+  } catch {
+    return new Response('Bad image URL', { status: 400 })
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return new Response('Unsupported scheme', { status: 400 })
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS)
+  try {
+    const res = await fetch(parsed, { redirect: 'follow', signal: controller.signal })
+    const type = res.headers.get('content-type') ?? ''
+    if (!res.ok || !type.startsWith('image/')) return new Response('Not an image', { status: 415 })
+    if (Number(res.headers.get('content-length') ?? 0) > MAX_IMAGE_BYTES) {
+      return new Response('Image too large', { status: 413 })
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return new Response('Image too large', { status: 413 })
+    return new Response(bytes, {
+      status: 200,
+      headers: { 'Content-Type': type, 'Cache-Control': 'max-age=86400' }
+    })
+  } catch {
+    return new Response('Image unavailable', { status: 502 })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export function registerMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const url = new URL(request.url)
     const locator = decodeURIComponent(url.pathname.replace(/^\//, ''))
+    if (url.host === 'image') return handleImage(locator)
     // TODO(#4): n'autoriser que les fichiers appartenant à une source de la bibliothèque.
     if (!isAbsolute(locator) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(locator)) {
       return new Response('Bad path', { status: 400 })

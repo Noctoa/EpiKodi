@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  toImageUrl,
   toMediaUrl,
   type EpisodeDownload,
   type PodcastSearchResult,
@@ -87,7 +88,7 @@ function AddPodcast({
         <ul className="add-podcast__results">
           {results.map((r) => (
             <li key={r.feedUrl}>
-              {r.imageUrl && <img src={r.imageUrl} alt="" loading="lazy" />}
+              {r.imageUrl && <img src={toImageUrl(r.imageUrl)} alt="" loading="lazy" />}
               <span className="add-podcast__info">
                 <span className="add-podcast__title">{r.title}</span>
                 <span className="add-podcast__author">
@@ -119,7 +120,11 @@ export function PodcastsView({ podcasts, onOpen, onSubscribe }: ListProps): Reac
     key: String(p.id),
     title: p.title,
     subtitle: [p.author, `${p.episodeCount} épisodes`].filter(Boolean).join(' · '),
-    thumbnailUrl: p.imagePath ? toMediaUrl(p.imagePath) : p.imageUrl,
+    thumbnailUrl: p.imagePath
+      ? toMediaUrl(p.imagePath)
+      : p.imageUrl
+        ? toImageUrl(p.imageUrl)
+        : null,
     icon: '◉',
     square: true,
     badge: p.unplayed > 0 ? `${p.unplayed} à écouter` : undefined
@@ -176,7 +181,9 @@ export function PodcastEpisodesView({
         <div className="podcast__cover">
           {podcast.imagePath || podcast.imageUrl ? (
             <img
-              src={podcast.imagePath ? toMediaUrl(podcast.imagePath) : podcast.imageUrl!}
+              src={
+                podcast.imagePath ? toMediaUrl(podcast.imagePath) : toImageUrl(podcast.imageUrl!)
+              }
               alt=""
             />
           ) : (

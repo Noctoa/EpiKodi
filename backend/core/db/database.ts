@@ -24,7 +24,7 @@ export function run(
   return { changes: Number(r.changes), lastId: Number(r.lastInsertRowid) }
 }
 
-/** Exécute `fn` dans une transaction ; rollback si elle lève. */
+/* Exécute `fn` dans une transaction ; rollback si elle lève. */
 export function transaction<T>(db: Database, fn: () => T): T {
   db.exec('BEGIN')
   try {
@@ -37,10 +37,10 @@ export function transaction<T>(db: Database, fn: () => T): T {
   }
 }
 
-/**
+/*
  * Ouvre (ou crée) la base et la met à jour vers la dernière version du schéma.
  * `:memory:` donne une base jetable, utilisée par les tests.
- */
+*/
 export function openDatabase(file: string): Database {
   const db = new DatabaseSync(file)
   // WAL : lectures et écritures concurrentes sans blocage (le scan écrit pendant que l'UI lit)
