@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { toMediaUrl } from '@shared/ipc'
 import type { MediaWithMetadata, Source } from '@shared/models'
 import { fmtBitrate, fmtDurationLong, fmtResolution, fmtSize } from '@frontend/format'
+import { MatchPicker } from './MatchPicker'
 import './MediaDetail.css'
 
 interface Props {
@@ -9,6 +11,8 @@ interface Props {
   onPlay: () => void
   onEnqueue?: () => void
   onPlayNext?: () => void
+  /** Appelé après une correction manuelle, pour recharger les informations affichées */
+  onIdentified?: () => void
 }
 
 function Row({
@@ -32,8 +36,10 @@ export function MediaDetail({
   source,
   onPlay,
   onEnqueue,
-  onPlayNext
+  onPlayNext,
+  onIdentified
 }: Props): React.JSX.Element {
+  const [picking, setPicking] = useState(false)
   const md = media.metadata
   const thumb = md?.posterPath ?? md?.thumbnailPath ?? null
   const isAudio = media.type === 'audio'
@@ -57,6 +63,13 @@ export function MediaDetail({
         )}
         {md?.overview && <p className="detail__overview">{md.overview}</p>}
 
+        {!isAudio && md?.rating !== null && md?.rating !== undefined && (
+          <p className="detail__rating">
+            <strong>{md.rating.toFixed(1)}</strong> / 10
+            {md.genre && <span className="detail__genres"> · {md.genre}</span>}
+          </p>
+        )}
+
         <div className="detail__actions">
           <button onClick={onPlay}>▶ Lire</button>
           {isAudio && onPlayNext && (
@@ -69,7 +82,18 @@ export function MediaDetail({
               + Ajouter à la file
             </button>
           )}
+          {!isAudio && (
+            <button className="btn--ghost" onClick={() => setPicking(true)}>
+              ⌕ Corriger l'identification
+            </button>
+          )}
         </div>
+
+        {md && md.cast.length > 0 && (
+          <p className="detail__cast">
+            <span className="detail__cast-label">Avec</span> {md.cast.join(', ')}
+          </p>
+        )}
 
         <dl className="detail__meta">
           <Row label="Type" value={media.type === 'video' ? 'Vidéo' : 'Audio'} />
@@ -82,11 +106,21 @@ export function MediaDetail({
           <Row label="Genre" value={md?.genre} />
           <Row label="Piste" value={md?.track} />
           <Row label="Taille" value={fmtSize(media.size)} />
+          <Row label="Durée annoncée" value={md?.runtime ? `${md.runtime} min` : null} />
+          <Row label="Fiche" value={md?.externalId} />
           <Row label="Source" value={source?.name} />
           <Row label="Fichier" value={<code className="detail__path">{media.path}</code>} />
           {media.probedAt === null && <Row label="Analyse" value="en attente de ffprobe" />}
         </dl>
       </div>
+      {picking && (
+        <MatchPicker
+          mediaId={media.id}
+          initialQuery={media.title}
+          onClose={() => setPicking(false)}
+          onApplied={() => onIdentified?.()}
+        />
+      )}
     </div>
   )
 }

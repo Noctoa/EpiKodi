@@ -23,6 +23,8 @@ export interface Media {
   duration: number | null
   /** Date d'analyse ffprobe ; null = en attente d'enrichissement */
   probedAt: number | null
+  /** Date d'interrogation d'une source externe ; null = jamais tenté */
+  identifiedAt: number | null
   addedAt: number
   updatedAt: number
 }
@@ -51,6 +53,12 @@ export interface MediaMetadata {
   externalId: string | null
   thumbnailPath: string | null
   posterPath: string | null
+  /** Image large, issue de la source externe */
+  backdropPath: string | null
+  /** Têtes d'affiche */
+  cast: string[]
+  /** Durée annoncée par la source externe, en minutes */
+  runtime: number | null
   updatedAt: number
 }
 
@@ -97,7 +105,8 @@ export interface Facets {
 export type MediaInput = Pick<Media, 'sourceId' | 'path' | 'type' | 'title' | 'size' | 'mtime'> &
   Partial<Pick<Media, 'duration'>>
 
-export type MediaMetadataInput = Partial<Omit<MediaMetadata, 'mediaId' | 'updatedAt'>>
+/** `cast` est écrit à part (colonne JSON), il n'entre pas dans les champs scalaires. */
+export type MediaMetadataInput = Partial<Omit<MediaMetadata, 'mediaId' | 'updatedAt' | 'cast'>>
 
 /** Abonnement à un flux RSS de podcast. */
 export interface Podcast {

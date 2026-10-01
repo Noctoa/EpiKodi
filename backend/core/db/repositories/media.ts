@@ -21,6 +21,7 @@ interface Row {
   mtime: number
   duration: number | null
   probed_at: number | null
+  identified_at: number | null
   added_at: number
   updated_at: number
 }
@@ -35,6 +36,7 @@ const toMedia = (r: Row): Media => ({
   mtime: r.mtime,
   duration: r.duration,
   probedAt: r.probed_at,
+  identifiedAt: r.identified_at,
   addedAt: r.added_at,
   updatedAt: r.updated_at
 })
@@ -213,6 +215,30 @@ export function remove(db: Database, id: number): boolean {
   return run(db, 'DELETE FROM media WHERE id = ?', id).changes > 0
 }
 
+/** Médias dont l'identification auprès d'une source externe n'a pas encore été tentée. */
+export function listUnidentified(db: Database, limit = 500): number[] {
+  return all<{ id: number }>(
+    db,
+    `SELECT id FROM media WHERE identified_at IS NULL AND type = 'video' LIMIT ?`,
+    limit
+  ).map((r) => r.id)
+}
+
+/** Marque le média comme traité, qu'une correspondance ait été trouvée ou non. */
+export function markIdentified(db: Database, id: number): void {
+  run(db, 'UPDATE media SET identified_at = unixepoch() WHERE id = ?', id)
+}
+
+/** Le casting n'est pas un champ scalaire : il est écrit séparément, en JSON. */
+export function setCast(db: Database, mediaId: number, names: string[]): void {
+  run(
+    db,
+    'UPDATE media_metadata SET cast_names = ? WHERE media_id = ?',
+    JSON.stringify(names),
+    mediaId
+  )
+}
+
 /** Médias jamais analysés par ffprobe (ou invalidés par le scanner). */
 export function listUnprobed(db: Database, sourceId?: number, limit = 10_000): number[] {
   const rows =
@@ -287,6 +313,9 @@ interface MetaRow {
   external_id: string | null
   thumbnail_path: string | null
   poster_path: string | null
+  backdrop_path: string | null
+  cast_names: string | null
+  runtime: number | null
   updated_at: number
 }
 
@@ -309,8 +338,22 @@ const toMetadata = (r: MetaRow): MediaMetadata => ({
   externalId: r.external_id,
   thumbnailPath: r.thumbnail_path,
   posterPath: r.poster_path,
+  backdropPath: r.backdrop_path,
+  cast: parseCast(r.cast_names),
+  runtime: r.runtime,
   updatedAt: r.updated_at
 })
+
+/** Le casting est stocké en JSON ; une valeur illisible ne doit pas casser l'affichage. */
+function parseCast(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 /** camelCase (TS) → snake_case (SQL) */
 const META_COLUMNS: Record<keyof MediaMetadataInput, string> = {
@@ -330,7 +373,9 @@ const META_COLUMNS: Record<keyof MediaMetadataInput, string> = {
   rating: 'rating',
   externalId: 'external_id',
   thumbnailPath: 'thumbnail_path',
-  posterPath: 'poster_path'
+  posterPath: 'poster_path',
+  backdropPath: 'backdrop_path',
+  runtime: 'runtime'
 }
 
 export function getMetadata(db: Database, mediaId: number): MediaMetadata | null {

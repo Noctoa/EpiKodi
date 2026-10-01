@@ -491,6 +491,7 @@ export default function App(): React.JSX.Element {
             onPlay={() => playMedia(detailMedia)}
             onEnqueue={() => enqueue(detailMedia)}
             onPlayNext={() => playNext(detailMedia)}
+            onIdentified={() => void reloadLibrary()}
           />
         ) : (
           <div className="grid__empty">Ce média n'est plus dans la bibliothèque.</div>

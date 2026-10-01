@@ -1,11 +1,14 @@
 import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
-import { media, openDatabase, podcasts, sources, type Database } from './core/db'
+import { media, openDatabase, podcasts, settings, sources, type Database } from './core/db'
 import { Enricher } from './core/enricher'
 import { checkFfmpeg } from './core/ffmpeg'
 import { scanSource } from './core/scanner'
 import { startBridge, type Bridge } from './core/storage/bridge'
+import { applyMatch, Identifier, suggestMatches } from './core/metadata/identify'
+import { TmdbProvider } from './core/metadata/tmdb'
+import { registerProvider, type MetadataDetails, type MetadataMatch } from './core/metadata/types'
 import * as podcastService from './core/podcasts/service'
 import {
   createProvider,
@@ -53,15 +56,34 @@ export function podcastImageDir(): string {
   return join(app.getPath('userData'), 'podcast-covers')
 }
 
+/** Affiches et images de fond issues des sources externes. */
+export function posterDir(): string {
+  return join(app.getPath('userData'), 'posters')
+}
+
 export function openLibrary(): Database {
   if (!db) {
     db = openDatabase(databasePath())
     console.log(`[library] base ouverte : ${databasePath()}`)
+    tmdb.setApiKey(
+      (() => {
+        const stored = settings.getRaw(db, TMDB_KEY_SETTING)
+        if (!stored) return null
+        try {
+          return safeStorage.decryptString(Buffer.from(stored))
+        } catch {
+          return Buffer.from(stored).toString('utf8')
+        }
+      })()
+    )
     enricher = new Enricher(db, {
       thumbnailDir: thumbnailDir(),
       resolveUrl: ffmpegUrlFor,
       onDone: () => notifyChanged(),
-      onIdle: () => notifyChanged()
+      onIdle: () => {
+        notifyChanged()
+        identifyPending()
+      }
     })
   }
   return db
@@ -106,6 +128,7 @@ export function providerFor(source: Source): StorageProvider {
 let thumbnails: LocalProvider | null = null
 let covers: LocalProvider | null = null
 let downloads: LocalProvider | null = null
+let posters: LocalProvider | null = null
 
 function thumbnailProvider(): LocalProvider {
   thumbnails ??= new LocalProvider(thumbnailDir())
@@ -118,6 +141,10 @@ function coverProvider(): LocalProvider {
 function downloadProvider(): LocalProvider {
   downloads ??= new LocalProvider(podcastDir())
   return downloads
+}
+function posterProvider(): LocalProvider {
+  posters ??= new LocalProvider(posterDir())
+  return posters
 }
 
 /**
@@ -135,6 +162,9 @@ function resolve(locator: string): { provider: StorageProvider; path: string } |
 
   const cover = coverProvider().relative(locator)
   if (cover !== null) return { provider: coverProvider(), path: cover }
+
+  const poster = posterProvider().relative(locator)
+  if (poster !== null) return { provider: posterProvider(), path: poster }
 
   // Épisode de podcast : soit sa copie téléchargée, soit le flux distant
   const episode = podcasts.episodeByUrl(openLibrary(), locator)
@@ -173,10 +203,77 @@ export async function ffmpegUrlFor(locator: string): Promise<string> {
   return bridge.url(locator)
 }
 
+// ---- métadonnées externes ----
+
+const TMDB_KEY_SETTING = 'tmdb.apiKey'
+const tmdb = new TmdbProvider(null)
+registerProvider(tmdb)
+let identifier: Identifier | null = null
+
+/** La clé est chiffrée par le trousseau du système, jamais écrite en clair. */
+export function tmdbApiKey(): string | null {
+  const stored = settings.getRaw(openLibrary(), TMDB_KEY_SETTING)
+  if (!stored) return null
+  try {
+    return safeStorage.decryptString(Buffer.from(stored))
+  } catch {
+    // Trousseau indisponible au moment de l'écriture : la valeur est alors en clair
+    return Buffer.from(stored).toString('utf8')
+  }
+}
+
+export function setTmdbApiKey(key: string | null): void {
+  const d = openLibrary()
+  const trimmed = key?.trim() || null
+  if (!trimmed) {
+    settings.setRaw(d, TMDB_KEY_SETTING, null)
+  } else if (safeStorage.isEncryptionAvailable()) {
+    settings.setRaw(d, TMDB_KEY_SETTING, safeStorage.encryptString(trimmed))
+  } else {
+    console.warn('[tmdb] trousseau indisponible : la clé est stockée sans chiffrement')
+    settings.setText(d, TMDB_KEY_SETTING, trimmed)
+  }
+  tmdb.setApiKey(trimmed)
+  if (trimmed) identifyPending()
+}
+
+export function tmdbConfigured(): boolean {
+  return tmdb.configured()
+}
+
+/** Met en file l'identification des vidéos pas encore traitées. */
+export function identifyPending(): void {
+  if (!tmdb.configured()) return
+  identifier ??= new Identifier(openLibrary(), {
+    imageDir: posterDir(),
+    provider: tmdb,
+    onDone: () => notifyChanged(),
+    onIdle: () => notifyChanged()
+  })
+  identifier.enqueueUnidentified()
+}
+
+export function identifyingCount(): number {
+  return identifier?.pending ?? 0
+}
+
+/** Candidats proposés pour « Corriger l'identification ». */
+export function matchesFor(mediaId: number, query?: string): Promise<MetadataMatch[]> {
+  return suggestMatches(openLibrary(), mediaId, tmdb, query)
+}
+
+/** Applique un choix manuel de l'utilisateur. */
+export async function applyMatchTo(mediaId: number, externalId: string): Promise<void> {
+  const details: MetadataDetails | null = await tmdb.details(externalId)
+  if (details) await applyMatch(openLibrary(), mediaId, details, posterDir())
+}
+
 export function closeLibrary(): void {
   for (const ctrl of running.values()) ctrl.abort()
   enricher?.stop()
   enricher = null
+  identifier?.stop()
+  identifier = null
   for (const provider of providers.values()) provider.close()
   providers.clear()
   bridge?.close()

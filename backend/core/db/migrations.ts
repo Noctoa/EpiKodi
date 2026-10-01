@@ -198,5 +198,30 @@ export const migrations: Migration[] = [
       CREATE INDEX podcast_episodes_feed_idx ON podcast_episodes(podcast_id, published_at DESC);
       CREATE INDEX podcast_episodes_url_idx  ON podcast_episodes(audio_url);
     `
+  },
+  {
+    version: 7,
+    name: 'external-metadata',
+    // `identified_at` évite de réinterroger l'API pour un fichier déjà traité, y compris quand
+    // aucune correspondance n'a été trouvée.
+    sql: `
+      ALTER TABLE media ADD COLUMN identified_at INTEGER;
+      ALTER TABLE media_metadata ADD COLUMN backdrop_path TEXT;
+      ALTER TABLE media_metadata ADD COLUMN cast_names TEXT;   -- JSON : ["Nom", ...]
+      ALTER TABLE media_metadata ADD COLUMN runtime INTEGER;   -- minutes, annoncées par la source
+      CREATE INDEX media_identified_idx ON media(identified_at) WHERE identified_at IS NULL;
+    `
+  },
+  {
+    version: 8,
+    name: 'settings',
+    // Réglages de l'application. `value` est un BLOB car certains réglages sont chiffrés
+    // (clés d'API, mots de passe) par le trousseau du système.
+    sql: `
+      CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value BLOB
+      );
+    `
   }
 ]

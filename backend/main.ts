@@ -9,22 +9,27 @@ import {
   toMediaUrl,
   type MediaListQuery,
   type OpenedMedia,
+  type MetadataStatus,
   type PlaybackPlanInfo,
   type SubtitleTrack,
   type SystemInfo
 } from '../shared/ipc'
 import {
   addNetworkSource,
+  applyMatchTo,
   addSource,
   cancelScan,
   databasePath,
   downloadEpisode,
   enrichPending,
   getFfmpegStatus,
+  identifyingCount,
+  identifyPending,
   closeLibrary,
   libraryStats,
   listMedia,
   listPodcasts,
+  matchesFor,
   mediaFacets,
   listSources,
   openLibrary,
@@ -38,7 +43,9 @@ import {
   saveEpisodeProgress,
   searchPodcasts,
   setEpisodeCompleted,
+  setTmdbApiKey,
   subscribePodcast,
+  tmdbConfigured,
   scanAllSources,
   sourcesAvailability,
   startScan,
@@ -96,6 +103,9 @@ function createWindow(): BrowserWindow {
     if (initial) win.webContents.send(IPC.mediaOpened, initial)
     scanAllSources((p) => win.webContents.send(IPC.scanProgress, p))
     enrichPending()
+    // L'identification est aussi déclenchée en fin d'analyse ffprobe ; cet appel la lance quand
+    // tout est déjà analysé, cas d'un démarrage sur une bibliothèque inchangée.
+    identifyPending()
     // Les abonnements se mettent à jour en tâche de fond : l'interface n'attend pas le réseau
     void refreshPodcasts()
   })
@@ -177,6 +187,23 @@ function registerIpc(): void {
   )
   ipcMain.handle(IPC.episodeCompleted, (_, id: number, completed: boolean) =>
     setEpisodeCompleted(id, completed)
+  )
+
+  const metadataStatus = (): MetadataStatus => ({
+    configured: tmdbConfigured(),
+    providerName: 'TheMovieDB',
+    pending: identifyingCount()
+  })
+  ipcMain.handle(IPC.metadataStatus, () => metadataStatus())
+  ipcMain.handle(IPC.metadataSetKey, (_, key: string | null) => {
+    setTmdbApiKey(key)
+    return metadataStatus()
+  })
+  ipcMain.handle(IPC.metadataSuggest, (_, mediaId: number, query?: string) =>
+    matchesFor(mediaId, query)
+  )
+  ipcMain.handle(IPC.metadataApply, (_, mediaId: number, externalId: string) =>
+    applyMatchTo(mediaId, externalId)
   )
 
   ipcMain.handle(IPC.systemInfo, async (): Promise<SystemInfo> => ({

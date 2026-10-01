@@ -32,6 +32,7 @@ describe('migrations', () => {
       'playlists',
       'podcast_episodes',
       'podcasts',
+      'settings',
       'sources'
     ])
   })

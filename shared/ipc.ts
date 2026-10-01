@@ -25,6 +25,10 @@ export const IPC = {
   mediaFacets: 'media:facets',
   systemFfmpeg: 'system:ffmpeg',
   systemInfo: 'system:info',
+  metadataStatus: 'metadata:status',
+  metadataSetKey: 'metadata:set-key',
+  metadataSuggest: 'metadata:suggest',
+  metadataApply: 'metadata:apply',
   podcastsList: 'podcasts:list',
   podcastsEpisodes: 'podcasts:episodes',
   podcastsSubscribe: 'podcasts:subscribe',
@@ -90,6 +94,30 @@ export interface EpisodeDownload {
   total: number
   done: boolean
   error?: string
+}
+
+/** Un candidat proposé par une source de métadonnées externe. */
+export interface MetadataMatch {
+  provider: string
+  externalId: string
+  kind: 'movie' | 'tv'
+  title: string
+  originalTitle: string | null
+  year: number | null
+  overview: string | null
+  rating: number | null
+  posterUrl: string | null
+  backdropUrl: string | null
+  /** Pertinence estimée, entre 0 et 1 */
+  score: number
+}
+
+export interface MetadataStatus {
+  /** Une clé d'API est enregistrée */
+  configured: boolean
+  providerName: string
+  /** Médias encore en attente d'identification */
+  pending: number
 }
 
 export interface FfmpegStatus {
@@ -159,6 +187,13 @@ export interface EpiKodiApi {
   mediaFacets(): Promise<Facets>
   systemFfmpeg(): Promise<FfmpegStatus>
   systemInfo(): Promise<SystemInfo>
+
+  metadataStatus(): Promise<MetadataStatus>
+  /** Enregistre (ou efface avec `null`) la clé TheMovieDB, chiffrée par le trousseau système. */
+  metadataSetKey(key: string | null): Promise<MetadataStatus>
+  /** Candidats pour un média ; `query` remplace le titre deviné lors d'une correction manuelle. */
+  metadataSuggest(mediaId: number, query?: string): Promise<MetadataMatch[]>
+  metadataApply(mediaId: number, externalId: string): Promise<void>
 
   podcastsList(): Promise<PodcastWithCounts[]>
   podcastsEpisodes(podcastId: number): Promise<PodcastEpisode[]>

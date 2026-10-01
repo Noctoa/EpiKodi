@@ -62,3 +62,37 @@
   font-size: 14px;
   line-height: 1.6;
 }
+
+.settings__key {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.settings__key input {
+  flex: 1;
+  min-width: 240px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.settings__key input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings__message {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.settings__hint {
+  color: var(--text-muted);
+}

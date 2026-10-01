@@ -32,6 +32,11 @@ const api: EpiKodiApi = {
   mediaFacets: () => ipcRenderer.invoke(IPC.mediaFacets),
   systemFfmpeg: () => ipcRenderer.invoke(IPC.systemFfmpeg),
   systemInfo: () => ipcRenderer.invoke(IPC.systemInfo),
+  metadataStatus: () => ipcRenderer.invoke(IPC.metadataStatus),
+  metadataSetKey: (key) => ipcRenderer.invoke(IPC.metadataSetKey, key),
+  metadataSuggest: (mediaId, query) => ipcRenderer.invoke(IPC.metadataSuggest, mediaId, query),
+  metadataApply: (mediaId, externalId) =>
+    ipcRenderer.invoke(IPC.metadataApply, mediaId, externalId),
   podcastsList: () => ipcRenderer.invoke(IPC.podcastsList),
   podcastsEpisodes: (id) => ipcRenderer.invoke(IPC.podcastsEpisodes, id),
   podcastsSubscribe: (url) => ipcRenderer.invoke(IPC.podcastsSubscribe, url),

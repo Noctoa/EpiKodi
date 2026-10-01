@@ -11,7 +11,7 @@ intégré à Node (aucune dépendance native à compiler).
 Pour l'ouvrir à la main : `sqlite3 ~/.config/epikodi/epikodi.db` puis `.tables`, `.schema media`,
 `SELECT * FROM sources;`. Le client `sqlite3` s'installe avec `pacman -S sqlite` / `apt install sqlite3`.
 
-## Schéma (v6)
+## Schéma (v8)
 
 ```
 sources 1 ──< media 1 ──1 media_metadata

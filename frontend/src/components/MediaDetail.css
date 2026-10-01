@@ -85,3 +85,31 @@
   color: var(--text-muted);
   word-break: break-all;
 }
+
+.detail__rating {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.detail__rating strong {
+  font-size: 20px;
+  color: #ffb454;
+}
+
+.detail__genres {
+  color: var(--text-muted);
+}
+
+.detail__cast {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 70ch;
+}
+
+.detail__cast-label {
+  color: var(--text);
+  font-weight: 600;
+}

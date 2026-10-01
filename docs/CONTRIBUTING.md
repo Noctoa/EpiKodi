@@ -34,6 +34,7 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   core/subtitles.ts Sous-titres : .srt/.vtt externes, pistes internes → WebVTT
   core/storage/     Accès local, SMB et HTTP derrière une interface commune
   core/podcasts/    Parseur RSS et service d'abonnement (voir docs/podcasts.md)
+  core/metadata/    Identification films/séries via TheMovieDB (voir docs/external-metadata.md)
   core/compat.ts    Décide direct / remux / transcode selon les codecs
   core/transcode.ts Flux ffmpeg, détection de l'encodeur matériel
   plugins/          Système d'extensions
