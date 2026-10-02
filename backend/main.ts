@@ -10,6 +10,7 @@ import {
   type MediaListQuery,
   type OpenedMedia,
   type MetadataStatus,
+  type PluginList,
   type PlaybackPlanInfo,
   type SubtitleTrack,
   type SystemInfo
@@ -28,8 +29,10 @@ import {
   closeLibrary,
   libraryStats,
   listMedia,
+  listPlugins,
   listPodcasts,
   matchesFor,
+  pluginsDir,
   mediaFacets,
   listSources,
   openLibrary,
@@ -43,7 +46,9 @@ import {
   saveEpisodeProgress,
   searchPodcasts,
   setEpisodeCompleted,
+  setPluginEnabled,
   setTmdbApiKey,
+  startPlugins,
   subscribePodcast,
   tmdbConfigured,
   scanAllSources,
@@ -108,6 +113,8 @@ function createWindow(): BrowserWindow {
     identifyPending()
     // Les abonnements se mettent à jour en tâche de fond : l'interface n'attend pas le réseau
     void refreshPodcasts()
+    // Les extensions démarrent après l'interface : une extension lente ne retarde pas l'affichage
+    void startPlugins()
   })
   if (is.dev) {
     win.webContents.on('console-message', (event) => {
@@ -205,6 +212,31 @@ function registerIpc(): void {
   ipcMain.handle(IPC.metadataApply, (_, mediaId: number, externalId: string) =>
     applyMatchTo(mediaId, externalId)
   )
+
+  const pluginList = (): PluginList => {
+    const { plugins, broken } = listPlugins()
+    return {
+      directory: pluginsDir(),
+      broken,
+      plugins: plugins.map((p) => ({
+        id: p.manifest.id,
+        name: p.manifest.name,
+        version: p.manifest.version,
+        description: p.manifest.description,
+        author: p.manifest.author,
+        permissions: p.manifest.permissions,
+        contributes: p.manifest.contributes,
+        enabled: p.enabled,
+        status: p.status,
+        error: p.error
+      }))
+    }
+  }
+  ipcMain.handle(IPC.pluginsList, () => pluginList())
+  ipcMain.handle(IPC.pluginsSetEnabled, async (_, id: string, enabled: boolean) => {
+    await setPluginEnabled(id, enabled)
+    return pluginList()
+  })
 
   ipcMain.handle(IPC.systemInfo, async (): Promise<SystemInfo> => ({
     version: app.getVersion(),

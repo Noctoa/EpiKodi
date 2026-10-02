@@ -1,0 +1,11 @@
+{
+  "id": "tvmaze-provider",
+  "name": "TVmaze",
+  "version": "1.0.0",
+  "description": "Fiches de séries (affiche, synopsis, note, casting) depuis l'annuaire public TVmaze, sans clé d'API.",
+  "author": "EpiKodi",
+  "main": "index.js",
+  "permissions": ["network"],
+  "contributes": ["metadataProvider", "hooks"],
+  "engine": "0.1"
+}

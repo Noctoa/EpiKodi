@@ -149,7 +149,8 @@ export function listWithMetadata(db: Database, opts: ListOptions = {}): MediaWit
   const { sql, params } = select(
     `m.*, md.media_id AS md_media_id, md.container, md.video_codec, md.audio_codec, md.width, md.height,
      md.bitrate, md.artist, md.album, md.album_artist, md.year, md.track, md.genre, md.overview,
-     md.rating, md.external_id, md.thumbnail_path, md.poster_path, md.updated_at AS md_updated_at`,
+     md.rating, md.external_id, md.thumbnail_path, md.poster_path, md.backdrop_path,
+     md.cast_names, md.runtime, md.updated_at AS md_updated_at`,
     opts
   )
   return all<Row & JoinedMetaRow>(db, sql, ...params).map((r) => ({

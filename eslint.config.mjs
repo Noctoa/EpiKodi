@@ -13,5 +13,14 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
     }
+  },
+  {
+    // Les extensions d'exemple sont du CommonJS chargé par l'hôte de plugins, pas du code
+    // de l'application : elles ont leurs propres globales.
+    files: ['examples/plugins/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { exports: 'writable', module: 'writable', require: 'readonly', console: 'readonly' }
+    }
   }
 )

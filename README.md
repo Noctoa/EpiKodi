@@ -15,7 +15,7 @@ thèmes.
 - Bibliothèque indexée (SQLite) depuis des dossiers locaux et des partages réseau (SMB, WebDAV)
 - Podcasts : abonnement RSS, recherche par nom, écoute hors ligne et reprise de lecture
 - Affiches, synopsis, notes et casting des films via TheMovieDB (clé d'API gratuite)
-- Système de plugins et de thèmes
+- Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées
 - Télécommande : manette et contrôle depuis un smartphone
 
 ## Prérequis
@@ -86,6 +86,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Stockage réseau](docs/network-storage.md) — partages SMB, WebDAV, identifiants, pont ffmpeg
 - [Podcasts](docs/podcasts.md) — flux RSS, reprise de lecture, écoute hors ligne
 - [Métadonnées externes](docs/external-metadata.md) — TheMovieDB, affiches, identification
+- [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

@@ -11,7 +11,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
-    build: { lib: { entry: resolve('backend/main.ts') } },
+    build: {
+      // Deux points d'entrée : l'application, et l'hôte lancé dans un process séparé pour
+      // chaque plugin actif (voir backend/core/plugins/manager.ts).
+      rollupOptions: {
+        input: {
+          main: resolve('backend/main.ts'),
+          'plugin-host': resolve('backend/core/plugins/host.ts')
+        },
+        output: { entryFileNames: '[name].js' }
+      }
+    },
     resolve: { alias: { '@backend': resolve('backend'), '@shared': resolve('shared') } }
   },
   preload: {

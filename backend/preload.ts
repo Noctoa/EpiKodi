@@ -37,6 +37,8 @@ const api: EpiKodiApi = {
   metadataSuggest: (mediaId, query) => ipcRenderer.invoke(IPC.metadataSuggest, mediaId, query),
   metadataApply: (mediaId, externalId) =>
     ipcRenderer.invoke(IPC.metadataApply, mediaId, externalId),
+  pluginsList: () => ipcRenderer.invoke(IPC.pluginsList),
+  pluginsSetEnabled: (id, enabled) => ipcRenderer.invoke(IPC.pluginsSetEnabled, id, enabled),
   podcastsList: () => ipcRenderer.invoke(IPC.podcastsList),
   podcastsEpisodes: (id) => ipcRenderer.invoke(IPC.podcastsEpisodes, id),
   podcastsSubscribe: (url) => ipcRenderer.invoke(IPC.podcastsSubscribe, url),

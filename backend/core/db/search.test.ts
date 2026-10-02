@@ -203,3 +203,29 @@ describe('performance', () => {
     expect(performance.now() - t1).toBeLessThan(100)
   })
 })
+
+describe('colonnes de métadonnées', () => {
+  it('listWithMetadata remonte tous les champs, y compris ceux ajoutés tardivement', () => {
+    const id = add('Un Film')
+    media.setMetadata(db, id, {
+      overview: 'Un synopsis',
+      rating: 8.4,
+      externalId: 'tmdb:movie:1',
+      posterPath: '/p.jpg',
+      backdropPath: '/b.jpg',
+      runtime: 148
+    })
+    media.setCast(db, id, ['Alice', 'Bob'])
+
+    const [item] = media.listWithMetadata(db, { search: 'Un Film' })
+    expect(item.metadata).toMatchObject({
+      overview: 'Un synopsis',
+      rating: 8.4,
+      externalId: 'tmdb:movie:1',
+      posterPath: '/p.jpg',
+      backdropPath: '/b.jpg',
+      runtime: 148
+    })
+    expect(item.metadata?.cast).toEqual(['Alice', 'Bob'])
+  })
+})

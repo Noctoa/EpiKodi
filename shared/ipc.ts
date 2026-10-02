@@ -29,6 +29,8 @@ export const IPC = {
   metadataSetKey: 'metadata:set-key',
   metadataSuggest: 'metadata:suggest',
   metadataApply: 'metadata:apply',
+  pluginsList: 'plugins:list',
+  pluginsSetEnabled: 'plugins:set-enabled',
   podcastsList: 'podcasts:list',
   podcastsEpisodes: 'podcasts:episodes',
   podcastsSubscribe: 'podcasts:subscribe',
@@ -110,6 +112,34 @@ export interface MetadataMatch {
   backdropUrl: string | null
   /** Pertinence estimée, entre 0 et 1 */
   score: number
+}
+
+/** Une extension installée, telle qu'affichée dans les Paramètres. */
+export interface PluginSummary {
+  id: string
+  name: string
+  version: string
+  description: string | null
+  author: string | null
+  permissions: string[]
+  contributes: string[]
+  enabled: boolean
+  status: 'inactive' | 'active' | 'error'
+  /** Message du dernier problème : manifeste invalide, chargement raté, plantage */
+  error: string | null
+}
+
+/** Dossier contenant un manifeste illisible : signalé, jamais chargé. */
+export interface PluginProblem {
+  dir: string
+  errors: { field: string; message: string }[]
+}
+
+export interface PluginList {
+  plugins: PluginSummary[]
+  broken: PluginProblem[]
+  /** Dossier où déposer les extensions */
+  directory: string
 }
 
 export interface MetadataStatus {
@@ -194,6 +224,10 @@ export interface EpiKodiApi {
   /** Candidats pour un média ; `query` remplace le titre deviné lors d'une correction manuelle. */
   metadataSuggest(mediaId: number, query?: string): Promise<MetadataMatch[]>
   metadataApply(mediaId: number, externalId: string): Promise<void>
+
+  pluginsList(): Promise<PluginList>
+  /** Active ou désactive une extension ; le changement prend effet immédiatement. */
+  pluginsSetEnabled(id: string, enabled: boolean): Promise<PluginList>
 
   podcastsList(): Promise<PodcastWithCounts[]>
   podcastsEpisodes(podcastId: number): Promise<PodcastEpisode[]>

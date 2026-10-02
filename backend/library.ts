@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
@@ -8,7 +9,14 @@ import { scanSource } from './core/scanner'
 import { startBridge, type Bridge } from './core/storage/bridge'
 import { applyMatch, Identifier, suggestMatches } from './core/metadata/identify'
 import { TmdbProvider } from './core/metadata/tmdb'
-import { registerProvider, type MetadataDetails, type MetadataMatch } from './core/metadata/types'
+import {
+  listProviders,
+  registerProvider,
+  type MetadataDetails,
+  type MetadataMatch
+} from './core/metadata/types'
+import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
+import { PluginMetadataProvider } from './core/plugins/provider-adapter'
 import * as podcastService from './core/podcasts/service'
 import {
   createProvider,
@@ -59,6 +67,11 @@ export function podcastImageDir(): string {
 /** Affiches et images de fond issues des sources externes. */
 export function posterDir(): string {
   return join(app.getPath('userData'), 'posters')
+}
+
+/** Un sous-dossier par extension installée. */
+export function pluginsDir(): string {
+  return join(app.getPath('userData'), 'plugins')
 }
 
 export function openLibrary(): Database {
@@ -257,15 +270,85 @@ export function identifyingCount(): number {
   return identifier?.pending ?? 0
 }
 
-/** Candidats proposés pour « Corriger l'identification ». */
-export function matchesFor(mediaId: number, query?: string): Promise<MetadataMatch[]> {
-  return suggestMatches(openLibrary(), mediaId, tmdb, query)
+/**
+ * Candidats proposés pour « Corriger l'identification ». Toutes les sources configurées sont
+ * interrogées — TheMovieDB et celles apportées par des extensions — et leurs résultats fusionnés.
+ */
+export async function matchesFor(mediaId: number, query?: string): Promise<MetadataMatch[]> {
+  const configured = listProviders().filter((p) => p.configured())
+  const results = await Promise.all(
+    configured.map((provider) =>
+      suggestMatches(openLibrary(), mediaId, provider, query).catch((err: Error) => {
+        console.warn(`[metadata] ${provider.name} : ${err.message}`)
+        return [] as MetadataMatch[]
+      })
+    )
+  )
+  return results.flat().sort((a, b) => b.score - a.score)
 }
 
 /** Applique un choix manuel de l'utilisateur. */
 export async function applyMatchTo(mediaId: number, externalId: string): Promise<void> {
-  const details: MetadataDetails | null = await tmdb.details(externalId)
+  const provider = listProviders().find((p) => externalId.startsWith(`${p.id}:`)) ?? tmdb
+  const details: MetadataDetails | null = await provider.details(externalId)
   if (details) await applyMatch(openLibrary(), mediaId, details, posterDir())
+}
+
+// ---- extensions ----
+
+const PLUGIN_ENABLED_PREFIX = 'plugin.enabled.'
+let plugins: PluginManager | null = null
+
+export function pluginManager(): PluginManager {
+  plugins ??= new PluginManager({
+    pluginsDir: pluginsDir(),
+    // Compilé à côté de l'application : c'est lui qui est lancé dans chaque process isolé
+    hostScript: join(__dirname, 'plugin-host.js'),
+    isEnabled: (id) => settings.getText(openLibrary(), `${PLUGIN_ENABLED_PREFIX}${id}`) === '1',
+    setEnabled: (id, enabled) =>
+      settings.setText(openLibrary(), `${PLUGIN_ENABLED_PREFIX}${id}`, enabled ? '1' : null),
+    onChanged: () => {
+      syncPluginProviders()
+      notifyChanged()
+    }
+  })
+  return plugins
+}
+
+/**
+ * Déclare auprès du registre de métadonnées les fournisseurs apportés par les plugins actifs.
+ * Le cœur de l'application ne les distingue pas de TheMovieDB.
+ */
+function syncPluginProviders(): void {
+  for (const info of pluginManager().metadataPlugins()) {
+    registerProvider(new PluginMetadataProvider(pluginManager(), info))
+  }
+}
+
+/** Découvre les extensions et démarre celles qui sont activées. */
+export async function startPlugins(): Promise<void> {
+  // Le dossier doit exister avant que l'utilisateur n'y copie quoi que ce soit : sinon
+  // `cp -r mon-plugin plugins/` renomme le plugin en « plugins » au lieu de l'y déposer.
+  await mkdir(pluginsDir(), { recursive: true }).catch(() => undefined)
+  const manager = pluginManager()
+  await manager.discover()
+  await manager.activateEnabled()
+  syncPluginProviders()
+}
+
+export function listPlugins(): { plugins: PluginInfo[]; broken: BrokenPlugin[] } {
+  const manager = pluginManager()
+  return { plugins: manager.list(), broken: manager.brokenPlugins() }
+}
+
+export async function setPluginEnabled(id: string, enabled: boolean): Promise<void> {
+  await pluginManager().setEnabled(id, enabled)
+  syncPluginProviders()
+}
+
+/** Prévient les extensions qu'un événement de la bibliothèque a eu lieu. */
+export function emitToPlugins(name: string, payload: unknown): void {
+  plugins?.emit(name, payload)
 }
 
 export function closeLibrary(): void {
@@ -274,6 +357,8 @@ export function closeLibrary(): void {
   enricher = null
   identifier?.stop()
   identifier = null
+  plugins?.stopAll()
+  plugins = null
   for (const provider of providers.values()) provider.close()
   providers.clear()
   bridge?.close()

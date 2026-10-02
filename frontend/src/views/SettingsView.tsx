@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { MetadataStatus, SystemInfo } from '@shared/ipc'
+import type { MetadataStatus, PluginList, SystemInfo } from '@shared/ipc'
 import './SettingsView.css'
 
 /** Clé TheMovieDB : saisie, enregistrement chiffré, et effacement. */
@@ -82,6 +82,107 @@ function MetadataSettings(): React.JSX.Element {
   )
 }
 
+/** Extensions installées : état, permissions, erreurs de chargement, activation. */
+function PluginSettings(): React.JSX.Element {
+  const [list, setList] = useState<PluginList | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    window.epikodi.pluginsList().then((l) => {
+      if (!cancelled) setList(l)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const toggle = useCallback(async (id: string, enabled: boolean) => {
+    setBusy(id)
+    setList(await window.epikodi.pluginsSetEnabled(id, enabled))
+    setBusy(null)
+  }, [])
+
+  const etat = {
+    active: { texte: 'active', classe: 'settings__ok' },
+    inactive: { texte: 'inactive', classe: 'settings__hint' },
+    error: { texte: 'en erreur', classe: 'settings__warn' }
+  } as const
+
+  return (
+    <section className="settings__block">
+      <h3>Extensions</h3>
+      <p className="settings__todo">
+        Une extension est un dossier contenant un <code>manifest.json</code> et du JavaScript.
+        Chacune tourne dans son propre process : une extension qui plante n’emporte pas
+        l’application. Dépose-les dans&nbsp;:
+      </p>
+      {list && (
+        <p className="settings__path">
+          <code>{list.directory}</code>
+        </p>
+      )}
+
+      {list?.plugins.length === 0 && list.broken.length === 0 && (
+        <p className="settings__todo">
+          Aucune extension installée. Un exemple complet et documenté est fourni dans
+          <code> examples/plugins/tvmaze-provider</code>.
+        </p>
+      )}
+
+      <ul className="plugins">
+        {list?.plugins.map((p) => (
+          <li key={p.id} className="plugin">
+            <div className="plugin__main">
+              <div className="plugin__name">
+                {p.name}
+                <span className="plugin__version">v{p.version}</span>
+                <span className={etat[p.status].classe}> · {etat[p.status].texte}</span>
+              </div>
+              {p.description && <div className="plugin__description">{p.description}</div>}
+              <div className="plugin__meta">
+                {[
+                  p.author,
+                  p.permissions.length ? `permissions : ${p.permissions.join(', ')}` : null,
+                  p.contributes.length ? `fournit : ${p.contributes.join(', ')}` : null
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+              {p.error && <div className="plugin__error">{p.error}</div>}
+            </div>
+            <button
+              className="btn--ghost"
+              disabled={busy === p.id}
+              onClick={() => void toggle(p.id, !p.enabled)}
+            >
+              {busy === p.id ? '…' : p.enabled ? 'Désactiver' : 'Activer'}
+            </button>
+          </li>
+        ))}
+
+        {list?.broken.map((b) => (
+          <li key={b.dir} className="plugin plugin--broken">
+            <div className="plugin__main">
+              <div className="plugin__name">
+                {b.dir.split('/').pop()}
+                <span className="settings__warn"> · manifeste invalide</span>
+              </div>
+              <ul className="plugin__errors">
+                {b.errors.map((e) => (
+                  <li key={e.field}>
+                    <code>{e.field}</code> : {e.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export function SettingsView(): React.JSX.Element {
   const [info, setInfo] = useState<SystemInfo | null>(null)
 
@@ -144,10 +245,12 @@ export function SettingsView(): React.JSX.Element {
 
       <MetadataSettings />
 
+      <PluginSettings />
+
       <section className="settings__block">
         <h3>À venir</h3>
         <p className="settings__todo">
-          Thèmes, extensions et télécommande arrivent dans les prochaines itérations.
+          Thèmes et télécommande arrivent dans les prochaines itérations.
         </p>
       </section>
     </div>
