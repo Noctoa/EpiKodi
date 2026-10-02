@@ -4,6 +4,8 @@ import type { Guess, GuessKind } from './filename'
 export interface MetadataMatch {
   /** Identifiant de la source : « tmdb », et demain celui d'un plugin */
   provider: string
+  /** Nom lisible de la source, pour que l'utilisateur sache d'où vient la fiche */
+  providerName: string
   /** Identifiant complet et stable : « tmdb:movie:27205 » */
   externalId: string
   kind: GuessKind

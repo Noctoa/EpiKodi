@@ -95,6 +95,7 @@ export class TmdbProvider implements MetadataProvider {
     const year = yearOf(result)
     return {
       provider: this.id,
+      providerName: this.name,
       externalId: `tmdb:${kind}:${result.id}`,
       kind,
       title,

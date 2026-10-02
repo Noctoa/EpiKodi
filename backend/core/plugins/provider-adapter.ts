@@ -28,6 +28,7 @@ export class PluginMetadataProvider implements MetadataProvider {
   private toMatch(raw: PluginMatch, guess?: Guess): MetadataMatch {
     return {
       provider: this.id,
+      providerName: this.name,
       externalId: `${this.id}:${raw.externalId}`,
       kind: raw.kind,
       title: raw.title,

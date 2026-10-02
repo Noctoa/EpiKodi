@@ -100,7 +100,10 @@ export interface EpisodeDownload {
 
 /** Un candidat proposé par une source de métadonnées externe. */
 export interface MetadataMatch {
+  /** Identifiant technique : « tmdb », « plugin:tvmaze-provider » */
   provider: string
+  /** Nom lisible, affiché à côté du résultat : « TheMovieDB », « TVmaze » */
+  providerName: string
   externalId: string
   kind: 'movie' | 'tv'
   title: string

@@ -124,6 +124,9 @@ export function MatchPicker({
                   {m.title}
                   {m.year && <span className="picker__year"> ({m.year})</span>}
                   {m.kind === 'tv' && <span className="picker__kind">série</span>}
+                  <span className="picker__source" title={`Fiche fournie par ${m.providerName}`}>
+                    {m.providerName}
+                  </span>
                 </div>
                 {m.originalTitle && m.originalTitle !== m.title && (
                   <div className="picker__original">{m.originalTitle}</div>
