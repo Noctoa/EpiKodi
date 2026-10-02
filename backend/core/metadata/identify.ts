@@ -44,8 +44,23 @@ export async function suggestMatches(
   const item = media.get(db, mediaId)
   if (!item) return []
   const guess = guessFromFilename(basename(item.path), basename(dirname(item.path)))
-  // Une recherche manuelle remplace le titre deviné, mais garde le type (film ou série)
-  return provider.search(query ? { ...guess, title: query, year: null } : guess)
+
+  // En automatique, on suit ce que dit le nom de fichier. En correction manuelle, c'est
+  // justement que la supposition est fausse : on cherche alors films ET séries, sans quoi un
+  // fichier mal nommé ne remonterait jamais la série correspondante.
+  if (!query) return provider.search(guess)
+
+  const base = { ...guess, title: query, year: null }
+  const [films, series] = await Promise.all([
+    provider.search({ ...base, kind: 'movie' }).catch(() => [] as MetadataMatch[]),
+    provider.search({ ...base, kind: 'tv' }).catch(() => [] as MetadataMatch[])
+  ])
+
+  // Une source spécialisée peut renvoyer les mêmes fiches pour les deux requêtes
+  const vus = new Set<string>()
+  return [...films, ...series]
+    .filter((m) => !vus.has(m.externalId) && vus.add(m.externalId))
+    .sort((a, b) => b.score - a.score)
 }
 
 /** Écrit en base les informations d'une correspondance, et met ses images en cache. */
