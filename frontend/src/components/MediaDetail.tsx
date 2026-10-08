@@ -41,12 +41,21 @@ export function MediaDetail({
 }: Props): React.JSX.Element {
   const [picking, setPicking] = useState(false)
   const md = media.metadata
-  const thumb = md?.posterPath ?? md?.thumbnailPath ?? null
+  // Une affiche de film est en portrait (2:3), une miniature extraite de la vidéo en 16/9 :
+  // le cadre s'adapte au format réel, sinon l'affiche serait rognée en haut et en bas.
+  const poster = md?.posterPath ?? null
+  const thumb = poster ?? md?.thumbnailPath ?? null
   const isAudio = media.type === 'audio'
 
   return (
     <div className="detail">
-      <div className={`detail__art ${isAudio ? 'detail__art--square' : ''}`}>
+      <div
+        className={[
+          'detail__art',
+          isAudio ? 'detail__art--square' : '',
+          poster ? 'detail__art--poster' : ''
+        ].join(' ')}
+      >
         {thumb ? (
           <img src={toMediaUrl(thumb)} alt="" />
         ) : (
