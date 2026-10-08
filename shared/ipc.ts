@@ -29,6 +29,21 @@ export const IPC = {
   metadataSetKey: 'metadata:set-key',
   metadataSuggest: 'metadata:suggest',
   metadataApply: 'metadata:apply',
+  playlistsList: 'playlists:list',
+  playlistsCreate: 'playlists:create',
+  playlistsRename: 'playlists:rename',
+  playlistsRemove: 'playlists:remove',
+  playlistsItems: 'playlists:items',
+  playlistsAdd: 'playlists:add',
+  playlistsRemoveItem: 'playlists:remove-item',
+  playlistsReorder: 'playlists:reorder',
+  playlistsExport: 'playlists:export',
+  playlistsImport: 'playlists:import',
+  favoritesToggle: 'favorites:toggle',
+  favoritesList: 'favorites:list',
+  playbackSave: 'playback:save',
+  playbackState: 'playback:state',
+  playbackContinue: 'playback:continue',
   themesList: 'themes:list',
   themesSelect: 'themes:select',
   pluginsList: 'plugins:list',
@@ -118,6 +133,34 @@ export interface MetadataMatch {
   /** Pertinence estimée, entre 0 et 1 */
   score: number
 }
+
+/** Une playlist et son contenu résumé. */
+export interface PlaylistSummary {
+  id: number
+  name: string
+  createdAt: number
+  count: number
+  /** Durée cumulée, en secondes */
+  duration: number
+}
+
+/** Résultat d'un import M3U : les lignes absentes de la bibliothèque sont comptées, pas ajoutées. */
+export interface PlaylistImport {
+  playlistId: number
+  name: string
+  imported: number
+  missing: number
+}
+
+/** État de lecture d'un média : reprise, terminé, favori. */
+export interface PlaybackInfo {
+  position: number
+  completed: boolean
+  favorite: boolean
+}
+
+/** Média entamé, avec la position où reprendre. */
+export type ContinueItem = MediaWithMetadata & { position: number }
 
 /** Un thème disponible : les variables qu'il surcharge et le thème intégré dont il part. */
 export interface ThemeInfo {
@@ -248,6 +291,27 @@ export interface EpiKodiApi {
   /** Candidats pour un média ; `query` remplace le titre deviné lors d'une correction manuelle. */
   metadataSuggest(mediaId: number, query?: string): Promise<MetadataMatch[]>
   metadataApply(mediaId: number, externalId: string): Promise<void>
+
+  playlistsList(): Promise<PlaylistSummary[]>
+  playlistsCreate(name: string): Promise<PlaylistSummary[]>
+  playlistsRename(id: number, name: string): Promise<PlaylistSummary[]>
+  playlistsRemove(id: number): Promise<PlaylistSummary[]>
+  playlistsItems(id: number): Promise<MediaWithMetadata[]>
+  playlistsAdd(playlistId: number, mediaId: number): Promise<void>
+  playlistsRemoveItem(playlistId: number, mediaId: number): Promise<void>
+  /** `mediaIds` est le nouvel ordre complet. */
+  playlistsReorder(playlistId: number, mediaIds: number[]): Promise<void>
+  /** Ouvre un sélecteur de fichier ; retourne le chemin écrit, ou null si annulé. */
+  playlistsExport(id: number): Promise<string | null>
+  /** Ouvre un sélecteur de fichier ; null si annulé. */
+  playlistsImport(): Promise<PlaylistImport | null>
+
+  favoritesToggle(mediaId: number): Promise<boolean>
+  favoritesList(): Promise<MediaWithMetadata[]>
+
+  playbackSave(mediaId: number, position: number, completed?: boolean): Promise<void>
+  playbackState(mediaId: number): Promise<PlaybackInfo>
+  playbackContinue(): Promise<ContinueItem[]>
 
   themesList(): Promise<ThemeList>
   /** Change le thème ; l'effet est immédiat, sans redémarrage. */

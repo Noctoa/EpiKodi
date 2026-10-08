@@ -37,6 +37,24 @@ const api: EpiKodiApi = {
   metadataSuggest: (mediaId, query) => ipcRenderer.invoke(IPC.metadataSuggest, mediaId, query),
   metadataApply: (mediaId, externalId) =>
     ipcRenderer.invoke(IPC.metadataApply, mediaId, externalId),
+  playlistsList: () => ipcRenderer.invoke(IPC.playlistsList),
+  playlistsCreate: (name) => ipcRenderer.invoke(IPC.playlistsCreate, name),
+  playlistsRename: (id, name) => ipcRenderer.invoke(IPC.playlistsRename, id, name),
+  playlistsRemove: (id) => ipcRenderer.invoke(IPC.playlistsRemove, id),
+  playlistsItems: (id) => ipcRenderer.invoke(IPC.playlistsItems, id),
+  playlistsAdd: (playlistId, mediaId) => ipcRenderer.invoke(IPC.playlistsAdd, playlistId, mediaId),
+  playlistsRemoveItem: (playlistId, mediaId) =>
+    ipcRenderer.invoke(IPC.playlistsRemoveItem, playlistId, mediaId),
+  playlistsReorder: (playlistId, mediaIds) =>
+    ipcRenderer.invoke(IPC.playlistsReorder, playlistId, mediaIds),
+  playlistsExport: (id) => ipcRenderer.invoke(IPC.playlistsExport, id),
+  playlistsImport: () => ipcRenderer.invoke(IPC.playlistsImport),
+  favoritesToggle: (mediaId) => ipcRenderer.invoke(IPC.favoritesToggle, mediaId),
+  favoritesList: () => ipcRenderer.invoke(IPC.favoritesList),
+  playbackSave: (mediaId, position, completed) =>
+    ipcRenderer.invoke(IPC.playbackSave, mediaId, position, completed),
+  playbackState: (mediaId) => ipcRenderer.invoke(IPC.playbackState, mediaId),
+  playbackContinue: () => ipcRenderer.invoke(IPC.playbackContinue),
   themesList: () => ipcRenderer.invoke(IPC.themesList),
   themesSelect: (id) => ipcRenderer.invoke(IPC.themesSelect, id),
   pluginsList: () => ipcRenderer.invoke(IPC.pluginsList),

@@ -11,6 +11,8 @@ import './Player.css'
 
 interface PlayerProps {
   media: OpenedMedia
+  /** Identifiant en bibliothèque : sans lui, la position n'est pas mémorisée */
+  mediaId?: number
   onClose?: () => void
 }
 
@@ -34,7 +36,7 @@ function isAudio(name: string): boolean {
   return AUDIO_EXTENSIONS.includes(ext)
 }
 
-export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
+export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Element {
   const videoRef = useRef<VideoWithAudioTracks>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -53,6 +55,9 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
   /** Position de départ du flux ffmpeg courant : en transcodé, le saut relance l'encodage ici */
   const [offset, setOffset] = useState(0)
 
+  /** Position enregistrée à l'ouverture : propose de reprendre plutôt que de l'imposer */
+  const [resumeAt, setResumeAt] = useState<number | null>(null)
+
   const [subtitles, setSubtitles] = useState<SubtitleTrack[]>([])
   const [subtitleId, setSubtitleId] = useState<string | null>(null)
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null)
@@ -70,11 +75,17 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
     window.epikodi.playerPlan(media.path).then((p) => {
       if (!cancelled) setPlan(p)
     })
+    if (mediaId !== undefined) {
+      window.epikodi.playbackState(mediaId).then((state) => {
+        // On ne propose la reprise que si l'on est loin du début et de la fin
+        if (!cancelled && !state.completed && state.position > 10) setResumeAt(state.position)
+      })
+    }
     if (!audio) void window.epikodi.playerSubtitles(media.path).then(setSubtitles)
     return () => {
       cancelled = true
     }
-  }, [media.path, audio])
+  }, [media.path, audio, mediaId])
 
   useEffect(() => {
     const el = videoRef.current
@@ -129,6 +140,27 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
 
   // Un flux transcodé recommence à 0 après chaque saut : le temps réel est décalé, et la durée
   // vient de ffprobe puisque le conteneur fragmenté ne l'annonce pas.
+  // Position mémorisée toutes les 5 secondes et à la fermeture : rouvrir la vidéo proposera
+  // de reprendre là où l'on s'était arrêté. Au-delà de 95 %, l'épisode est considéré vu.
+  const lastSaved = useRef(0)
+  useEffect(() => {
+    if (mediaId === undefined || duration <= 0) return
+    const finished = time >= duration * 0.95
+    if (!finished && Math.abs(time - lastSaved.current) < 5) return
+    lastSaved.current = time
+    void window.epikodi.playbackSave(mediaId, finished ? 0 : time, finished)
+  }, [mediaId, time, duration])
+
+  // Fermeture du lecteur : on enregistre la position exacte, sans attendre le prochain tour
+  useEffect(() => {
+    const el = videoRef.current
+    return () => {
+      if (mediaId === undefined || !el || !Number.isFinite(el.duration)) return
+      const fini = el.currentTime >= el.duration * 0.95
+      void window.epikodi.playbackSave(mediaId, fini ? 0 : el.currentTime, fini)
+    }
+  }, [mediaId])
+
   const displayDuration = transcoded ? (plan?.duration ?? 0) : duration
   // `-ss` recule jusqu'à l'image clé précédente : le flux démarre un peu avant la position
   // demandée, donc le temps calculé peut dépasser la durée réelle. On le borne.
@@ -286,6 +318,23 @@ export function Player({ media, onClose }: PlayerProps): React.JSX.Element {
       )}
 
       {error && <div className="player__error">{error}</div>}
+
+      {resumeAt !== null && (
+        <div className="player__resume">
+          <span>Tu avais arrêté à {fmtDuration(resumeAt)}.</span>
+          <button
+            onClick={() => {
+              seekTo(resumeAt)
+              setResumeAt(null)
+            }}
+          >
+            Reprendre
+          </button>
+          <button className="btn--ghost" onClick={() => setResumeAt(null)}>
+            Recommencer
+          </button>
+        </div>
+      )}
 
       <div className="player__controls" onClick={(e) => e.stopPropagation()}>
         <div className="player__title">

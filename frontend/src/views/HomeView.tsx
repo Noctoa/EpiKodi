@@ -1,5 +1,5 @@
 import { toMediaUrl } from '@shared/ipc'
-import type { LibraryStats } from '@shared/ipc'
+import type { ContinueItem, LibraryStats } from '@shared/ipc'
 import type { MediaWithMetadata } from '@shared/models'
 import { Grid, type GridTile } from '@frontend/components/Grid'
 import { fmtDuration } from '@frontend/format'
@@ -8,6 +8,8 @@ import './HomeView.css'
 
 interface Props {
   items: MediaWithMetadata[]
+  /** Médias entamés mais pas terminés */
+  continueWatching: ContinueItem[]
   stats: LibraryStats | null
   onOpen: (id: number) => void
   onPlay: (id: number) => void
@@ -29,7 +31,14 @@ export function tileOf(m: MediaWithMetadata, currentKey?: string | null): GridTi
   }
 }
 
-export function HomeView({ items, stats, onOpen, onPlay, onAddSource }: Props): React.JSX.Element {
+export function HomeView({
+  items,
+  continueWatching,
+  stats,
+  onOpen,
+  onPlay,
+  onAddSource
+}: Props): React.JSX.Element {
   const recent = recentlyAdded(items, 12)
 
   if (items.length === 0) {
@@ -60,6 +69,21 @@ export function HomeView({ items, stats, onOpen, onPlay, onAddSource }: Props): 
           </span>
         </div>
       )}
+      {continueWatching.length > 0 && (
+        <>
+          <h3 className="home__section">Continuer à regarder</h3>
+          <Grid
+            tiles={continueWatching.map((m) => ({
+              ...tileOf(m),
+              // la position remplace la durée : c'est l'information utile ici
+              badge: `reprendre à ${fmtDuration(m.position)}`
+            }))}
+            onOpen={(k) => onOpen(Number(k))}
+            onPlay={(k) => onPlay(Number(k))}
+          />
+        </>
+      )}
+
       <h3 className="home__section">Récemment ajoutés</h3>
       <Grid
         tiles={recent.map((m) => tileOf(m))}

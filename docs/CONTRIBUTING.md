@@ -37,6 +37,7 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   core/metadata/    Identification films/séries via TheMovieDB (voir docs/external-metadata.md)
   core/plugins/     Extensions : manifeste, hôte isolé, cycle de vie (voir docs/plugins.md)
   core/themes/      Format, validation et découverte des thèmes (voir docs/themes.md)
+  core/playlists/   Import/export M3U (voir docs/playlists.md)
   core/compat.ts    Décide direct / remux / transcode selon les codecs
   core/transcode.ts Flux ffmpeg, détection de l'encodeur matériel
   plugins/          Système d'extensions

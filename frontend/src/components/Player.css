@@ -246,3 +246,30 @@
   color: var(--on-media);
   font-size: 1.1em;
 }
+
+/* Proposition de reprise : on n'impose pas la position, l'utilisateur tranche. */
+.player__resume {
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--overlay-strong);
+  color: var(--on-media);
+  font-size: 14px;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.player__resume button {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.player__resume .btn--ghost {
+  color: var(--on-media);
+  border-color: var(--on-media-dim);
+}

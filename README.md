@@ -17,6 +17,7 @@ thèmes.
 - Affiches, synopsis, notes et casting des films via TheMovieDB (clé d'API gratuite)
 - Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées
 - Thèmes clair / sombre / système, et thèmes personnalisés chargés depuis un fichier
+- Playlists (import/export M3U), favoris et reprise de lecture
 - Télécommande : manette et contrôle depuis un smartphone
 
 ## Prérequis
@@ -89,6 +90,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Métadonnées externes](docs/external-metadata.md) — TheMovieDB, affiches, identification
 - [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
 - [Thèmes](docs/themes.md) — variables, thèmes intégrés, écrire le sien
+- [Playlists](docs/playlists.md) — favoris, reprise de lecture, import/export M3U
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

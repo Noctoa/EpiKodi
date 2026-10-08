@@ -6,6 +6,9 @@ export type View =
   | { name: 'music' }
   | { name: 'artist'; artist: string }
   | { name: 'album'; artist: string; album: string }
+  | { name: 'playlists' }
+  | { name: 'playlist'; playlistId: number; title: string }
+  | { name: 'favorites' }
   | { name: 'podcasts' }
   | { name: 'sources' }
   | { name: 'settings' }
@@ -18,6 +21,8 @@ export const SECTIONS = [
   { name: 'home', label: 'Accueil', icon: '⌂' },
   { name: 'videos', label: 'Vidéos', icon: '▶' },
   { name: 'music', label: 'Musique', icon: '♪' },
+  { name: 'playlists', label: 'Playlists', icon: '☰' },
+  { name: 'favorites', label: 'Favoris', icon: '★' },
   { name: 'podcasts', label: 'Podcasts', icon: '◉' },
   { name: 'sources', label: 'Sources', icon: '⌸' },
   { name: 'settings', label: 'Paramètres', icon: '⚙' }
@@ -42,6 +47,8 @@ export function activeSection(view: View): SectionName {
       return 'music'
     case 'podcast':
       return 'podcasts'
+    case 'playlist':
+      return 'playlists'
     case 'detail':
     case 'search':
       return 'home'
@@ -80,6 +87,12 @@ export function viewTitle(view: View, mediaTitle?: string): string {
       return view.artist
     case 'album':
       return view.album
+    case 'playlists':
+      return 'Playlists'
+    case 'playlist':
+      return view.title
+    case 'favorites':
+      return 'Favoris'
     case 'podcasts':
       return 'Podcasts'
     case 'sources':

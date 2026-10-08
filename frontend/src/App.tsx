@@ -5,7 +5,9 @@ import {
   type FfmpegStatus,
   type LibraryStats,
   type EpisodeDownload,
+  type ContinueItem,
   type OpenedMedia,
+  type PlaylistSummary,
   type PodcastWithCounts,
   type ScanProgress
 } from '@shared/ipc'
@@ -33,6 +35,8 @@ import { useAudioPlayer } from './player/AudioPlayerContext'
 import { fromMedia, fromOpened } from './player/items'
 import { HomeView, tileOf } from './views/HomeView'
 import { AlbumsView, AlbumTracksView, ArtistsView } from './views/MusicView'
+import { FavoritesView } from './views/FavoritesView'
+import { PlaylistsView, PlaylistView } from './views/PlaylistsView'
 import { PodcastEpisodesView, PodcastsView, useEpisodes } from './views/PodcastsView'
 import { SearchView } from './views/SearchView'
 import { SettingsView } from './views/SettingsView'
@@ -52,6 +56,8 @@ export default function App(): React.JSX.Element {
   const audio = useAudioPlayer()
   const [nav, setNav] = useState(initialNav)
   const [playing, setPlayingState] = useState<OpenedMedia | null>(null)
+  /** Média de la bibliothèque en cours de lecture : sans lui, la position n'est pas mémorisée */
+  const [playingId, setPlayingId] = useState<number | undefined>(undefined)
   const [sources, setSources] = useState<Source[]>([])
   const [items, setItems] = useState<MediaWithMetadata[]>([])
   const [results, setResults] = useState<MediaWithMetadata[]>([])
@@ -61,6 +67,10 @@ export default function App(): React.JSX.Element {
   const [availability, setAvailability] = useState<Record<number, boolean>>({})
   const [podcasts, setPodcasts] = useState<PodcastWithCounts[]>([])
   const [downloads, setDownloads] = useState<Record<number, EpisodeDownload>>({})
+  const [playlists, setPlaylists] = useState<PlaylistSummary[]>([])
+  const [playlistContent, setPlaylistContent] = useState<MediaWithMetadata[]>([])
+  const [favorites, setFavorites] = useState<MediaWithMetadata[]>([])
+  const [continueItems, setContinueItems] = useState<ContinueItem[]>([])
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
 
@@ -77,7 +87,27 @@ export default function App(): React.JSX.Element {
   const currentKey = audio.current?.key ?? null
   const openPodcast =
     view.name === 'podcast' ? podcasts.find((p) => p.id === view.podcastId) : undefined
+  const openPlaylist =
+    view.name === 'playlist' ? playlists.find((p) => p.id === view.playlistId) : undefined
   const [episodes, reloadEpisodes] = useEpisodes(openPodcast?.id ?? null)
+
+  const playlistId = openPlaylist?.id ?? null
+  /** Recharge le contenu de la playlist ouverte ; appelée depuis les gestionnaires d'événements. */
+  const reloadPlaylistContent = async (): Promise<void> => {
+    if (playlistId === null) return
+    setPlaylistContent(await window.epikodi.playlistsItems(playlistId))
+  }
+
+  useEffect(() => {
+    if (playlistId === null) return
+    let cancelled = false
+    window.epikodi.playlistsItems(playlistId).then((items) => {
+      if (!cancelled) setPlaylistContent(items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [playlistId])
 
   const reloadLibrary = useCallback(
     () =>
@@ -122,12 +152,28 @@ export default function App(): React.JSX.Element {
     }
   }, [filters, debouncedSearch, revision])
 
+  const reloadPlaylists = useCallback(() => window.epikodi.playlistsList().then(setPlaylists), [])
+  const reloadFavorites = useCallback(() => window.epikodi.favoritesList().then(setFavorites), [])
+  const reloadContinue = useCallback(
+    () => window.epikodi.playbackContinue().then(setContinueItems),
+    []
+  )
+
   const reloadPodcasts = useCallback(() => window.epikodi.podcastsList().then(setPodcasts), [])
 
   useEffect(() => {
     let cancelled = false
-    window.epikodi.podcastsList().then((list) => {
-      if (!cancelled) setPodcasts(list)
+    Promise.all([
+      window.epikodi.podcastsList(),
+      window.epikodi.playlistsList(),
+      window.epikodi.favoritesList(),
+      window.epikodi.playbackContinue()
+    ]).then(([p, l, f, c]) => {
+      if (cancelled) return
+      setPodcasts(p)
+      setPlaylists(l)
+      setFavorites(f)
+      setContinueItems(c)
     })
     return () => {
       cancelled = true
@@ -165,6 +211,14 @@ export default function App(): React.JSX.Element {
     [reloadLibrary]
   )
 
+  // Arriver sur un écran en recharge le contenu : favoris et reprises changent au fil de la
+  // lecture, les afficher tels qu'ils étaient au démarrage serait trompeur.
+  useEffect(() => {
+    if (view.name === 'favorites') void reloadFavorites()
+    if (view.name === 'home') void reloadContinue()
+    if (view.name === 'playlists') void reloadPlaylists()
+  }, [view.name, reloadFavorites, reloadContinue, reloadPlaylists])
+
   const go = useCallback((v: View) => setNav((n) => navigate(n, v)), [])
   const open = useCallback((v: View) => setNav((n) => push(n, v)), [])
   const goBack = useCallback(() => setNav((n) => back(n)), [])
@@ -201,11 +255,14 @@ export default function App(): React.JSX.Element {
   }, [goBack, playing])
 
   const showVideo = useCallback(
-    (m: OpenedMedia | null) => {
+    (m: OpenedMedia | null, id?: number) => {
       if (m) audio.pause()
       setPlayingState(m)
+      setPlayingId(id)
+      // En quittant le lecteur, la position vient d'être enregistrée : l'accueil doit la refléter
+      if (!m) void reloadContinue()
     },
-    [audio]
+    [audio, reloadContinue]
   )
 
   /** Audio → file de lecture ; vidéo → lecteur plein cadre. */
@@ -219,7 +276,7 @@ export default function App(): React.JSX.Element {
           list.findIndex((t) => t.id === m.id)
         )
         audio.play(list.map(fromMedia), start)
-      } else showVideo({ path: m.path, name: m.title, url: toMediaUrl(m.path) })
+      } else showVideo({ path: m.path, name: m.title, url: toMediaUrl(m.path) }, m.id)
     },
     [results, audio, showVideo]
   )
@@ -354,6 +411,7 @@ export default function App(): React.JSX.Element {
         return (
           <HomeView
             items={items}
+            continueWatching={continueItems}
             stats={stats}
             onOpen={(id) => open({ name: 'detail', mediaId: id })}
             onPlay={(id) => playById(id)}
@@ -421,6 +479,70 @@ export default function App(): React.JSX.Element {
           />
         )
       }
+
+      case 'playlists':
+        return (
+          <PlaylistsView
+            playlists={playlists}
+            onOpen={(p) => open({ name: 'playlist', playlistId: p.id, title: p.name })}
+            onCreate={(name) => window.epikodi.playlistsCreate(name).then(setPlaylists)}
+            onImport={async () => {
+              const result = await window.epikodi.playlistsImport()
+              if (!result) return null
+              await reloadPlaylists()
+              return `« ${result.name} » importée : ${result.imported} média(s) ajouté(s)${
+                result.missing > 0 ? `, ${result.missing} introuvable(s) en bibliothèque` : ''
+              }.`
+            }}
+          />
+        )
+
+      case 'playlist':
+        return openPlaylist ? (
+          <PlaylistView
+            playlist={openPlaylist}
+            items={playlistContent}
+            currentKey={currentKey}
+            onPlay={(m) => playMedia(m, playlistContent)}
+            onPlayAll={() => playlistContent[0] && playMedia(playlistContent[0], playlistContent)}
+            onRemoveItem={(m) =>
+              void window.epikodi
+                .playlistsRemoveItem(openPlaylist.id, m.id)
+                .then(reloadPlaylistContent)
+                .then(reloadPlaylists)
+            }
+            onReorder={(ids) =>
+              void window.epikodi.playlistsReorder(openPlaylist.id, ids).then(reloadPlaylistContent)
+            }
+            onRename={(name) =>
+              void window.epikodi.playlistsRename(openPlaylist.id, name).then((list) => {
+                setPlaylists(list)
+                go({ name: 'playlists' })
+              })
+            }
+            onDelete={() =>
+              void window.epikodi.playlistsRemove(openPlaylist.id).then((list) => {
+                setPlaylists(list)
+                go({ name: 'playlists' })
+              })
+            }
+            onExport={() => void window.epikodi.playlistsExport(openPlaylist.id)}
+          />
+        ) : (
+          <div className="grid__empty">Playlist introuvable.</div>
+        )
+
+      case 'favorites':
+        return (
+          <FavoritesView
+            items={favorites}
+            currentKey={currentKey}
+            onOpenDetail={openDetail}
+            onPlay={playMedia}
+            onEnqueue={enqueue}
+            onPlayNext={playNext}
+          />
+        )
 
       case 'podcasts':
         return (
@@ -492,6 +614,11 @@ export default function App(): React.JSX.Element {
             onEnqueue={() => enqueue(detailMedia)}
             onPlayNext={() => playNext(detailMedia)}
             onIdentified={() => void reloadLibrary()}
+            playlists={playlists}
+            onAddToPlaylist={(playlistId) =>
+              void window.epikodi.playlistsAdd(playlistId, detailMedia.id).then(reloadPlaylists)
+            }
+            onFavoriteChanged={() => void reloadFavorites()}
           />
         ) : (
           <div className="grid__empty">Ce média n'est plus dans la bibliothèque.</div>
@@ -504,7 +631,9 @@ export default function App(): React.JSX.Element {
     videos: videos.length,
     music: audioCount,
     sources: sources.length,
-    podcasts: podcasts.length
+    podcasts: podcasts.length,
+    playlists: playlists.length,
+    favorites: favorites.length
   }
   // Le compteur de la barre de filtres décrit ce que la vue affiche, pas le total tous types
   const filterCount =
@@ -551,7 +680,7 @@ export default function App(): React.JSX.Element {
 
         <div className="app__header-actions">
           {playing && (
-            <button className="btn--ghost" onClick={() => setPlayingState(null)}>
+            <button className="btn--ghost" onClick={() => showVideo(null)}>
               ← Bibliothèque
             </button>
           )}
@@ -563,7 +692,12 @@ export default function App(): React.JSX.Element {
         <Sidebar view={view} counts={counts} onNavigate={(s) => go({ name: s } as View)} />
         <main className={`app__main ${playing ? 'app__main--player' : ''}`}>
           {playing ? (
-            <Player key={playing.path} media={playing} onClose={() => setPlayingState(null)} />
+            <Player
+              key={playing.path}
+              media={playing}
+              mediaId={playingId}
+              onClose={() => showVideo(null)}
+            />
           ) : (
             <>
               <div className="app__view-head">

@@ -1,8 +1,17 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
-import { media, openDatabase, podcasts, settings, sources, type Database } from './core/db'
+import {
+  media,
+  openDatabase,
+  playback,
+  playlists as playlistRepo,
+  podcasts,
+  settings,
+  sources,
+  type Database
+} from './core/db'
 import { Enricher } from './core/enricher'
 import { checkFfmpeg } from './core/ffmpeg'
 import { scanSource } from './core/scanner'
@@ -18,6 +27,7 @@ import {
 import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
 import { PluginMetadataProvider } from './core/plugins/provider-adapter'
 import * as podcastService from './core/podcasts/service'
+import { matchEntries, parseM3u, playlistFileName, serializeM3u } from './core/playlists/m3u'
 import { discoverThemes, type DiscoveredThemes } from './core/themes/loader'
 import {
   createProvider,
@@ -37,7 +47,14 @@ import {
   type MediaListQuery,
   type ScanProgress
 } from '../shared/ipc'
-import type { Facets, MediaWithMetadata, Podcast, PodcastEpisode, Source } from '../shared/models'
+import type {
+  Facets,
+  MediaWithMetadata,
+  Playlist,
+  Podcast,
+  PodcastEpisode,
+  Source
+} from '../shared/models'
 
 /**
  * Façade de la bibliothèque : cycle de vie de la base SQLite + opérations exposées à l'IPC.
@@ -610,4 +627,155 @@ export function setEpisodeCompleted(id: number, completed: boolean): void {
 
 export function searchPodcasts(term: string): Promise<podcastService.PodcastSearchResult[]> {
   return podcastService.search(term)
+}
+
+// ---- playlists, favoris et reprise de lecture ----
+
+export interface PlaylistSummary extends Playlist {
+  count: number
+  /** Durée cumulée, en secondes */
+  duration: number
+}
+
+export function listPlaylists(): PlaylistSummary[] {
+  const d = openLibrary()
+  return playlistRepo.list(d).map((p) => {
+    const items = playlistRepo.items(d, p.id)
+    return {
+      ...p,
+      count: items.length,
+      duration: items.reduce((total, m) => total + (m.duration ?? 0), 0)
+    }
+  })
+}
+
+export function createPlaylist(name: string): Playlist {
+  return playlistRepo.create(openLibrary(), name.trim() || 'Nouvelle playlist')
+}
+
+export function renamePlaylist(id: number, name: string): void {
+  playlistRepo.rename(openLibrary(), id, name.trim() || 'Sans titre')
+}
+
+export function removePlaylist(id: number): void {
+  playlistRepo.remove(openLibrary(), id)
+}
+
+/** Contenu d'une playlist, avec métadonnées, dans l'ordre choisi par l'utilisateur. */
+export function playlistItems(id: number): MediaWithMetadata[] {
+  const d = openLibrary()
+  const ordered = playlistRepo.items(d, id)
+  const detailed = new Map(
+    media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.id, m])
+  )
+  return ordered.map((m) => detailed.get(m.id) ?? { ...m, metadata: null })
+}
+
+export function addToPlaylist(playlistId: number, mediaId: number): void {
+  playlistRepo.addItem(openLibrary(), playlistId, mediaId)
+}
+
+export function removeFromPlaylist(playlistId: number, mediaId: number): void {
+  playlistRepo.removeItem(openLibrary(), playlistId, mediaId)
+}
+
+export function reorderPlaylist(playlistId: number, mediaIds: number[]): void {
+  playlistRepo.reorder(openLibrary(), playlistId, mediaIds)
+}
+
+/** Écrit la playlist au format M3U, lisible par VLC, Kodi et les autres. */
+export async function exportPlaylist(id: number, filePath: string): Promise<void> {
+  const items = playlistItems(id)
+  await writeFile(
+    filePath,
+    serializeM3u(items.map((m) => ({ path: m.path, duration: m.duration, title: m.title }))),
+    'utf8'
+  )
+}
+
+export function suggestPlaylistFileName(id: number): string {
+  return playlistFileName(playlistRepo.get(openLibrary(), id)?.name ?? 'playlist')
+}
+
+export interface ImportResult {
+  playlistId: number
+  name: string
+  /** Médias retrouvés en bibliothèque */
+  imported: number
+  /** Lignes dont le fichier n'est pas (ou plus) dans la bibliothèque */
+  missing: number
+}
+
+/**
+ * Crée une playlist depuis un fichier M3U. Seules les entrées déjà présentes en bibliothèque
+ * sont ajoutées : importer un fichier n'indexe pas de nouveaux médias.
+ */
+export async function importPlaylist(filePath: string, name: string): Promise<ImportResult> {
+  const d = openLibrary()
+  const entries = parseM3u(await readFile(filePath, 'utf8'))
+  const byPath = new Map(
+    media.list(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.path, m.id])
+  )
+
+  const { mediaIds, missing } = matchEntries(entries, byPath)
+  const playlist = playlistRepo.create(d, name)
+  for (const mediaId of mediaIds) playlistRepo.addItem(d, playlist.id, mediaId)
+  return {
+    playlistId: playlist.id,
+    name: playlist.name,
+    imported: mediaIds.length,
+    missing: missing.length
+  }
+}
+
+// ---- favoris et position de lecture ----
+
+export function toggleFavorite(mediaId: number): boolean {
+  const d = openLibrary()
+  const favorite = !(playback.get(d, mediaId)?.favorite ?? false)
+  playback.setFavorite(d, mediaId, favorite)
+  return favorite
+}
+
+export function favoriteMedia(): MediaWithMetadata[] {
+  const d = openLibrary()
+  const ids = new Set(playback.favorites(d).map((s) => s.mediaId))
+  return media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).filter((m) => ids.has(m.id))
+}
+
+/** Position de lecture et favori d'un média, pour l'affichage. */
+export function playbackStateOf(mediaId: number): {
+  position: number
+  completed: boolean
+  favorite: boolean
+} {
+  const state = playback.get(openLibrary(), mediaId)
+  return {
+    position: state?.position ?? 0,
+    completed: state?.completed ?? false,
+    favorite: state?.favorite ?? false
+  }
+}
+
+export function savePlaybackPosition(mediaId: number, position: number, completed = false): void {
+  playback.savePosition(openLibrary(), mediaId, position, completed)
+}
+
+export function startedPlayback(mediaId: number): void {
+  playback.incrementPlayCount(openLibrary(), mediaId)
+}
+
+/** « Continuer à regarder » : médias entamés mais pas terminés, du plus récent au plus ancien. */
+export function continueWatching(limit = 12): (MediaWithMetadata & { position: number })[] {
+  const d = openLibrary()
+  const states = playback.inProgress(d, limit)
+  const detailed = new Map(
+    media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.id, m])
+  )
+  return states
+    .map((s) => {
+      const item = detailed.get(s.mediaId)
+      return item ? { ...item, position: s.position } : null
+    })
+    .filter((m): m is MediaWithMetadata & { position: number } => m !== null)
 }

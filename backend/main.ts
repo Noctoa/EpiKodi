@@ -17,22 +17,31 @@ import {
 } from '../shared/ipc'
 import {
   addNetworkSource,
+  addToPlaylist,
   applyMatchTo,
   addSource,
   cancelScan,
+  continueWatching,
+  createPlaylist,
   databasePath,
   downloadEpisode,
   enrichPending,
+  exportPlaylist,
+  favoriteMedia,
   getFfmpegStatus,
   identifyingCount,
   identifyPending,
+  importPlaylist,
   closeLibrary,
   libraryStats,
   listMedia,
+  listPlaylists,
   listPlugins,
   listThemes,
   listPodcasts,
   matchesFor,
+  playbackStateOf,
+  playlistItems,
   pluginsDir,
   mediaFacets,
   listSources,
@@ -43,7 +52,12 @@ import {
   refreshPodcasts,
   removeEpisodeDownload,
   removePodcast,
+  removeFromPlaylist,
+  removePlaylist,
   removeSource,
+  renamePlaylist,
+  reorderPlaylist,
+  savePlaybackPosition,
   saveEpisodeProgress,
   searchPodcasts,
   setEpisodeCompleted,
@@ -52,6 +66,8 @@ import {
   setTmdbApiKey,
   startPlugins,
   subscribePodcast,
+  suggestPlaylistFileName,
+  toggleFavorite,
   tmdbConfigured,
   scanAllSources,
   sourcesAvailability,
@@ -234,6 +250,62 @@ function registerIpc(): void {
       }))
     }
   }
+  ipcMain.handle(IPC.playlistsList, () => listPlaylists())
+  ipcMain.handle(IPC.playlistsCreate, (_, name: string) => {
+    createPlaylist(name)
+    return listPlaylists()
+  })
+  ipcMain.handle(IPC.playlistsRename, (_, id: number, name: string) => {
+    renamePlaylist(id, name)
+    return listPlaylists()
+  })
+  ipcMain.handle(IPC.playlistsRemove, (_, id: number) => {
+    removePlaylist(id)
+    return listPlaylists()
+  })
+  ipcMain.handle(IPC.playlistsItems, (_, id: number) => playlistItems(id))
+  ipcMain.handle(IPC.playlistsAdd, (_, playlistId: number, mediaId: number) =>
+    addToPlaylist(playlistId, mediaId)
+  )
+  ipcMain.handle(IPC.playlistsRemoveItem, (_, playlistId: number, mediaId: number) =>
+    removeFromPlaylist(playlistId, mediaId)
+  )
+  ipcMain.handle(IPC.playlistsReorder, (_, playlistId: number, mediaIds: number[]) =>
+    reorderPlaylist(playlistId, mediaIds)
+  )
+
+  ipcMain.handle(IPC.playlistsExport, async (event, id: number): Promise<string | null> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showSaveDialog(win!, {
+      title: 'Exporter la playlist',
+      defaultPath: suggestPlaylistFileName(id),
+      filters: [{ name: 'Playlist M3U', extensions: ['m3u', 'm3u8'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    await exportPlaylist(id, result.filePath)
+    return result.filePath
+  })
+
+  ipcMain.handle(IPC.playlistsImport, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Importer une playlist',
+      properties: ['openFile'],
+      filters: [{ name: 'Playlist M3U', extensions: ['m3u', 'm3u8'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    const file = result.filePaths[0]
+    return importPlaylist(file, basename(file).replace(/\.[^.]+$/, ''))
+  })
+
+  ipcMain.handle(IPC.favoritesToggle, (_, mediaId: number) => toggleFavorite(mediaId))
+  ipcMain.handle(IPC.favoritesList, () => favoriteMedia())
+  ipcMain.handle(IPC.playbackSave, (_, mediaId: number, position: number, completed?: boolean) =>
+    savePlaybackPosition(mediaId, position, completed)
+  )
+  ipcMain.handle(IPC.playbackState, (_, mediaId: number) => playbackStateOf(mediaId))
+  ipcMain.handle(IPC.playbackContinue, () => continueWatching())
+
   ipcMain.handle(IPC.themesList, () => listThemes())
   ipcMain.handle(IPC.themesSelect, (_, id: string) => {
     setSelectedTheme(id)

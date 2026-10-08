@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { toMediaUrl } from '@shared/ipc'
+import { useCallback, useEffect, useState } from 'react'
+import { toMediaUrl, type PlaylistSummary } from '@shared/ipc'
 import type { MediaWithMetadata, Source } from '@shared/models'
 import { fmtBitrate, fmtDurationLong, fmtResolution, fmtSize } from '@frontend/format'
 import { MatchPicker } from './MatchPicker'
@@ -13,6 +13,11 @@ interface Props {
   onPlayNext?: () => void
   /** Appelé après une correction manuelle, pour recharger les informations affichées */
   onIdentified?: () => void
+  /** Playlists existantes, pour y ajouter le média */
+  playlists?: PlaylistSummary[]
+  onAddToPlaylist?: (playlistId: number) => void
+  /** Appelé après un changement de favori */
+  onFavoriteChanged?: () => void
 }
 
 function Row({
@@ -37,9 +42,29 @@ export function MediaDetail({
   onPlay,
   onEnqueue,
   onPlayNext,
-  onIdentified
+  onIdentified,
+  playlists,
+  onAddToPlaylist,
+  onFavoriteChanged
 }: Props): React.JSX.Element {
   const [picking, setPicking] = useState(false)
+  const [favorite, setFavorite] = useState(false)
+  const [playlistMenu, setPlaylistMenu] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    window.epikodi.playbackState(media.id).then((state) => {
+      if (!cancelled) setFavorite(state.favorite)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [media.id])
+
+  const toggleFavorite = useCallback(async () => {
+    setFavorite(await window.epikodi.favoritesToggle(media.id))
+    onFavoriteChanged?.()
+  }, [media.id, onFavoriteChanged])
   const md = media.metadata
   // Une affiche de film est en portrait (2:3), une miniature extraite de la vidéo en 16/9 :
   // le cadre s'adapte au format réel, sinon l'affiche serait rognée en haut et en bas.
@@ -81,6 +106,39 @@ export function MediaDetail({
 
         <div className="detail__actions">
           <button onClick={onPlay}>▶ Lire</button>
+          <button
+            className={`btn--ghost ${favorite ? 'detail__favorite--on' : ''}`}
+            onClick={() => void toggleFavorite()}
+            title={favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          >
+            {favorite ? '★' : '☆'} Favori
+          </button>
+          {playlists && onAddToPlaylist && (
+            <span className="detail__playlist">
+              <button className="btn--ghost" onClick={() => setPlaylistMenu((o) => !o)}>
+                ☰ Ajouter à…
+              </button>
+              {playlistMenu && (
+                <ul className="detail__playlist-menu">
+                  {playlists.length === 0 && (
+                    <li className="detail__playlist-empty">Aucune playlist</li>
+                  )}
+                  {playlists.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        onClick={() => {
+                          onAddToPlaylist(p.id)
+                          setPlaylistMenu(false)
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </span>
+          )}
           {isAudio && onPlayNext && (
             <button className="btn--ghost" onClick={onPlayNext}>
               ⤴ Lire ensuite
