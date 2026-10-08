@@ -2,6 +2,7 @@
   position: relative;
   width: 100%;
   height: 100%;
+  /* le fond derrière la vidéo reste noir quel que soit le thème : c'est le letterbox */
   background: #000;
   border-radius: var(--radius);
   overflow: hidden;
@@ -38,7 +39,7 @@
   align-items: center;
   justify-content: center;
   font-size: 96px;
-  color: #62d39c;
+  color: var(--success);
 }
 
 .player__error {
@@ -48,9 +49,9 @@
   right: 16px;
   padding: 10px 14px;
   border-radius: var(--radius);
-  background: rgba(255, 107, 107, 0.15);
-  color: #ff6b6b;
-  border: 1px solid #ff6b6b;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 
 /* ---------- contrôles ---------- */
@@ -61,7 +62,7 @@
   right: 0;
   bottom: 0;
   padding: 40px 16px 12px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  background: linear-gradient(transparent, var(--overlay-gradient));
   transition: opacity 0.25s;
   opacity: 1;
 }
@@ -84,8 +85,8 @@
   margin-left: 8px;
   padding: 1px 7px;
   border-radius: 4px;
-  background: rgba(255, 180, 84, 0.18);
-  color: #ffb454;
+  background: var(--warning-soft);
+  color: var(--warning);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -95,7 +96,7 @@
   position: relative;
   height: 6px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--on-media-dim);
   cursor: pointer;
   margin-bottom: 10px;
 }
@@ -114,7 +115,7 @@
 }
 
 .player__seek-buffered {
-  background: rgba(255, 255, 255, 0.35);
+  background: var(--on-media-dim);
 }
 
 .player__seek-played {
@@ -148,7 +149,7 @@
 }
 
 .player__btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--on-media-dimmer);
 }
 
 .player__btn:disabled {
@@ -157,7 +158,7 @@
 }
 
 .player__btn--active {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--on-media-dim);
 }
 
 .player__btn--on {
@@ -196,7 +197,7 @@
   background: var(--surface);
   border: 1px solid var(--surface-2);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .player__menu li {
@@ -241,7 +242,7 @@
 
 /* sous-titres WebVTT */
 .player__video::cue {
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
+  background: var(--overlay-strong);
+  color: var(--on-media);
   font-size: 1.1em;
 }

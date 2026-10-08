@@ -1,6 +1,7 @@
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  /* pilotée par le thème : un thème « salon » agrandit les vignettes pour une lecture de loin */
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
   gap: 18px 16px;
   align-content: start;
   width: 100%;
@@ -73,7 +74,7 @@
   bottom: 6px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.75);
+  background: var(--overlay-strong);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -85,8 +86,8 @@
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.45);
+  color: var(--on-media);
+  background: var(--overlay);
   opacity: 0;
   transition: opacity 0.12s;
 }

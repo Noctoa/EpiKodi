@@ -1,0 +1,20 @@
+{
+  "id": "salon",
+  "name": "Salon",
+  "description": "Grandes vignettes, texte agrandi et contraste élevé, pour une lecture à distance sur un téléviseur.",
+  "author": "EpiKodi",
+  "base": "dark",
+  "tokens": {
+    "--bg": "#000000",
+    "--surface": "#101014",
+    "--surface-2": "#1e1e26",
+    "--text": "#ffffff",
+    "--text-muted": "#b9bec9",
+    "--accent": "#ffc400",
+    "--accent-hover": "#ffd84d",
+    "--accent-soft": "rgba(255, 196, 0, 0.22)",
+    "--tile-min": "300px",
+    "--font-size": "17px",
+    "--radius": "14px"
+  }
+}

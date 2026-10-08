@@ -102,7 +102,7 @@
 
 .detail__rating strong {
   font-size: 20px;
-  color: #ffb454;
+  color: var(--warning);
 }
 
 .detail__genres {

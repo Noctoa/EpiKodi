@@ -12,7 +12,7 @@
 
 .podcasts__warn {
   font-size: 13px;
-  color: #ffb454;
+  color: var(--warning);
 }
 
 /* ---- formulaire d'abonnement ---- */
@@ -46,7 +46,7 @@
 .add-podcast__error {
   margin: 8px 0 0;
   font-size: 13px;
-  color: #ff6b6b;
+  color: var(--danger);
 }
 
 .add-podcast__results {
@@ -156,7 +156,7 @@
 .podcast__error {
   margin: 0 0 12px;
   font-size: 13px;
-  color: #ff6b6b;
+  color: var(--danger);
 }
 
 .podcast__actions {
@@ -249,7 +249,7 @@
 }
 
 .episode__progress--download div {
-  background: #62d39c;
+  background: var(--success);
 }
 
 .episode__actions {

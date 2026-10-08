@@ -74,7 +74,7 @@
 }
 
 .scan--error {
-  color: #ff6b6b;
+  color: var(--danger);
 }
 
 .sources-view__actions {
@@ -101,8 +101,8 @@
 }
 
 .source-card__offline {
-  background: rgba(255, 107, 107, 0.18);
-  color: #ff6b6b;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .network-form {
@@ -149,7 +149,7 @@
 .network-form__error {
   margin: 0;
   font-size: 13px;
-  color: #ff6b6b;
+  color: var(--danger);
 }
 
 .network-form__actions {

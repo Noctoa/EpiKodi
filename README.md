@@ -16,6 +16,7 @@ thèmes.
 - Podcasts : abonnement RSS, recherche par nom, écoute hors ligne et reprise de lecture
 - Affiches, synopsis, notes et casting des films via TheMovieDB (clé d'API gratuite)
 - Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées
+- Thèmes clair / sombre / système, et thèmes personnalisés chargés depuis un fichier
 - Télécommande : manette et contrôle depuis un smartphone
 
 ## Prérequis
@@ -87,6 +88,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Podcasts](docs/podcasts.md) — flux RSS, reprise de lecture, écoute hors ligne
 - [Métadonnées externes](docs/external-metadata.md) — TheMovieDB, affiches, identification
 - [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
+- [Thèmes](docs/themes.md) — variables, thèmes intégrés, écrire le sien
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-strong);
   padding: 32px;
 }
 
@@ -17,7 +17,7 @@
   flex-direction: column;
   background: var(--surface);
   border-radius: var(--radius);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 16px 48px var(--shadow);
 }
 
 .picker__head {
@@ -64,7 +64,7 @@
 }
 
 .picker__error {
-  color: #ff6b6b;
+  color: var(--danger);
 }
 
 .picker__results {
@@ -145,7 +145,7 @@
   margin-left: 8px;
   padding: 1px 7px;
   border-radius: 4px;
-  background: rgba(79, 124, 255, 0.18);
+  background: var(--accent-soft);
   color: var(--accent-hover);
   font-size: 11px;
   font-weight: 400;

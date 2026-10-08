@@ -1,0 +1,90 @@
+/**
+ * Variables de thème. Toute couleur, tout rayon et toute taille réglable de l'interface passe
+ * par une variable définie ici : c'est ce qui permet à un thème de tout repeindre sans toucher
+ * au code des composants.
+ *
+ * Le thème sombre est la valeur par défaut ; le thème clair le surcharge via `[data-theme]`,
+ * posé sur <html> par le frontend. « Système » suit la préférence du bureau.
+ */
+
+:root {
+  /* fonds, du plus profond au plus clair */
+  --bg: #0f1115;
+  --surface: #181b22;
+  --surface-2: #222630;
+
+  /* texte */
+  --text: #e8eaf0;
+  --text-muted: #9aa0ad;
+
+  /* couleur d'accent et ses déclinaisons */
+  --accent: #4f7cff;
+  --accent-hover: #6b91ff;
+  --accent-soft: rgba(79, 124, 255, 0.18);
+
+  /* couleurs d'état */
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.16);
+  --warning: #ffb454;
+  --warning-soft: rgba(255, 180, 84, 0.18);
+  --success: #62d39c;
+
+  /* calques posés sur une image ou une vidéo : ils restent sombres quel que soit le thème,
+     puisqu'ils se superposent à du contenu dont on ne maîtrise pas la luminosité */
+  --overlay: rgba(0, 0, 0, 0.45);
+  --overlay-strong: rgba(0, 0, 0, 0.78);
+  --overlay-gradient: rgba(0, 0, 0, 0.85);
+  --on-media: #ffffff;
+  --on-media-dim: rgba(255, 255, 255, 0.22);
+  --on-media-dimmer: rgba(255, 255, 255, 0.12);
+
+  --shadow: rgba(0, 0, 0, 0.5);
+
+  /* formes et tailles */
+  --radius: 10px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size: 15px;
+  /* largeur minimale d'une vignette : un thème « salon » l'augmente pour une lecture à distance */
+  --tile-min: 190px;
+}
+
+[data-theme='light'] {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-2: #e6e9ef;
+
+  --text: #16181d;
+  --text-muted: #5c6370;
+
+  --accent: #2f5fe0;
+  --accent-hover: #1f49bd;
+  --accent-soft: rgba(47, 95, 224, 0.14);
+
+  --danger: #c7362f;
+  --danger-soft: rgba(199, 54, 47, 0.12);
+  --warning: #9a6200;
+  --warning-soft: rgba(154, 98, 0, 0.14);
+  --success: #117a52;
+
+  --shadow: rgba(15, 17, 21, 0.18);
+}
+
+/* « Système » : aucun attribut n'est posé, on suit la préférence du bureau */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f4f5f8;
+    --surface: #ffffff;
+    --surface-2: #e6e9ef;
+    --text: #16181d;
+    --text-muted: #5c6370;
+    --accent: #2f5fe0;
+    --accent-hover: #1f49bd;
+    --accent-soft: rgba(47, 95, 224, 0.14);
+    --danger: #c7362f;
+    --danger-soft: rgba(199, 54, 47, 0.12);
+    --warning: #9a6200;
+    --warning-soft: rgba(154, 98, 0, 0.14);
+    --success: #117a52;
+    --shadow: rgba(15, 17, 21, 0.18);
+  }
+}

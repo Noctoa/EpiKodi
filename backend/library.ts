@@ -18,6 +18,7 @@ import {
 import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
 import { PluginMetadataProvider } from './core/plugins/provider-adapter'
 import * as podcastService from './core/podcasts/service'
+import { discoverThemes, type DiscoveredThemes } from './core/themes/loader'
 import {
   createProvider,
   LocalProvider,
@@ -72,6 +73,11 @@ export function posterDir(): string {
 /** Un sous-dossier par extension installée. */
 export function pluginsDir(): string {
   return join(app.getPath('userData'), 'plugins')
+}
+
+/** Un sous-dossier par thème personnalisé, chacun avec son `theme.json`. */
+export function themesDir(): string {
+  return join(app.getPath('userData'), 'themes')
 }
 
 export function openLibrary(): Database {
@@ -294,6 +300,32 @@ export async function applyMatchTo(mediaId: number, externalId: string): Promise
   if (details) await applyMatch(openLibrary(), mediaId, details, posterDir())
 }
 
+// ---- thèmes ----
+
+const THEME_SETTING = 'ui.theme'
+
+/** Identifiant du thème choisi ; « system » par défaut. */
+export function selectedTheme(): string {
+  return settings.getText(openLibrary(), THEME_SETTING) ?? 'system'
+}
+
+export function setSelectedTheme(id: string): void {
+  settings.setText(openLibrary(), THEME_SETTING, id)
+}
+
+/**
+ * Thèmes disponibles : les intégrés, ceux du dossier `themes/`, et ceux livrés par une
+ * extension. Le dossier est créé s'il manque, pour que l'utilisateur puisse y déposer un thème.
+ */
+export async function listThemes(): Promise<
+  DiscoveredThemes & { selected: string; directory: string }
+> {
+  await mkdir(themesDir(), { recursive: true }).catch(() => undefined)
+  const pluginDirs = plugins ? plugins.list().map((p) => p.dir) : []
+  const { themes, broken } = await discoverThemes(themesDir(), pluginDirs)
+  return { themes, broken, selected: selectedTheme(), directory: themesDir() }
+}
+
 // ---- extensions ----
 
 const PLUGIN_ENABLED_PREFIX = 'plugin.enabled.'
@@ -327,9 +359,12 @@ function syncPluginProviders(): void {
 
 /** Découvre les extensions et démarre celles qui sont activées. */
 export async function startPlugins(): Promise<void> {
-  // Le dossier doit exister avant que l'utilisateur n'y copie quoi que ce soit : sinon
+  // Les dossiers doivent exister avant que l'utilisateur n'y copie quoi que ce soit : sinon
   // `cp -r mon-plugin plugins/` renomme le plugin en « plugins » au lieu de l'y déposer.
-  await mkdir(pluginsDir(), { recursive: true }).catch(() => undefined)
+  await Promise.all([
+    mkdir(pluginsDir(), { recursive: true }).catch(() => undefined),
+    mkdir(themesDir(), { recursive: true }).catch(() => undefined)
+  ])
   const manager = pluginManager()
   await manager.discover()
   await manager.activateEnabled()

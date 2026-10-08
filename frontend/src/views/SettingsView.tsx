@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { MetadataStatus, PluginList, SystemInfo } from '@shared/ipc'
+import { useTheme } from '@frontend/theme'
 import './SettingsView.css'
 
 /** Clé TheMovieDB : saisie, enregistrement chiffré, et effacement. */
@@ -78,6 +79,78 @@ function MetadataSettings(): React.JSX.Element {
         )}
       </div>
       {message && <p className="settings__message">{message}</p>}
+    </section>
+  )
+}
+
+/** Choix du thème, avec aperçu au survol et application immédiate au clic. */
+function ThemeSettings(): React.JSX.Element {
+  const { list, select, preview } = useTheme()
+
+  return (
+    <section className="settings__block">
+      <h3>Apparence</h3>
+      <p className="settings__todo">
+        Un thème est un dossier contenant un <code>theme.json</code> qui redéfinit des couleurs et
+        des tailles. Survole un thème pour l’essayer, clique pour le garder. Dépose les tiens
+        dans&nbsp;:
+      </p>
+      {list && (
+        <p className="settings__path">
+          <code>{list.directory}</code>
+        </p>
+      )}
+
+      <ul className="themes" onMouseLeave={() => preview(null)}>
+        {list?.themes.map((t) => (
+          <li key={t.id}>
+            <button
+              className={`theme ${t.id === list.selected ? 'theme--active' : ''}`}
+              onMouseEnter={() => preview(t.id)}
+              onFocus={() => preview(t.id)}
+              onClick={() => void select(t.id)}
+            >
+              <span className="theme__swatches" aria-hidden="true">
+                {['--bg', '--surface-2', '--accent', '--text'].map((token) => (
+                  <span
+                    key={token}
+                    style={{
+                      background:
+                        t.tokens[token] ??
+                        (t.base === 'light'
+                          ? {
+                              '--bg': '#f4f5f8',
+                              '--surface-2': '#e6e9ef',
+                              '--accent': '#2f5fe0',
+                              '--text': '#16181d'
+                            }[token]
+                          : {
+                              '--bg': '#0f1115',
+                              '--surface-2': '#222630',
+                              '--accent': '#4f7cff',
+                              '--text': '#e8eaf0'
+                            }[token])
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="theme__name">{t.name}</span>
+              {t.description && <span className="theme__description">{t.description}</span>}
+              {t.id === list.selected && <span className="theme__current">utilisé</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {list && list.broken.length > 0 && (
+        <ul className="theme__errors">
+          {list.broken.map((b) => (
+            <li key={b.dir}>
+              <code>{b.dir.split('/').pop()}</code> : {b.errors.map((e) => e.message).join(', ')}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
@@ -243,15 +316,15 @@ export function SettingsView(): React.JSX.Element {
         </dl>
       </section>
 
+      <ThemeSettings />
+
       <MetadataSettings />
 
       <PluginSettings />
 
       <section className="settings__block">
         <h3>À venir</h3>
-        <p className="settings__todo">
-          Thèmes et télécommande arrivent dans les prochaines itérations.
-        </p>
+        <p className="settings__todo">La télécommande arrive dans une prochaine itération.</p>
       </section>
     </div>
   )

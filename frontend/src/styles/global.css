@@ -1,14 +1,4 @@
-:root {
-  --bg: #0f1115;
-  --surface: #181b22;
-  --surface-2: #222630;
-  --text: #e8eaf0;
-  --text-muted: #9aa0ad;
-  --accent: #4f7cff;
-  --accent-hover: #6b91ff;
-  --radius: 10px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -25,7 +15,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
+  font-size: var(--font-size);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -60,6 +50,6 @@ button:focus-visible {
 }
 
 .btn--danger:hover {
-  border-color: #ff6b6b;
-  color: #ff6b6b;
+  border-color: var(--danger);
+  color: var(--danger);
 }

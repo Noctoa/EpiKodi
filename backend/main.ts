@@ -30,6 +30,7 @@ import {
   libraryStats,
   listMedia,
   listPlugins,
+  listThemes,
   listPodcasts,
   matchesFor,
   pluginsDir,
@@ -47,6 +48,7 @@ import {
   searchPodcasts,
   setEpisodeCompleted,
   setPluginEnabled,
+  setSelectedTheme,
   setTmdbApiKey,
   startPlugins,
   subscribePodcast,
@@ -232,6 +234,12 @@ function registerIpc(): void {
       }))
     }
   }
+  ipcMain.handle(IPC.themesList, () => listThemes())
+  ipcMain.handle(IPC.themesSelect, (_, id: string) => {
+    setSelectedTheme(id)
+    return listThemes()
+  })
+
   ipcMain.handle(IPC.pluginsList, () => pluginList())
   ipcMain.handle(IPC.pluginsSetEnabled, async (_, id: string, enabled: boolean) => {
     await setPluginEnabled(id, enabled)

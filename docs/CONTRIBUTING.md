@@ -36,6 +36,7 @@ backend/            Côté Node / Electron (accès disque, FFmpeg, BDD, réseau)
   core/podcasts/    Parseur RSS et service d'abonnement (voir docs/podcasts.md)
   core/metadata/    Identification films/séries via TheMovieDB (voir docs/external-metadata.md)
   core/plugins/     Extensions : manifeste, hôte isolé, cycle de vie (voir docs/plugins.md)
+  core/themes/      Format, validation et découverte des thèmes (voir docs/themes.md)
   core/compat.ts    Décide direct / remux / transcode selon les codecs
   core/transcode.ts Flux ffmpeg, détection de l'encodeur matériel
   plugins/          Système d'extensions
@@ -49,7 +50,7 @@ frontend/           UI React (fenêtre Electron, pas de navigateur)
   src/library/      Regroupement artistes / albums (pur, testé)
   src/format.ts     Formatage des durées, tailles, résolutions
   src/player/       Lecteur audio : file d'attente (pure), contexte React, conversions
-  src/styles/       Thème, variables CSS
+  src/styles/       tokens.css : toutes les variables de thème ; global.css : base
   tsconfig.json     Config TS côté navigateur
 shared/             Types et constantes partagés (contrat IPC)
 docs/               ADR, architecture, guides

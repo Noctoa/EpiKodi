@@ -52,7 +52,7 @@
 .media-item__thumb--audio {
   width: 54px;
   margin: 0 21px;
-  color: #62d39c;
+  color: var(--success);
 }
 
 .media-item__thumb img {

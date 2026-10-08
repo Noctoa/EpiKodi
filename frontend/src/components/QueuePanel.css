@@ -9,7 +9,7 @@
   background: var(--surface);
   border: 1px solid var(--surface-2);
   border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px var(--shadow);
   z-index: 10;
 }
 
@@ -122,5 +122,5 @@
 }
 
 .queue__remove:hover {
-  color: #ff6b6b;
+  color: var(--danger);
 }

@@ -85,7 +85,7 @@
 }
 
 .app__warn {
-  color: #ffb454;
+  color: var(--warning);
 }
 
 .app__header-actions {

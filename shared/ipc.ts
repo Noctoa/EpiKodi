@@ -29,6 +29,8 @@ export const IPC = {
   metadataSetKey: 'metadata:set-key',
   metadataSuggest: 'metadata:suggest',
   metadataApply: 'metadata:apply',
+  themesList: 'themes:list',
+  themesSelect: 'themes:select',
   pluginsList: 'plugins:list',
   pluginsSetEnabled: 'plugins:set-enabled',
   podcastsList: 'podcasts:list',
@@ -115,6 +117,25 @@ export interface MetadataMatch {
   backdropUrl: string | null
   /** Pertinence estimée, entre 0 et 1 */
   score: number
+}
+
+/** Un thème disponible : les variables qu'il surcharge et le thème intégré dont il part. */
+export interface ThemeInfo {
+  id: string
+  name: string
+  description: string | null
+  author: string | null
+  base: 'dark' | 'light'
+  tokens: Record<string, string>
+}
+
+export interface ThemeList {
+  themes: ThemeInfo[]
+  /** Fichiers `theme.json` refusés, avec le détail */
+  broken: { dir: string; errors: { field: string; message: string }[] }[]
+  selected: string
+  /** Dossier où déposer un thème */
+  directory: string
 }
 
 /** Une extension installée, telle qu'affichée dans les Paramètres. */
@@ -227,6 +248,10 @@ export interface EpiKodiApi {
   /** Candidats pour un média ; `query` remplace le titre deviné lors d'une correction manuelle. */
   metadataSuggest(mediaId: number, query?: string): Promise<MetadataMatch[]>
   metadataApply(mediaId: number, externalId: string): Promise<void>
+
+  themesList(): Promise<ThemeList>
+  /** Change le thème ; l'effet est immédiat, sans redémarrage. */
+  themesSelect(id: string): Promise<ThemeList>
 
   pluginsList(): Promise<PluginList>
   /** Active ou désactive une extension ; le changement prend effet immédiatement. */
