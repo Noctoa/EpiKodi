@@ -59,8 +59,6 @@ export function restoreThemeEarly(): void {
 export interface ThemeState {
   list: ThemeList | null
   select: (id: string) => Promise<void>
-  /** Applique un thème le temps du survol, sans l'enregistrer */
-  preview: (id: string | null) => void
 }
 
 const Ctx = createContext<ThemeState | null>(null)
@@ -116,13 +114,5 @@ function useThemeState(): ThemeState {
     [appliquer]
   )
 
-  const preview = useCallback(
-    (id: string | null) => {
-      if (!list) return
-      appliquer(list, id ?? list.selected)
-    },
-    [list, appliquer]
-  )
-
-  return useMemo(() => ({ list, select, preview }), [list, select, preview])
+  return useMemo(() => ({ list, select }), [list, select])
 }

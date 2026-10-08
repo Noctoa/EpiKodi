@@ -85,14 +85,14 @@ function MetadataSettings(): React.JSX.Element {
 
 /** Choix du thème, avec aperçu au survol et application immédiate au clic. */
 function ThemeSettings(): React.JSX.Element {
-  const { list, select, preview } = useTheme()
+  const { list, select } = useTheme()
 
   return (
     <section className="settings__block">
       <h3>Apparence</h3>
       <p className="settings__todo">
         Un thème est un dossier contenant un <code>theme.json</code> qui redéfinit des couleurs et
-        des tailles. Survole un thème pour l’essayer, clique pour le garder. Dépose les tiens
+        des tailles. Le changement s’applique aussitôt, sans redémarrage. Dépose les tiens
         dans&nbsp;:
       </p>
       {list && (
@@ -101,13 +101,11 @@ function ThemeSettings(): React.JSX.Element {
         </p>
       )}
 
-      <ul className="themes" onMouseLeave={() => preview(null)}>
+      <ul className="themes">
         {list?.themes.map((t) => (
           <li key={t.id}>
             <button
               className={`theme ${t.id === list.selected ? 'theme--active' : ''}`}
-              onMouseEnter={() => preview(t.id)}
-              onFocus={() => preview(t.id)}
               onClick={() => void select(t.id)}
             >
               <span className="theme__swatches" aria-hidden="true">
