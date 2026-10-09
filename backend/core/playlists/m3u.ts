@@ -13,7 +13,6 @@ export interface M3uEntry {
 
 const HEADER = '#EXTM3U'
 
-/** Échappe les retours à la ligne d'un titre, qui casseraient le format. */
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').trim()
 
 export function serializeM3u(entries: M3uEntry[]): string {

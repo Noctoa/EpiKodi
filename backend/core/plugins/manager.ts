@@ -6,7 +6,6 @@ import type { FromPlugin, MenuItem, PluginMatch, ToPlugin } from './protocol'
 
 export interface PluginInfo {
   manifest: PluginManifest
-  /** Dossier du plugin sur le disque */
   dir: string
   enabled: boolean
   status: 'inactive' | 'active' | 'error'

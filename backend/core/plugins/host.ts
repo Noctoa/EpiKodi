@@ -60,7 +60,6 @@ function buildApi(manifest: PluginManifest, dir: string): Record<string, unknown
       provider = registration
     },
 
-    /** Ajouter une entrée dans la barre latérale. */
     addMenuItem(item: MenuItem): void {
       if (!manifest.contributes.includes('menu')) {
         log('warn', 'addMenuItem ignoré : « menu » absent de contributes')

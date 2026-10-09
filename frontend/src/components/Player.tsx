@@ -138,10 +138,8 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     return () => document.removeEventListener('fullscreenchange', onFs)
   }, [])
 
-  // Un flux transcodé recommence à 0 après chaque saut : le temps réel est décalé, et la durée
-  // vient de ffprobe puisque le conteneur fragmenté ne l'annonce pas.
   // Position mémorisée toutes les 5 secondes et à la fermeture : rouvrir la vidéo proposera
-  // de reprendre là où l'on s'était arrêté. Au-delà de 95 %, l'épisode est considéré vu.
+  // de reprendre là où l'on s'était arrêté. Au-delà de 95 %, le média est considéré vu.
   const lastSaved = useRef(0)
   useEffect(() => {
     if (mediaId === undefined || duration <= 0) return
@@ -161,6 +159,8 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     }
   }, [mediaId])
 
+  // Un flux transcodé recommence à 0 après chaque saut : le temps réel est décalé, et la durée
+  // vient de ffprobe puisque le conteneur fragmenté ne l'annonce pas.
   const displayDuration = transcoded ? (plan?.duration ?? 0) : duration
   // `-ss` recule jusqu'à l'image clé précédente : le flux démarre un peu avant la position
   // demandée, donc le temps calculé peut dépasser la durée réelle. On le borne.

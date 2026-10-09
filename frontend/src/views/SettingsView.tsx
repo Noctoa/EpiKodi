@@ -83,7 +83,7 @@ function MetadataSettings(): React.JSX.Element {
   )
 }
 
-/** Choix du thème, avec aperçu au survol et application immédiate au clic. */
+/** Choix du thème : le clic l'applique aussitôt, sans redémarrage. */
 function ThemeSettings(): React.JSX.Element {
   const { list, select } = useTheme()
 

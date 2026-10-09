@@ -28,7 +28,6 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Re
   }
 }
 
-/** Télécharge et analyse un flux RSS. */
 export async function fetchFeed(url: string): Promise<ParsedFeed> {
   const res = await fetchWithTimeout(url)
   const declared = Number(res.headers.get('content-length') ?? 0)
