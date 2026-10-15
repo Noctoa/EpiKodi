@@ -79,6 +79,7 @@ import {
   registerMediaProtocol,
   registerMediaSchemePrivileges
 } from './media-protocol'
+import { applyRemoteSettings, registerRemoteIpc, stopRemote } from './remote'
 import { listSubtitles, loadSubtitleVtt } from './core/subtitles'
 import { stopAllStreams } from './core/transcode'
 
@@ -332,6 +333,8 @@ function registerIpc(): void {
       return { mode: 'direct', reason: 'analyse impossible', duration: null }
     }
   })
+  registerRemoteIpc()
+
   ipcMain.handle(IPC.playerSubtitles, (_, path: string) => listSubtitles(path))
   ipcMain.handle(IPC.playerSubtitleVtt, (_, path: string, track: SubtitleTrack) =>
     loadSubtitleVtt(path, track)
@@ -362,6 +365,8 @@ void app.whenReady().then(() => {
   registerMediaProtocol()
   registerIpc()
   createWindow()
+  // La télécommande est désactivée par défaut : sans réglage enregistré, rien n'écoute
+  void applyRemoteSettings()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -373,6 +378,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  void stopRemote()
   stopAllStreams()
   closeLibrary()
 })

@@ -18,6 +18,7 @@ import { MediaDetail } from './components/MediaDetail'
 import { MiniPlayer } from './components/MiniPlayer'
 import { Player } from './components/Player'
 import { Sidebar } from './components/Sidebar'
+import { useDirectionalFocus } from './focus'
 import { useDebounced } from './hooks'
 import { groupByArtist, tracksOf } from './library/grouping'
 import {
@@ -32,6 +33,7 @@ import {
   type View
 } from './navigation'
 import { useAudioPlayer } from './player/AudioPlayerContext'
+import { useRemote } from './remote/bridge'
 import { fromMedia, fromOpened } from './player/items'
 import { HomeView, tileOf } from './views/HomeView'
 import { AlbumsView, AlbumTracksView, ArtistsView } from './views/MusicView'
@@ -348,6 +350,17 @@ export default function App(): React.JSX.Element {
     [open]
   )
   const enqueue = useCallback((m: MediaWithMetadata) => audio.enqueue([fromMedia(m)]), [audio])
+
+  // Flèches : d'une vignette à l'autre dans une grille, puis d'une zone à l'autre
+  useDirectionalFocus()
+
+  // Télécommandes : téléphone (serveur local) et manette. Les deux produisent les mêmes commandes.
+  useRemote({
+    view: viewTitle(view, detailMedia?.title),
+    onKey: (key) => {
+      if (key === 'home') go({ name: 'home' })
+    }
+  })
 
   /** Un épisode se lit depuis sa copie locale si elle existe, sinon en flux. */
   const playEpisode = useCallback(

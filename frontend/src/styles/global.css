@@ -38,6 +38,16 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/*
+ * Navigation à la télécommande (voir frontend/src/remote/bridge.ts) : le focus est déplacé par
+ * programme, donc `:focus-visible` reste éteint. Tant que la souris ne bouge pas, on montre le
+ * focus en permanence — sans lui, on navigue à l'aveugle depuis le canapé.
+ */
+.remote-nav [data-cursor]:not(.tile) {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
 .btn--ghost {
   background: transparent;
   border: 1px solid var(--text-muted);

@@ -53,6 +53,10 @@ Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
    (sans accents ni casse). La barre de filtres permet de restreindre par source, genre, année ou
    « non vus », et de trier par nom, date d'ajout, durée ou année.
 
+7. **Paramètres → Télécommande → Activer** : ouvre sur ton téléphone l'adresse affichée (même
+   Wi-Fi) pour piloter la lecture. Le serveur est désactivé par défaut et protégé par un jeton.
+   Une manette branchée fonctionne sans rien activer : voir [docs/remote-api.md](docs/remote-api.md).
+
 Extensions reconnues : mp4, mkv, webm, avi, mov, m4v, ogv · mp3, flac, ogg, oga, m4a, wav, aac, opus.
 Les dossiers cachés (`.xxx`) sont ignorés.
 
@@ -91,6 +95,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
 - [Thèmes](docs/themes.md) — variables, thèmes intégrés, écrire le sien
 - [Playlists](docs/playlists.md) — favoris, reprise de lecture, import/export M3U
+- [Télécommande](docs/remote-api.md) — manette, serveur HTTP/WebSocket, API
 - [ADR](docs/adr/) — décisions d'architecture
 
 ## Licence

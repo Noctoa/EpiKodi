@@ -7,6 +7,7 @@ import {
   type OpenedMedia,
   type ScanProgress
 } from '../shared/ipc'
+import type { RemoteCommand, RemoteStatus } from '../shared/remote'
 
 const api: EpiKodiApi = {
   openMediaDialog: () => ipcRenderer.invoke(IPC.openMediaDialog),
@@ -75,6 +76,21 @@ const api: EpiKodiApi = {
     const listener = (_: Electron.IpcRendererEvent, p: EpisodeDownload): void => cb(p)
     ipcRenderer.on(IPC.episodeDownloadProgress, listener)
     return () => ipcRenderer.removeListener(IPC.episodeDownloadProgress, listener)
+  },
+  remoteStatus: () => ipcRenderer.invoke(IPC.remoteStatus),
+  remoteSetEnabled: (enabled) => ipcRenderer.invoke(IPC.remoteSetEnabled, enabled),
+  remoteSetPort: (port) => ipcRenderer.invoke(IPC.remoteSetPort, port),
+  remoteRotateToken: () => ipcRenderer.invoke(IPC.remoteRotateToken),
+  remotePublish: (state) => ipcRenderer.send(IPC.remotePublish, state),
+  onRemoteCommand: (cb) => {
+    const listener = (_: Electron.IpcRendererEvent, c: RemoteCommand): void => cb(c)
+    ipcRenderer.on(IPC.remoteCommand, listener)
+    return () => ipcRenderer.removeListener(IPC.remoteCommand, listener)
+  },
+  onRemoteChanged: (cb) => {
+    const listener = (_: Electron.IpcRendererEvent, s: RemoteStatus): void => cb(s)
+    ipcRenderer.on(IPC.remoteChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.remoteChanged, listener)
   },
   playerPlan: (path) => ipcRenderer.invoke(IPC.playerPlan, path),
   playerSubtitles: (path) => ipcRenderer.invoke(IPC.playerSubtitles, path),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { focusCursor } from '@frontend/focus'
 import './Grid.css'
 
 export interface GridTile {
@@ -59,8 +60,12 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
         ArrowUp: -cols
       }
       if (e.key in moves) {
+        const next = focus + moves[e.key]
+        // Hors de la grille : on laisse filer la touche, la navigation directionnelle prend le
+        // relais (section voisine, barre latérale). Sinon le curseur reste collé au bord.
+        if (next < 0 || next > last) return
         e.preventDefault()
-        setFocus((f) => Math.min(last, Math.max(0, f + moves[e.key])))
+        setFocus(next)
       } else if (e.key === 'Home') {
         e.preventDefault()
         setFocus(0)
@@ -81,7 +86,7 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
   useEffect(() => {
     const el = ref.current?.querySelectorAll<HTMLElement>('.tile')[focus]
     if (el && ref.current?.contains(document.activeElement)) {
-      el.focus({ preventScroll: true })
+      focusCursor(el)
       el.scrollIntoView({ block: 'nearest' })
     }
   }, [focus, tiles])

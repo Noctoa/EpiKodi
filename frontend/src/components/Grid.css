@@ -31,9 +31,28 @@
   background: transparent;
 }
 
+/*
+ * La carte n'a pas de liseré à elle : elle est étirée à la hauteur de sa ligne (les titres font
+ * une ou deux lignes), le contour dessinerait donc une grande boîte vide sous la vignette. C'est
+ * la vignette qui le porte — règle `.tile__thumb` plus bas. Annule `button:focus-visible`.
+ */
 .tile:focus-visible {
-  outline: 2px solid var(--accent-hover);
-  outline-offset: 4px;
+  outline: none;
+}
+
+/*
+ * Curseur de navigation. Il suit l'attribut `data-cursor`, posé sur l'élément focalisé par
+ * `frontend/src/remote/bridge.ts`, plutôt que `:focus` : la pseudo-classe s'éteint dès que la
+ * fenêtre perd le focus du système, et piloter depuis un téléphone, c'est précisément ne pas
+ * être devant elle.
+ *
+ * Le liseré entoure la vignette et non la carte : une carte est étirée à la hauteur de sa ligne
+ * (les titres font une ou deux lignes), le contour dessinait donc une grande boîte vide qui
+ * débordait sur la section suivante.
+ */
+.tile:focus-visible .tile__title,
+.remote-nav .tile[data-cursor] .tile__title {
+  color: var(--accent-hover);
 }
 
 .tile__thumb {
@@ -53,8 +72,16 @@
 }
 
 .tile:hover .tile__thumb,
-.tile:focus-visible .tile__thumb {
+.tile:focus-visible .tile__thumb,
+.remote-nav .tile[data-cursor] .tile__thumb {
   transform: scale(1.03);
+}
+
+.tile:focus-visible .tile__thumb,
+.remote-nav .tile[data-cursor] .tile__thumb {
+  outline: 3px solid var(--accent-hover);
+  outline-offset: 3px;
+  box-shadow: 0 10px 26px var(--shadow);
 }
 
 .tile__thumb img {

@@ -7,6 +7,7 @@ import {
   type SubtitleTrack
 } from '@shared/ipc'
 import { fmtDuration } from '@frontend/format'
+import { setVideoControl, type MediaControl } from '@frontend/remote/control'
 import './Player.css'
 
 interface PlayerProps {
@@ -211,6 +212,36 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     if (document.fullscreenElement) void document.exitFullscreen()
     else void containerRef.current?.requestFullscreen()
   }, [])
+
+  // La télécommande (téléphone, manette) pilote le lecteur par cet enregistrement : elle lit la
+  // position à la demande, sans provoquer de rendu à chaque seconde de lecture.
+  useEffect(() => {
+    const control: MediaControl = {
+      source: 'video',
+      snapshot: () => {
+        const el = videoRef.current
+        return {
+          playing: el ? !el.paused && !el.ended : false,
+          title: media.name,
+          subtitle: null,
+          position: live.current.time,
+          duration: live.current.duration,
+          volume: el?.volume ?? 1,
+          muted: el?.muted ?? false
+        }
+      },
+      toggle: togglePlay,
+      play: () => void videoRef.current?.play().catch(() => undefined),
+      pause: () => videoRef.current?.pause(),
+      stop: () => onClose?.(),
+      seekTo,
+      seekBy,
+      setVolume: changeVolume,
+      toggleMute
+    }
+    setVideoControl(control)
+    return () => setVideoControl(null)
+  }, [media.name, togglePlay, seekTo, seekBy, changeVolume, toggleMute, onClose])
 
   const selectSubtitle = useCallback(
     async (id: string | null) => {

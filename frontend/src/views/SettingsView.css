@@ -243,3 +243,43 @@
   font-size: 12px;
   color: var(--danger);
 }
+
+.remote__urls {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.remote__url {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.remote__url:hover {
+  border-color: var(--accent);
+}
+
+.remote__url code {
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Un numéro de port n'a pas besoin de la largeur d'une clé d'API */
+.settings__key input.remote__port {
+  flex: 0 0 110px;
+  min-width: 0;
+}
+
+/* Une explication qui suit les boutons d'un réglage a besoin de respirer */
+.settings__key + .settings__todo,
+.settings__message + .settings__todo {
+  margin-top: 16px;
+}

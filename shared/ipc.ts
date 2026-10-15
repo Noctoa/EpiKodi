@@ -7,6 +7,7 @@ import type {
   PodcastEpisode,
   Source
 } from './models'
+import type { RemoteCommand, RemoteState, RemoteStatus } from './remote'
 
 export const IPC = {
   openMediaDialog: 'dialog:open-media',
@@ -60,6 +61,13 @@ export const IPC = {
   episodeProgress: 'episode:progress',
   episodeCompleted: 'episode:completed',
   episodeDownloadProgress: 'episode:download-progress',
+  remoteStatus: 'remote:status',
+  remoteSetEnabled: 'remote:set-enabled',
+  remoteSetPort: 'remote:set-port',
+  remoteRotateToken: 'remote:rotate-token',
+  remotePublish: 'remote:publish',
+  remoteCommand: 'remote:command',
+  remoteChanged: 'remote:changed',
   playerPlan: 'player:plan',
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt'
@@ -337,6 +345,19 @@ export interface EpiKodiApi {
   episodeProgress(episodeId: number, position: number, completed?: boolean): Promise<void>
   episodeCompleted(episodeId: number, completed: boolean): Promise<void>
   onEpisodeDownload(cb: (p: EpisodeDownload) => void): () => void
+
+  remoteStatus(): Promise<RemoteStatus>
+  /** Démarre ou arrête le serveur de télécommande ; l'effet est immédiat. */
+  remoteSetEnabled(enabled: boolean): Promise<RemoteStatus>
+  remoteSetPort(port: number): Promise<RemoteStatus>
+  /** Nouveau jeton d'appairage : les téléphones déjà appairés devront rouvrir l'URL. */
+  remoteRotateToken(): Promise<RemoteStatus>
+  /** Pousse l'état du lecteur au serveur. Sans réponse : appelé une fois par seconde. */
+  remotePublish(state: RemoteState): void
+  /** Commande reçue d'un téléphone ou d'une manette. Retourne un désabonnement. */
+  onRemoteCommand(cb: (command: RemoteCommand) => void): () => void
+  /** Le serveur a démarré, s'est arrêté, ou le nombre de télécommandes a changé. */
+  onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
 
   /** Indique si le fichier est lisible tel quel, ou doit être remuxé / ré-encodé. */
   playerPlan(path: string): Promise<PlaybackPlanInfo>

@@ -21,7 +21,7 @@ interface Status {
   error: string | null
 }
 
-interface AudioPlayerApi {
+export interface AudioPlayerApi {
   queue: QueueState
   current: QueueItem | null
   status: Status

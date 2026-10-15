@@ -44,6 +44,18 @@ page réelle), **Entrée** ouvre le détail, **P** lit directement, **Début / F
 extrémités. Partout : **Échap** ou **Retour arrière** reviennent en arrière. Le lecteur vidéo
 garde ses propres raccourcis (voir `docs/player.md`).
 
+Au bord d'une grille, la flèche ne reste pas collée : `frontend/src/focus.ts` prend le relais et
+cherche la cible la plus proche dans la direction demandée — section suivante, barre latérale,
+bouton de la vue détail. Le score mêle la distance dans la direction visée et le décalage
+latéral, pour descendre sur la vignette d'en dessous plutôt que sur la plus proche en diagonale
+(`bestCandidate`, testé dans `focus.test.ts`).
+
+La grille ne consomme la touche que si elle peut bouger ; sinon elle la laisse filer, et le
+relais s'en saisit. Rien n'est détourné tant qu'aucun élément n'a le focus : les flèches font
+alors défiler la page, comme partout ailleurs. Devant le lecteur, elles restent à la lecture.
+
+La télécommande emprunte exactement ce chemin : voir [docs/remote-api.md](remote-api.md).
+
 ## Regroupement musique
 
 `groupByArtist()` classe les pistes par `albumArtist` (sinon `artist`, sinon « Artiste inconnu »),

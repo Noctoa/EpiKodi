@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
@@ -47,6 +48,7 @@ import {
   type MediaListQuery,
   type ScanProgress
 } from '../shared/ipc'
+import { REMOTE_DEFAULT_PORT } from '../shared/remote'
 import type {
   Facets,
   MediaWithMetadata,
@@ -341,6 +343,50 @@ export async function listThemes(): Promise<
   const pluginDirs = plugins ? plugins.list().map((p) => p.dir) : []
   const { themes, broken } = await discoverThemes(themesDir(), pluginDirs)
   return { themes, broken, selected: selectedTheme(), directory: themesDir() }
+}
+
+// ---- télécommande ----
+
+const REMOTE_ENABLED_SETTING = 'remote.enabled'
+const REMOTE_PORT_SETTING = 'remote.port'
+const REMOTE_TOKEN_SETTING = 'remote.token'
+
+export interface RemoteConfig {
+  enabled: boolean
+  port: number
+  token: string
+}
+
+/**
+ * Réglages de la télécommande. Le jeton est tiré au sort au premier appel et conservé : il fait
+ * partie de l'URL que l'on donne au téléphone, le changer déconnecte les appareils appairés.
+ */
+export function remoteConfig(): RemoteConfig {
+  const d = openLibrary()
+  const port = Number(settings.getText(d, REMOTE_PORT_SETTING))
+  return {
+    enabled: settings.getText(d, REMOTE_ENABLED_SETTING) === '1',
+    port: Number.isInteger(port) && port > 0 && port < 65536 ? port : REMOTE_DEFAULT_PORT,
+    token: settings.getText(d, REMOTE_TOKEN_SETTING) ?? rotateRemoteToken()
+  }
+}
+
+export function setRemoteEnabled(enabled: boolean): void {
+  settings.setText(openLibrary(), REMOTE_ENABLED_SETTING, enabled ? '1' : null)
+}
+
+export function setRemotePort(port: number): void {
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    throw new Error('Port invalide : choisis un nombre entre 1024 et 65535.')
+  }
+  settings.setText(openLibrary(), REMOTE_PORT_SETTING, String(port))
+}
+
+/** Nouveau jeton : les télécommandes déjà appairées devront rouvrir l'URL affichée. */
+export function rotateRemoteToken(): string {
+  const token = randomBytes(16).toString('base64url')
+  settings.setText(openLibrary(), REMOTE_TOKEN_SETTING, token)
+  return token
 }
 
 // ---- extensions ----

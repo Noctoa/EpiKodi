@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { MetadataStatus, PluginList, SystemInfo } from '@shared/ipc'
+import type { RemoteStatus } from '@shared/remote'
+import { useGamepadIds } from '@frontend/remote/gamepad'
 import { useTheme } from '@frontend/theme'
 import './SettingsView.css'
 
@@ -254,6 +256,153 @@ function PluginSettings(): React.JSX.Element {
   )
 }
 
+/** Télécommande : serveur local pour le téléphone, et manettes détectées. */
+function RemoteSettings(): React.JSX.Element {
+  const [status, setStatus] = useState<RemoteStatus | null>(null)
+  const [port, setPort] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const pads = useGamepadIds()
+
+  useEffect(() => {
+    let cancelled = false
+    void window.epikodi.remoteStatus().then((s) => {
+      if (cancelled) return
+      setStatus(s)
+      setPort(String(s.port))
+    })
+    const off = window.epikodi.onRemoteChanged(setStatus)
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [])
+
+  /** Les réglages renvoient le nouvel état : un port déjà pris revient en erreur, pas en silence. */
+  const run = useCallback(async (action: () => Promise<RemoteStatus>, ok?: string) => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const next = await action()
+      setStatus(next)
+      setPort(String(next.port))
+      if (ok) setMessage(ok)
+    } catch (err) {
+      setMessage((err as Error).message)
+    }
+    setBusy(false)
+  }, [])
+
+  const copy = (url: string): void => {
+    void navigator.clipboard.writeText(url).then(() => setMessage('Adresse copiée.'))
+  }
+
+  return (
+    <section className="settings__block">
+      <h3>Télécommande</h3>
+      <p className="settings__todo">
+        EpiKodi se pilote depuis un téléphone sur le même réseau : active le serveur, puis ouvre
+        l’adresse ci-dessous dans le navigateur du téléphone. Elle contient un jeton d’appairage,
+        sans lequel toute requête est refusée. Le serveur est <strong>désactivé par défaut</strong>{' '}
+        et n’écoute que le réseau local.
+      </p>
+
+      <dl>
+        <dt>État</dt>
+        <dd>
+          {status?.running ? (
+            <span className="settings__ok">en écoute sur le port {status.port}</span>
+          ) : status?.enabled ? (
+            <span className="settings__warn">activée, mais le serveur n’écoute pas</span>
+          ) : (
+            <span className="settings__hint">désactivée</span>
+          )}
+          {status?.running && (
+            <span className="settings__hint"> · {status.clients} connectée(s)</span>
+          )}
+        </dd>
+        <dt>Manette</dt>
+        <dd>
+          {pads.length > 0 ? (
+            <span className="settings__ok">{pads.join(', ')}</span>
+          ) : (
+            <span className="settings__hint">
+              aucune détectée — branche-la puis appuie sur un bouton
+            </span>
+          )}
+        </dd>
+      </dl>
+
+      {status?.error && <p className="settings__message settings__warn">{status.error}</p>}
+
+      {status?.running &&
+        (status.urls.length > 0 ? (
+          <ul className="remote__urls">
+            {status.urls.map((url) => (
+              <li key={url}>
+                <button className="remote__url" title="Copier l’adresse" onClick={() => copy(url)}>
+                  <code>{url}</code>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="settings__message settings__warn">
+            Aucune interface réseau : la machine n’est joignable par aucun autre appareil.
+          </p>
+        ))}
+
+      <div className="settings__key">
+        <button
+          disabled={busy || !status}
+          onClick={() => status && void run(() => window.epikodi.remoteSetEnabled(!status.enabled))}
+        >
+          {status?.enabled ? 'Désactiver' : 'Activer'}
+        </button>
+        <input
+          className="remote__port"
+          type="number"
+          min={1024}
+          max={65535}
+          value={port}
+          onChange={(e) => setPort(e.target.value)}
+          aria-label="Port du serveur"
+        />
+        <button
+          className="btn--ghost"
+          disabled={busy || Number(port) === status?.port}
+          onClick={() =>
+            void run(() => window.epikodi.remoteSetPort(Number(port)), 'Port enregistré.')
+          }
+        >
+          Changer le port
+        </button>
+        <button
+          className="btn--ghost btn--danger"
+          disabled={busy}
+          onClick={() =>
+            void run(
+              () => window.epikodi.remoteRotateToken(),
+              'Nouveau jeton : rouvre l’adresse sur le téléphone.'
+            )
+          }
+        >
+          Nouveau jeton
+        </button>
+      </div>
+      {message && <p className="settings__message">{message}</p>}
+
+      <p className="settings__todo">
+        Manette : croix directionnelle ou stick pour naviguer, <strong>A</strong> valide,{' '}
+        <strong>B</strong> revient, <strong>X</strong> lecture / pause, <strong>Y</strong> muet,
+        <strong> L1 / R1</strong> piste précédente / suivante, gâchettes <strong>±30 s</strong>,{' '}
+        <strong>Start</strong> accueil. L’API HTTP et WebSocket est documentée dans{' '}
+        <code>docs/remote-api.md</code>.
+      </p>
+    </section>
+  )
+}
+
 export function SettingsView(): React.JSX.Element {
   const [info, setInfo] = useState<SystemInfo | null>(null)
 
@@ -320,10 +469,7 @@ export function SettingsView(): React.JSX.Element {
 
       <PluginSettings />
 
-      <section className="settings__block">
-        <h3>À venir</h3>
-        <p className="settings__todo">La télécommande arrive dans une prochaine itération.</p>
-      </section>
+      <RemoteSettings />
     </div>
   )
 }
