@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { REMOTE_IDLE, type RemoteCommand, type RemoteKey, type RemoteState } from '@shared/remote'
 import { useAudioPlayer, type AudioPlayerApi } from '@frontend/player/AudioPlayerContext'
-import { firstFocusable, focusCursor } from '@frontend/focus'
+import {
+  enterCursor,
+  firstFocusable,
+  focusCursor,
+  isCursorVisible,
+  openTrap,
+  REMOTE_NAV
+} from '@frontend/focus'
 import { videoControl, type MediaControl } from './control'
 import { useGamepad } from './gamepad'
 
@@ -21,13 +28,6 @@ const KEYBOARD: Partial<Record<RemoteKey, string>> = {
   ok: 'Enter',
   back: 'Escape'
 }
-
-/**
- * Classe posée sur `<body>` tant que l'on navigue à la télécommande. Le focus est alors déplacé
- * par programme : `:focus-visible`, qui ne s'allume que pour une interaction clavier réelle,
- * laisserait la navigation invisible à l'écran. La classe tombe dès que la souris bouge.
- */
-const REMOTE_NAV = 'remote-nav'
 
 /**
  * Déclenche l'élément sous le curseur. Un `keydown` synthétique ne provoque pas l'action par
@@ -186,13 +186,18 @@ export function useRemote({ view, onKey }: RemoteOptions): void {
     }
   }, [])
 
-  // Changement d'écran à la télécommande : le curseur se pose sur le premier élément de la vue.
-  // Sans cela, « OK » n'a rien sous la main en arrivant, et la direction suivante repart de zéro.
+  // Après chaque rendu : le curseur ne doit jamais rester orphelin. Il se repose sur le premier
+  // élément de la vue quand l'élément qu'il marquait a disparu (changement d'écran, sortie du
+  // lecteur), et entre dans une boîte qui vient de s'ouvrir. Sans cela, « OK » n'a rien sous la
+  // main en arrivant et la direction suivante repart de zéro.
   useEffect(() => {
-    if (!document.body.classList.contains(REMOTE_NAV)) return
-    const first = firstFocusable()
-    if (first) focusCursor(first)
-  }, [view])
+    if (!isCursorVisible()) return
+    const active = document.activeElement
+    const trap = openTrap()
+    const orphan = !active || active === document.body
+    const outside = trap !== null && active instanceof Node && !trap.contains(active)
+    if (orphan || outside) enterCursor()
+  })
 
   useEffect(() => {
     if (!running) return

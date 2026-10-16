@@ -54,6 +54,16 @@ La grille ne consomme la touche que si elle peut bouger ; sinon elle la laisse f
 relais s'en saisit. Rien n'est détourné tant qu'aucun élément n'a le focus : les flèches font
 alors défiler la page, comme partout ailleurs. Devant le lecteur, elles restent à la lecture.
 
+Les boîtes modales retiennent le curseur : tant qu'un `[role="dialog"]` ou un `[role="menu"]` est
+ouvert, les flèches ne cherchent que dedans, **Échap** ferme la boîte (et le retour global de
+l'application est neutralisé, sinon on reviendrait en arrière derrière elle en la laissant
+affichée), et le curseur retrouve à la fermeture le bouton qui l'avait ouverte. C'est le rôle du
+hook `useModal` (`hooks.ts`), utilisé par « Corriger l'identification », la file de lecture et le
+menu « Ajouter à… ».
+
+Le curseur ne reste jamais orphelin : si l'élément qu'il marquait disparaît — changement d'écran,
+sortie du lecteur, fermeture d'une boîte — il se repose sur le premier élément de la vue.
+
 La télécommande emprunte exactement ce chemin : voir [docs/remote-api.md](remote-api.md).
 
 ## Regroupement musique

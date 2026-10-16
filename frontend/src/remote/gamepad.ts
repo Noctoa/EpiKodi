@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RemoteCommand } from '@shared/remote'
+import type { RemoteCommand, RemoteKey } from '@shared/remote'
 
 /**
  * Support manette, via la Gamepad API. Le navigateur n'émet aucun événement de bouton : il faut
@@ -9,7 +9,10 @@ import type { RemoteCommand } from '@shared/remote'
  * actions (voir `bridge.ts`), quelle que soit la télécommande.
  */
 
-/** Mappage « standard » de la Gamepad API : Xbox, DualShock, 8BitDo… */
+/**
+ * Disposition « standard » de la Gamepad API : le navigateur normalise lui-même Xbox, DualShock,
+ * 8BitDo, Switch Pro… vers ces index. Une seule table couvre donc tout ce parc.
+ */
 const BUTTONS: Record<number, RemoteCommand> = {
   0: { type: 'key', key: 'ok' }, // A / croix
   1: { type: 'key', key: 'back' }, // B / rond
@@ -26,6 +29,16 @@ const BUTTONS: Record<number, RemoteCommand> = {
   15: { type: 'key', key: 'right' }
 }
 
+/**
+ * Manette que le navigateur ne sait pas normaliser (`mapping` vide) : les index des boutons sont
+ * ceux du pilote, on ne peut rien en déduire. Seuls les deux premiers boutons sont une convention
+ * assez répandue pour être tenue — tout le reste passe par le stick et la croix.
+ */
+const GENERIC_BUTTONS: Record<number, RemoteCommand> = {
+  0: { type: 'key', key: 'ok' },
+  1: { type: 'key', key: 'back' }
+}
+
 /** Au-delà, le stick gauche vaut une croix directionnelle. */
 const DEADZONE = 0.6
 
@@ -39,13 +52,46 @@ const REPEATABLE = new Set(['key:up', 'key:down', 'key:left', 'key:right'])
 export interface PadLike {
   buttons: readonly { pressed: boolean }[]
   axes: readonly number[]
+  /** « standard » quand le navigateur reconnaît la disposition ; vide sinon */
+  mapping?: string
 }
+
+/**
+ * Croix directionnelle d'une manette non normalisée : c'est souvent un « hat switch », un axe
+ * supplémentaire qui code les huit directions entre -1 et 1, et sort des bornes au repos.
+ */
+export function hatDirections(value: number): RemoteKey[] {
+  if (!Number.isFinite(value) || Math.abs(value) > 1) return []
+  return HAT[Math.round((value + 1) * 3.5)] ?? []
+}
+
+const HAT: RemoteKey[][] = [
+  ['up'],
+  ['up', 'right'],
+  ['right'],
+  ['down', 'right'],
+  ['down'],
+  ['down', 'left'],
+  ['left'],
+  ['up', 'left']
+]
 
 /** Commandes correspondant à l'état courant d'une manette : boutons tenus et stick poussé. */
 export function activeCommands(pad: PadLike): RemoteCommand[] {
+  // `mapping` absent : manette d'un test, traitée comme normalisée
+  const standard = pad.mapping === undefined || pad.mapping === 'standard'
+  const layout = standard ? BUTTONS : GENERIC_BUTTONS
   const commands = pad.buttons
-    .map((button, index) => (button.pressed ? BUTTONS[index] : undefined))
+    .map((button, index) => (button.pressed ? layout[index] : undefined))
     .filter((c): c is RemoteCommand => c !== undefined)
+
+  // Les axes au-delà des deux sticks ne servent qu'aux manettes non normalisées : sur une
+  // manette standard, la croix directionnelle est déjà dans les boutons 12 à 15.
+  if (!standard) {
+    for (const axis of pad.axes.slice(4)) {
+      for (const key of hatDirections(axis)) commands.push({ type: 'key', key })
+    }
+  }
 
   const [x = 0, y = 0] = pad.axes
   if (y <= -DEADZONE) commands.push({ type: 'key', key: 'up' })
@@ -72,7 +118,8 @@ export function useGamepadIds(): string[] {
       setIds(
         (navigator.getGamepads?.() ?? [])
           .filter((pad): pad is Gamepad => pad !== null)
-          .map((pad) => pad.id)
+          // Une manette non normalisée n'a que ses sticks et ses deux premiers boutons : le dire
+          .map((pad) => (pad.mapping === 'standard' ? pad.id : `${pad.id} (disposition inconnue)`))
       )
     update()
     window.addEventListener('gamepadconnected', update)

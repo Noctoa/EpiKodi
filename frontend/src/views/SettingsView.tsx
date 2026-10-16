@@ -396,8 +396,9 @@ function RemoteSettings(): React.JSX.Element {
         Manette : croix directionnelle ou stick pour naviguer, <strong>A</strong> valide,{' '}
         <strong>B</strong> revient, <strong>X</strong> lecture / pause, <strong>Y</strong> muet,
         <strong> L1 / R1</strong> piste précédente / suivante, gâchettes <strong>±30 s</strong>,{' '}
-        <strong>Start</strong> accueil. L’API HTTP et WebSocket est documentée dans{' '}
-        <code>docs/remote-api.md</code>.
+        <strong>Start</strong> accueil. Une manette que le navigateur ne normalise pas (affichée «
+        disposition inconnue ») garde les sticks, la croix et ses deux premiers boutons. L’API HTTP
+        et WebSocket est documentée dans <code>docs/remote-api.md</code>.
       </p>
     </section>
   )

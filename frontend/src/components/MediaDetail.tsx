@@ -3,6 +3,7 @@ import { toMediaUrl, type PlaylistSummary } from '@shared/ipc'
 import type { MediaWithMetadata, Source } from '@shared/models'
 import { fmtBitrate, fmtDurationLong, fmtResolution, fmtSize } from '@frontend/format'
 import { MatchPicker } from './MatchPicker'
+import { useModal } from '@frontend/hooks'
 import './MediaDetail.css'
 
 interface Props {
@@ -50,6 +51,7 @@ export function MediaDetail({
   const [picking, setPicking] = useState(false)
   const [favorite, setFavorite] = useState(false)
   const [playlistMenu, setPlaylistMenu] = useState(false)
+  useModal(playlistMenu ? () => setPlaylistMenu(false) : null)
 
   useEffect(() => {
     let cancelled = false
@@ -119,7 +121,7 @@ export function MediaDetail({
                 ☰ Ajouter à…
               </button>
               {playlistMenu && (
-                <ul className="detail__playlist-menu">
+                <ul className="detail__playlist-menu" role="menu">
                   {playlists.length === 0 && (
                     <li className="detail__playlist-empty">Aucune playlist</li>
                   )}

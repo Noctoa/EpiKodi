@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { useAudioPlayer } from '@frontend/player/AudioPlayerContext'
 import { fmtDuration } from '@frontend/format'
+import { useModal } from '@frontend/hooks'
 import './QueuePanel.css'
 
 /** File d'attente : sauter à une piste, retirer, réordonner par glisser-déposer. */
 export function QueuePanel({ onClose }: { onClose: () => void }): React.JSX.Element {
+  useModal(onClose)
   const p = useAudioPlayer()
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
   const total = p.queue.items.reduce((s, i) => s + (i.duration ?? 0), 0)
 
   return (
-    <div className="queue">
+    <div className="queue" role="dialog" aria-label="File de lecture">
       <div className="queue__head">
         <h3>
           File d'attente{' '}

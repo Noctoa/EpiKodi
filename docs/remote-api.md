@@ -150,10 +150,19 @@ lecture / pause, comme sur une télécommande de salon.
 
 ## Manette
 
-Gamepad API, mappage « standard » (Xbox, DualShock, 8BitDo). Le navigateur n'émet aucun événement
-de bouton : l'état est scruté à chaque image — mais la boucle ne tourne que lorsqu'une manette est
-branchée. Une manette n'apparaît qu'après une première pression (protection de la vie privée du
-navigateur), et ne demande ni serveur ni jeton.
+Gamepad API, disposition « standard ». Le navigateur normalise lui-même Xbox, DualShock, 8BitDo,
+Switch Pro… vers des index communs : **une seule table couvre tout ce parc**, il n'y a pas de
+réglage par modèle. Le navigateur n'émet aucun événement de bouton, l'état est donc scruté à
+chaque image — mais la boucle ne tourne que lorsqu'une manette est branchée. Une manette
+n'apparaît qu'après une première pression (protection de la vie privée du navigateur), et ne
+demande ni serveur ni jeton.
+
+Les manettes que le navigateur ne sait pas normaliser (`mapping` vide, surtout les vieilles
+manettes USB génériques) ont des index dictés par leur pilote : appliquer la table standard y
+appuierait au hasard. On s'y limite donc à ce qui est conventionnel — le stick gauche, la croix
+directionnelle quand elle arrive en « hat switch » sur un axe supplémentaire (`hatDirections`,
+testé), et les deux premiers boutons pour valider et revenir. Les Paramètres signalent ces
+manettes par « disposition inconnue ».
 
 | Bouton          | Action                       |
 | --------------- | ---------------------------- |

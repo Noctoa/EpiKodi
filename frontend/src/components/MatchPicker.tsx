@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toImageUrl, type MetadataMatch } from '@shared/ipc'
+import { useModal } from '@frontend/hooks'
 import './MatchPicker.css'
 
 interface Props {
@@ -20,6 +21,7 @@ export function MatchPicker({
   onClose,
   onApplied
 }: Props): React.JSX.Element {
+  useModal(onClose)
   const [query, setQuery] = useState(initialQuery)
   const [matches, setMatches] = useState<MetadataMatch[]>([])
   const [busy, setBusy] = useState(true)

@@ -64,6 +64,30 @@ export function bestCandidate(origin: Box, candidates: Box[], direction: Directi
 /** Ce que le curseur peut atteindre : vignettes, boutons, liens — barre latérale comprise. */
 const TARGETS = '.sidebar button, .app__view .tile, .app__view button, .app__view a'
 
+/** Où le curseur se pose en arrivant sur un écran : dans la vue, pas dans la barre latérale. */
+const VIEW_TARGETS = '.app__view .tile, .app__view button, .app__view a'
+
+/**
+ * Conteneurs qui retiennent le curseur tant qu'ils sont ouverts. Sans cela, une flèche sortirait
+ * d'une boîte de dialogue pour aller se perdre derrière elle, et « OK » déclencherait un bouton
+ * que l'on ne voit plus.
+ */
+const TRAPS = '[role="dialog"], [role="menu"]'
+
+/** Ce qui est atteignable à l'intérieur d'une boîte : elle n'a pas de vignettes. */
+const TRAPPED_TARGETS = 'button, a[href], input, select, [tabindex]:not([tabindex="-1"])'
+
+/** Classe posée sur `<body>` tant que l'on navigue sans souris : le curseur est alors visible. */
+export const REMOTE_NAV = 'remote-nav'
+
+export const isCursorVisible = (): boolean => document.body.classList.contains(REMOTE_NAV)
+
+/** Boîte ouverte qui retient le curseur, s'il y en a une — la dernière ouverte prime. */
+export function openTrap(): HTMLElement | null {
+  const traps = document.querySelectorAll<HTMLElement>(TRAPS)
+  return traps[traps.length - 1] ?? null
+}
+
 /**
  * Attribut porté par l'élément sous le curseur, et par lui seul. C'est ce que le surlignage de
  * la télécommande cible (voir `remote-nav` dans `remote/bridge.ts`).
@@ -75,16 +99,29 @@ const TARGETS = '.sidebar button, .app__view .tile, .app__view button, .app__vie
  */
 export const CURSOR_ATTR = 'data-cursor'
 
+/** Élément sous le curseur, s'il y en a un. */
+export function cursorElement(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[${CURSOR_ATTR}]`)
+}
+
 /** Déplace le curseur sur un élément : focus réel, et marque visible. */
 export function focusCursor(el: HTMLElement): void {
-  document.querySelector(`[${CURSOR_ATTR}]`)?.removeAttribute(CURSOR_ATTR)
+  cursorElement()?.removeAttribute(CURSOR_ATTR)
   el.setAttribute(CURSOR_ATTR, '')
   el.focus({ preventScroll: true })
 }
 
-/** Premier élément atteignable de la vue : là où le curseur se pose en arrivant sur un écran. */
+/** Premier élément atteignable : dans la boîte ouverte s'il y en a une, sinon dans la vue. */
 export function firstFocusable(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('.app__view .tile, .app__view button, .app__view a')
+  const trap = openTrap()
+  return (trap ?? document).querySelector<HTMLElement>(trap ? TRAPPED_TARGETS : VIEW_TARGETS)
+}
+
+/** Pose le curseur sur le premier élément atteignable, s'il est visible. Sinon, ne fait rien. */
+export function enterCursor(): void {
+  if (!isCursorVisible()) return
+  const first = firstFocusable()
+  if (first) focusCursor(first)
 }
 
 const DIRECTIONS: Record<string, Direction> = {
@@ -99,10 +136,11 @@ export function moveFocus(direction: Direction): boolean {
   const current = document.activeElement
   if (!(current instanceof HTMLElement)) return false
 
-  const targets = [...document.querySelectorAll<HTMLElement>(TARGETS)].filter(
+  const trap = openTrap()
+  const targets = [
+    ...(trap ?? document).querySelectorAll<HTMLElement>(trap ? TRAPPED_TARGETS : TARGETS)
     // `offsetParent` à null : élément masqué, donc inatteignable
-    (el) => el !== current && el.offsetParent !== null
-  )
+  ].filter((el) => el !== current && el.offsetParent !== null)
   const index = bestCandidate(
     current.getBoundingClientRect(),
     targets.map((el) => el.getBoundingClientRect()),

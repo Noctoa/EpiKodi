@@ -18,7 +18,7 @@ import { MediaDetail } from './components/MediaDetail'
 import { MiniPlayer } from './components/MiniPlayer'
 import { Player } from './components/Player'
 import { Sidebar } from './components/Sidebar'
-import { useDirectionalFocus } from './focus'
+import { openTrap, useDirectionalFocus } from './focus'
 import { useDebounced } from './hooks'
 import { groupByArtist, tracksOf } from './library/grouping'
 import {
@@ -246,6 +246,9 @@ export default function App(): React.JSX.Element {
         return
       }
       if (inInput) return
+      // Une boîte ouverte gère son propre Échap : sans cela, on reviendrait en arrière derrière
+      // elle en la laissant affichée
+      if (openTrap()) return
       // Retour clavier « salon »
       if (e.key === 'Backspace' || e.key === 'Escape') {
         e.preventDefault()
