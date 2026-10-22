@@ -6,6 +6,15 @@ import { fmtDuration } from '@frontend/format'
 import { recentlyAdded } from '@frontend/library/grouping'
 import './HomeView.css'
 
+/**
+ * L'accueil est une vitrine : chaque rangée s'arrête sur une ligne pleine, quelle que soit la
+ * largeur de la fenêtre. On demande plus d'éléments qu'il n'en faut — la grille coupe au nombre
+ * de colonnes réel — sans aller jusqu'à rendre toute la bibliothèque sur un écran très large.
+ */
+const CONTINUE_ROWS = 1
+const RECENT_ROWS = 2
+const RECENT_POOL = 60
+
 interface Props {
   items: MediaWithMetadata[]
   /** Médias entamés mais pas terminés */
@@ -39,7 +48,7 @@ export function HomeView({
   onPlay,
   onAddSource
 }: Props): React.JSX.Element {
-  const recent = recentlyAdded(items, 12)
+  const recent = recentlyAdded(items, RECENT_POOL)
 
   if (items.length === 0) {
     return (
@@ -80,6 +89,7 @@ export function HomeView({
             }))}
             onOpen={(k) => onOpen(Number(k))}
             onPlay={(k) => onPlay(Number(k))}
+            rows={CONTINUE_ROWS}
           />
         </>
       )}
@@ -89,6 +99,7 @@ export function HomeView({
         tiles={recent.map((m) => tileOf(m))}
         onOpen={(k) => onOpen(Number(k))}
         onPlay={(k) => onPlay(Number(k))}
+        rows={RECENT_ROWS}
       />
     </div>
   )

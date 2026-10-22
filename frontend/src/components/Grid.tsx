@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { focusCursor } from '@frontend/focus'
 import './Grid.css'
 
@@ -23,17 +23,48 @@ interface Props {
   /** Action secondaire (▶ au survol) : lecture directe sans passer par le détail */
   onPlay?: (key: string) => void
   empty?: React.ReactNode
+  /**
+   * N'afficher que ce nombre de lignes pleines. Les cartes en trop ne sont pas rendues : une
+   * rangée d'aperçu qui s'arrête au milieu d'une ligne se voit, et le nombre de colonnes dépend
+   * de la largeur de la fenêtre comme du thème.
+   */
+  rows?: number
 }
 
 /**
  * Grille responsive avec navigation clavier « salon » : flèches pour se déplacer,
  * Entrée pour ouvrir, P pour lire. Le nombre de colonnes est déduit de la mise en page réelle.
  */
-export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element {
+export function Grid({ tiles, onOpen, onPlay, empty, rows }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [focusState, setFocus] = useState(0)
+  /** Colonnes résolues par la mise en page ; 0 tant que rien n'est mesuré. */
+  const [tracks, setTracks] = useState(0)
+
+  /*
+   * `auto-fill` décide du nombre de colonnes à partir de la largeur, pas du nombre de cartes :
+   * la piste calculée reste donc juste même une fois la liste tronquée. Mesure avant peinture,
+   * pour que la ligne coupée ne s'affiche jamais entière.
+   */
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!rows || !el) return
+    const measure = (): void => {
+      const columns = getComputedStyle(el).gridTemplateColumns
+      // Grille non mise en page : la valeur rendue est la déclaration, pas les pistes résolues.
+      // La compter donnerait trois colonnes imaginaires ; mieux vaut garder la mesure précédente.
+      if (columns.includes('(')) return
+      setTracks(columns === 'none' ? 1 : columns.split(' ').filter(Boolean).length)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [rows])
+
+  const shown = rows && tracks > 0 ? tiles.slice(0, rows * tracks) : tiles
   // La liste peut rétrécir (filtre, suppression) : on garde l'index dans les bornes au rendu
-  const focus = Math.min(focusState, Math.max(0, tiles.length - 1))
+  const focus = Math.min(focusState, Math.max(0, shown.length - 1))
 
   /** Colonnes = nombre de cartes partageant le `offsetTop` de la première. */
   const columns = useCallback((): number => {
@@ -50,7 +81,7 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const last = tiles.length - 1
+      const last = shown.length - 1
       if (last < 0) return
       const cols = columns()
       const moves: Record<string, number> = {
@@ -74,13 +105,13 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
         setFocus(last)
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
-        onOpen(tiles[focus].key)
+        onOpen(shown[focus].key)
       } else if (e.key.toLowerCase() === 'p' && onPlay) {
         e.preventDefault()
-        onPlay(tiles[focus].key)
+        onPlay(shown[focus].key)
       }
     },
-    [tiles, focus, columns, onOpen, onPlay]
+    [shown, focus, columns, onOpen, onPlay]
   )
 
   useEffect(() => {
@@ -89,13 +120,13 @@ export function Grid({ tiles, onOpen, onPlay, empty }: Props): React.JSX.Element
       focusCursor(el)
       el.scrollIntoView({ block: 'nearest' })
     }
-  }, [focus, tiles])
+  }, [focus, shown])
 
   if (tiles.length === 0) return <div className="grid__empty">{empty ?? 'Rien à afficher.'}</div>
 
   return (
     <div className="grid" ref={ref} onKeyDown={onKeyDown}>
-      {tiles.map((t, i) => (
+      {shown.map((t, i) => (
         <button
           key={t.key}
           className={`tile ${t.highlight ? 'tile--current' : ''}`}

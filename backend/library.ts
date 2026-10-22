@@ -847,8 +847,13 @@ export function startedPlayback(mediaId: number): void {
   playback.incrementPlayCount(openLibrary(), mediaId)
 }
 
-/** « Continuer à regarder » : médias entamés mais pas terminés, du plus récent au plus ancien. */
-export function continueWatching(limit = 12): (MediaWithMetadata & { position: number })[] {
+/**
+ * « Continuer à regarder » : médias entamés mais pas terminés, du plus récent au plus ancien.
+ * L'accueil n'en affiche qu'une ligne, mais sa largeur dépend de la fenêtre et du thème : la
+ * réserve doit couvrir une ligne pleine sur un grand écran, pas seulement les six d'une fenêtre
+ * ordinaire.
+ */
+export function continueWatching(limit = 30): (MediaWithMetadata & { position: number })[] {
   const d = openLibrary()
   const states = playback.inProgress(d, limit)
   const detailed = new Map(
