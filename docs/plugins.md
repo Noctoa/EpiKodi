@@ -44,7 +44,7 @@ cp -r examples/plugins/tvmaze-provider ~/.config/epikodi/plugins/
 | ------------- | --------------------------------------------------------------- |
 | `id`          | minuscules, chiffres et tirets, 3 à 50 caractères — sert de clé |
 | `main`        | chemin **à l'intérieur** du dossier ; `../` est refusé          |
-| `permissions` | `network`, `library:read`, `library:write`                      |
+| `permissions` | `network`, `library:read`, `library:write`, `process:launch`    |
 | `contributes` | `metadataProvider`, `hooks`, `menu`                             |
 
 Un manifeste incomplet n'est pas chargé : chaque champ fautif est signalé dans les Paramètres
@@ -89,11 +89,65 @@ exports.deactivate = () => {
 | `api.log(msg)`, `api.warn(msg)`   | toujours           | journalisé avec le préfixe de ton extension         |
 | `api.on(event, handler)`          | `hooks`            | `media:scanned`, `media:played`                     |
 | `api.registerMetadataProvider(p)` | `metadataProvider` | ta source rejoint celles de l'application           |
-| `api.addMenuItem(item)`           | `menu`             | une entrée dans la barre latérale                   |
+| `api.addMenuItem(item)`           | `menu`             | un écran à soi dans la barre latérale               |
 | `api.fetch(url, init)`            | `network`          | identique à `fetch` ; **absent sans la permission** |
+| `api.launch(command, args)`       | `process:launch`   | démarre un programme de la machine                  |
 
 Une permission non demandée n'est pas refusée au moment de l'appel : elle n'est tout simplement
-pas présente dans l'objet `api`.
+pas présente dans l'objet `api`. `launch` fait exception — il est toujours là, mais lève une
+erreur explicite sans la permission, parce qu'un `api.launch is not a function` n'aide personne.
+
+### Un écran à soi
+
+Une entrée de menu ajoute une ligne dans la barre latérale. L'écran qui s'ouvre affiche ce que
+renvoie `items()`, dans la grille habituelle de l'application, et `activate()` est rappelée quand
+l'utilisateur valide un élément. **Le cœur ne sait pas ce qu'il affiche** : il transporte des
+titres et des images, et renvoie un identifiant que l'extension seule sait interpréter.
+
+```js
+api.addMenuItem({
+  id: 'games',
+  label: 'Jeux',
+  icon: '⬢',
+
+  // Appelée à l'ouverture de l'écran, et sur « Rafraîchir »
+  items() {
+    return [
+      {
+        id: 'snes/Super Mario World.sfc', // opaque pour l'application
+        title: 'Super Mario World',
+        subtitle: 'SFC',
+        thumbnail: 'data:image/png;base64,…', // facultatif
+        icon: '⬢', // affiché faute de vignette
+        badge: '1990' // facultatif
+      }
+    ]
+  },
+
+  // Appelée quand l'utilisateur valide : à toi de décider ce que « ouvrir » veut dire
+  activate(itemId) {
+    api.launch('retroarch', [romPath(itemId)])
+  }
+})
+```
+
+Une erreur levée dans `items()` ou `activate()` est affichée telle quelle sur l'écran : c'est le
+bon endroit pour expliquer ce qui manque (« config.json absent », « émulateur introuvable »)
+plutôt que de renvoyer une liste vide inexplicable.
+
+Les vignettes passent en `data:` : une extension n'a pas de dossier servi par l'application.
+Prévois un plafond — une image par élément sur un catalogue de mille entrées traverse l'IPC.
+
+### Lancer un programme
+
+`api.launch(command, args)` démarre un programme **détaché** : il survit à l'extension et sa
+sortie ne bloque rien. Aucun shell n'est utilisé, les arguments sont transmis tels quels — un nom
+de fichier biscornu ne peut donc pas devenir une commande.
+
+C'est la permission la plus lourde de conséquences, et elle est affichée telle quelle dans les
+Paramètres. Un exemple complet est fourni : `examples/plugins/games-launcher` ajoute une section
+**Jeux** qui liste les ROM d'un dossier et les lance dans l'émulateur configuré pour leur
+extension — sans une ligne de code spécifique aux jeux dans EpiKodi.
 
 ### Fournir des métadonnées
 

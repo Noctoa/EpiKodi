@@ -49,6 +49,9 @@ export const IPC = {
   themesSelect: 'themes:select',
   pluginsList: 'plugins:list',
   pluginsSetEnabled: 'plugins:set-enabled',
+  pluginsMenus: 'plugins:menus',
+  pluginsItems: 'plugins:items',
+  pluginsActivate: 'plugins:activate',
   podcastsList: 'podcasts:list',
   podcastsEpisodes: 'podcasts:episodes',
   podcastsSubscribe: 'podcasts:subscribe',
@@ -210,6 +213,30 @@ export interface PluginProblem {
   errors: { field: string; message: string }[]
 }
 
+/** Une entrée de barre latérale apportée par une extension. */
+export interface PluginMenuEntry {
+  id: string
+  label: string
+  icon?: string
+}
+
+export interface PluginMenuGroup {
+  pluginId: string
+  pluginName: string
+  menu: PluginMenuEntry[]
+}
+
+/** Un élément listé par une extension, affiché dans la grille habituelle. */
+export interface PluginItem {
+  id: string
+  title: string
+  subtitle?: string | null
+  /** Image en `data:` : une extension n'a pas de dossier servi par l'application */
+  thumbnail?: string | null
+  icon?: string | null
+  badge?: string | null
+}
+
 export interface PluginList {
   plugins: PluginSummary[]
   broken: PluginProblem[]
@@ -328,6 +355,12 @@ export interface EpiKodiApi {
   pluginsList(): Promise<PluginList>
   /** Active ou désactive une extension ; le changement prend effet immédiatement. */
   pluginsSetEnabled(id: string, enabled: boolean): Promise<PluginList>
+  /** Entrées de barre latérale apportées par les extensions actives. */
+  pluginsMenus(): Promise<PluginMenuGroup[]>
+  /** Contenu d'une entrée, demandé à l'extension à l'ouverture de l'écran. */
+  pluginsItems(pluginId: string, menuId: string): Promise<PluginItem[]>
+  /** « Ouvrir » un élément : l'extension décide de ce que cela veut dire. */
+  pluginsActivate(pluginId: string, menuId: string, itemId: string): Promise<void>
 
   podcastsList(): Promise<PodcastWithCounts[]>
   podcastsEpisodes(podcastId: number): Promise<PodcastEpisode[]>

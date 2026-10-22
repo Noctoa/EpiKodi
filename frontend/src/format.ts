@@ -1,5 +1,14 @@
 /** Formatage partagé par les vues. */
 
+/**
+ * Message d'une erreur remontée par l'IPC, débarrassé de l'enrobage d'Electron : une erreur
+ * d'extension doit se lire telle que l'extension l'a écrite, pas précédée du nom du canal.
+ */
+export function errorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  return raw.replace(/^Error invoking remote method '[^']+':\s*/, '').replace(/^Error:\s*/, '')
+}
+
 export function fmtDuration(s: number | null): string {
   if (s === null || !Number.isFinite(s)) return '—'
   const h = Math.floor(s / 3600)

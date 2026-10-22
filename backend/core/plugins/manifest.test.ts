@@ -13,6 +13,22 @@ const valide = {
 }
 
 describe('parseManifest', () => {
+  it('accepte la permission de lancer un programme et la contribution « menu »', () => {
+    const { manifest, errors } = parseManifest({
+      ...valide,
+      permissions: ['process:launch'],
+      contributes: ['menu']
+    })
+    expect(errors).toEqual([])
+    expect(manifest).toMatchObject({ permissions: ['process:launch'], contributes: ['menu'] })
+  })
+
+  it('refuse une permission voisine mais inconnue', () => {
+    const { manifest, errors } = parseManifest({ ...valide, permissions: ['process:kill'] })
+    expect(manifest).toBeNull()
+    expect(errors[0].field).toBe('permissions')
+  })
+
   it('accepte un manifeste complet et le normalise', () => {
     const { manifest, errors } = parseManifest(valide)
     expect(errors).toEqual([])

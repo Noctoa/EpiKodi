@@ -36,7 +36,10 @@ import {
   libraryStats,
   listMedia,
   listPlaylists,
+  activatePluginItem,
   listPlugins,
+  pluginItems,
+  pluginMenus,
   listThemes,
   listPodcasts,
   matchesFor,
@@ -314,6 +317,16 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC.pluginsList, () => pluginList())
+  ipcMain.handle(IPC.pluginsMenus, () => pluginMenus())
+  ipcMain.handle(IPC.pluginsItems, (_, pluginId: string, menuId: string) =>
+    pluginItems(pluginId, menuId)
+  )
+  ipcMain.handle(
+    IPC.pluginsActivate,
+    async (_, pluginId: string, menuId: string, itemId: string) => {
+      await activatePluginItem(pluginId, menuId, itemId)
+    }
+  )
   ipcMain.handle(IPC.pluginsSetEnabled, async (_, id: string, enabled: boolean) => {
     await setPluginEnabled(id, enabled)
     return pluginList()

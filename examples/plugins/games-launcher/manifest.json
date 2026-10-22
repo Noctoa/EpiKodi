@@ -1,0 +1,11 @@
+{
+  "id": "games-launcher",
+  "name": "Jeux",
+  "version": "1.0.0",
+  "description": "Ajoute une section Jeux : liste les ROM d'un dossier et les lance dans l'émulateur configuré pour leur extension.",
+  "author": "EpiKodi",
+  "main": "index.js",
+  "permissions": ["process:launch"],
+  "contributes": ["menu"],
+  "engine": "0.1"
+}

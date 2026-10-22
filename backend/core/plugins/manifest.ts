@@ -4,11 +4,21 @@
  * plutôt que de faire échouer le chargement plus loin, de façon obscure.
  */
 
-/** Ce qu'un plugin peut demander à l'application. Tout le reste lui est refusé. */
-export const PERMISSIONS = ['network', 'library:read', 'library:write'] as const
+/**
+ * Ce qu'un plugin peut demander à l'application. Tout le reste lui est refusé.
+ *
+ * `process:launch` est la plus lourde de conséquences : elle laisse le plugin démarrer un
+ * programme de la machine (un émulateur, un lecteur externe). Elle est affichée telle quelle
+ * dans les Paramètres, et n'est exposée qu'aux plugins qui l'ont déclarée.
+ */
+export const PERMISSIONS = ['network', 'library:read', 'library:write', 'process:launch'] as const
 export type Permission = (typeof PERMISSIONS)[number]
 
-/** Points d'extension qu'un plugin déclare fournir. */
+/**
+ * Points d'extension qu'un plugin déclare fournir. `menu` ajoute une entrée dans la barre
+ * latérale : l'écran qui s'ouvre liste ce que le plugin renvoie, et le plugin décide de ce que
+ * « ouvrir » veut dire pour lui.
+ */
 export const CONTRIBUTIONS = ['metadataProvider', 'hooks', 'menu'] as const
 export type Contribution = (typeof CONTRIBUTIONS)[number]
 

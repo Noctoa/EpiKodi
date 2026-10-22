@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { utilityProcess, type UtilityProcess } from 'electron'
 import { parseManifest, type ManifestError, type PluginManifest } from './manifest'
-import type { FromPlugin, MenuItem, PluginMatch, ToPlugin } from './protocol'
+import type { FromPlugin, MenuItem, PluginMatch, PluginMethod, ToPlugin } from './protocol'
 
 export interface PluginInfo {
   manifest: PluginManifest
@@ -234,7 +234,7 @@ export class PluginManager {
   }
 
   /** Appelle une fonction fournie par un plugin et attend sa réponse. */
-  call(id: string, method: 'search' | 'details', ...args: unknown[]): Promise<unknown> {
+  call(id: string, method: PluginMethod, ...args: unknown[]): Promise<unknown> {
     const entry = this.running.get(id)
     if (!entry) return Promise.reject(new Error(`plugin ${id} inactif`))
 
@@ -257,6 +257,14 @@ export class PluginManager {
       })
       this.post(id, { type: 'call', callId, method, args })
     })
+  }
+
+  /** Entrées de barre latérale des plugins actifs, dans l'ordre d'activation. */
+  menus(): { pluginId: string; pluginName: string; menu: MenuItem[] }[] {
+    return [...this.running.values()]
+      .map((r) => r.info)
+      .filter((i) => i.status === 'active' && i.menu.length > 0)
+      .map((i) => ({ pluginId: i.manifest.id, pluginName: i.manifest.name, menu: i.menu }))
   }
 
   /** Plugins actifs déclarant fournir des métadonnées. */

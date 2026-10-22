@@ -21,6 +21,8 @@ export default tseslint.config(
     languageOptions: {
       sourceType: 'commonjs',
       globals: { exports: 'writable', module: 'writable', require: 'readonly', console: 'readonly' }
-    }
+    },
+    // Du CommonJS assumé : `require` y est la façon normale de charger un module
+    rules: { '@typescript-eslint/no-require-imports': 'off' }
   }
 )

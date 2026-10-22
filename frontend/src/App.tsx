@@ -7,6 +7,7 @@ import {
   type EpisodeDownload,
   type ContinueItem,
   type OpenedMedia,
+  type PluginMenuGroup,
   type PlaylistSummary,
   type PodcastWithCounts,
   type ScanProgress
@@ -39,6 +40,7 @@ import { HomeView, tileOf } from './views/HomeView'
 import { AlbumsView, AlbumTracksView, ArtistsView } from './views/MusicView'
 import { FavoritesView } from './views/FavoritesView'
 import { PlaylistsView, PlaylistView } from './views/PlaylistsView'
+import { PluginView } from './views/PluginView'
 import { PodcastEpisodesView, PodcastsView, useEpisodes } from './views/PodcastsView'
 import { SearchView } from './views/SearchView'
 import { SettingsView } from './views/SettingsView'
@@ -75,6 +77,8 @@ export default function App(): React.JSX.Element {
   const [continueItems, setContinueItems] = useState<ContinueItem[]>([])
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
+  /** Entrées de barre latérale apportées par les extensions actives */
+  const [pluginMenus, setPluginMenus] = useState<PluginMenuGroup[]>([])
 
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<MediaQuery>({})
@@ -162,6 +166,15 @@ export default function App(): React.JSX.Element {
   )
 
   const reloadPodcasts = useCallback(() => window.epikodi.podcastsList().then(setPodcasts), [])
+  const reloadPluginMenus = useCallback(
+    () => window.epikodi.pluginsMenus().then(setPluginMenus),
+    []
+  )
+
+  // Les extensions démarrent après l'interface : leurs entrées apparaissent quand elles sont prêtes
+  useEffect(() => {
+    void reloadPluginMenus()
+  }, [reloadPluginMenus])
 
   useEffect(() => {
     let cancelled = false
@@ -200,8 +213,10 @@ export default function App(): React.JSX.Element {
       window.epikodi.onLibraryChanged((e) => {
         setEnrichPending(e.enrichPending)
         void reloadLibrary()
+        // Une extension vient peut-être de s'activer ou de s'arrêter
+        void reloadPluginMenus()
       }),
-    [reloadLibrary]
+    [reloadLibrary, reloadPluginMenus]
   )
 
   useEffect(
@@ -621,6 +636,22 @@ export default function App(): React.JSX.Element {
       case 'settings':
         return <SettingsView />
 
+      case 'plugin': {
+        const group = pluginMenus.find((g) => g.pluginId === view.pluginId)
+        if (!group) {
+          return <div className="grid__empty">Cette extension n'est plus active.</div>
+        }
+        return (
+          <PluginView
+            key={`${view.pluginId}:${view.menuId}`}
+            pluginId={view.pluginId}
+            menuId={view.menuId}
+            pluginName={group.pluginName}
+            title={view.title}
+          />
+        )
+      }
+
       case 'detail':
         return detailMedia ? (
           <MediaDetail
@@ -705,7 +736,7 @@ export default function App(): React.JSX.Element {
       </header>
 
       <div className="app__body">
-        <Sidebar view={view} counts={counts} onNavigate={(s) => go({ name: s } as View)} />
+        <Sidebar view={view} counts={counts} pluginMenus={pluginMenus} onNavigate={go} />
         <main className={`app__main ${playing ? 'app__main--player' : ''}`}>
           {playing ? (
             <Player

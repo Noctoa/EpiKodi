@@ -5,15 +5,51 @@
  *  - le plugin ne reçoit que l'API que nous lui passons, et seulement ce que son manifeste
  *    déclare (une permission non demandée n'est tout simplement pas exposée).
  */
+import { spawn } from 'node:child_process'
+import { accessSync, constants } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { grants, type PluginManifest } from './manifest'
-import type { FromPlugin, MenuItem, PluginMatch, ToPlugin } from './protocol'
+import type { FromPlugin, MenuItem, PluginItem, PluginMatch, ToPlugin } from './protocol'
 
 const send = (message: FromPlugin): void => process.parentPort.postMessage(message)
 
 const log = (level: 'info' | 'warn' | 'error', message: string): void =>
   send({ type: 'log', level, message })
+
+/**
+ * Retrouve un programme avant de le lancer. `spawn` ne signale une commande absente qu'en
+ * asynchrone, sur l'événement `error` : sans cette vérification, l'utilisateur clique sur un jeu
+ * et il ne se passe rien, sans la moindre explication.
+ */
+function resolveCommand(command: string): string {
+  const executable = (path: string): boolean => {
+    try {
+      accessSync(path, constants.X_OK)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // Sur Windows, un programme s'appelle sans son extension : « retroarch » → « retroarch.exe »
+  const suffixes =
+    process.platform === 'win32' ? ['', ...(process.env['PATHEXT'] ?? '.EXE').split(';')] : ['']
+  const candidates = (base: string): string[] => suffixes.map((s) => base + s)
+
+  if (/[\\/]/.test(command)) {
+    const found = candidates(command).find(executable)
+    if (!found) throw new Error(`${command} : introuvable ou non exécutable`)
+    return found
+  }
+
+  for (const dir of (process.env['PATH'] ?? '').split(delimiter)) {
+    if (!dir) continue
+    const found = candidates(join(dir, command)).find(executable)
+    if (found) return found
+  }
+  throw new Error(`${command} : commande introuvable (ni dans le PATH, ni comme chemin)`)
+}
 
 /** Ce qu'un plugin peut enregistrer auprès de l'application. */
 interface ProviderRegistration {
@@ -32,8 +68,15 @@ interface PluginModule {
   deactivate?(): void | Promise<void>
 }
 
+/** Ce qu'une entrée de menu sait faire : lister son contenu, et en activer un élément. */
+interface MenuRegistration extends MenuItem {
+  items?(): PluginItem[] | Promise<PluginItem[]>
+  activate?(itemId: string): void | Promise<void>
+}
+
 let provider: ProviderRegistration | null = null
 const menu: MenuItem[] = []
+const menus = new Map<string, MenuRegistration>()
 const listeners = new Map<string, ((payload: unknown) => void)[]>()
 let loaded: PluginModule | null = null
 
@@ -60,17 +103,45 @@ function buildApi(manifest: PluginManifest, dir: string): Record<string, unknown
       provider = registration
     },
 
-    addMenuItem(item: MenuItem): void {
+    /**
+     * Ajoute une entrée dans la barre latérale. `items` est appelée à l'ouverture de l'écran,
+     * `activate` quand l'utilisateur valide un élément : c'est le plugin qui décide quoi faire.
+     */
+    addMenuItem(item: MenuRegistration): void {
       if (!manifest.contributes.includes('menu')) {
         log('warn', 'addMenuItem ignoré : « menu » absent de contributes')
         return
       }
-      menu.push(item)
+      menus.set(item.id, item)
+      menu.push({ id: item.id, label: item.label, icon: item.icon })
     }
   }
 
   // Le réseau n'est exposé qu'aux plugins qui l'ont demandé
   if (grants(manifest, 'network')) api['fetch'] = globalThis.fetch.bind(globalThis)
+
+  /**
+   * Démarre un programme de la machine, détaché : l'émulateur survit à l'extinction du plugin,
+   * et sa sortie ne bloque rien. On ne passe pas par un shell — les arguments sont transmis tels
+   * quels, donc un nom de fichier biscornu ne peut pas devenir une commande.
+   */
+  api['launch'] = (command: string, args: string[] = []): void => {
+    if (!grants(manifest, 'process:launch')) {
+      throw new Error('launch refusé : « process:launch » absent des permissions du manifeste')
+    }
+    if (typeof command !== 'string' || !command.trim()) throw new Error('commande vide')
+    const child = spawn(
+      resolveCommand(command.trim()),
+      Array.isArray(args) ? args.map(String) : [],
+      {
+        detached: true,
+        stdio: 'ignore',
+        shell: false
+      }
+    )
+    child.on('error', (err: Error) => log('error', `${command} : ${err.message}`))
+    child.unref()
+  }
   return api
 }
 
@@ -86,6 +157,21 @@ async function activate(manifest: PluginManifest, dir: string): Promise<void> {
     type: 'ready',
     provides: { metadataProvider: provider !== null, menu }
   })
+}
+
+async function handleCall(message: ToPlugin & { type: 'call' }): Promise<unknown> {
+  if (message.method === 'items' || message.method === 'activate') {
+    const entry = menus.get(message.args[0] as string)
+    if (!entry) throw new Error(`entrée de menu inconnue : ${String(message.args[0])}`)
+    if (message.method === 'items') return (await entry.items?.()) ?? []
+    await entry.activate?.(message.args[1] as string)
+    return null
+  }
+
+  if (!provider) throw new Error('aucun fournisseur enregistré')
+  return message.method === 'search'
+    ? await provider.search(message.args[0] as Parameters<ProviderRegistration['search']>[0])
+    : await provider.details(message.args[0] as string)
 }
 
 process.parentPort.on('message', (event: { data: ToPlugin }) => {
@@ -114,14 +200,7 @@ process.parentPort.on('message', (event: { data: ToPlugin }) => {
           break
 
         case 'call': {
-          if (!provider) throw new Error('aucun fournisseur enregistré')
-          const value =
-            message.method === 'search'
-              ? await provider.search(
-                  message.args[0] as Parameters<ProviderRegistration['search']>[0]
-                )
-              : await provider.details(message.args[0] as string)
-          send({ type: 'result', callId: message.callId, value })
+          send({ type: 'result', callId: message.callId, value: await handleCall(message) })
           break
         }
       }

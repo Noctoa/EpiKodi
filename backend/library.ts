@@ -46,6 +46,8 @@ import {
   type LibraryChanged,
   type LibraryStats,
   type MediaListQuery,
+  type PluginItem,
+  type PluginMenuGroup,
   type ScanProgress
 } from '../shared/ipc'
 import { REMOTE_DEFAULT_PORT } from '../shared/remote'
@@ -442,6 +444,40 @@ export function listPlugins(): { plugins: PluginInfo[]; broken: BrokenPlugin[] }
 export async function setPluginEnabled(id: string, enabled: boolean): Promise<void> {
   await pluginManager().setEnabled(id, enabled)
   syncPluginProviders()
+}
+
+/**
+ * Entrées de barre latérale apportées par les extensions actives. Le cœur ne sait pas ce
+ * qu'elles contiennent : il les affiche, et renvoie les actions au plugin.
+ */
+export function pluginMenus(): PluginMenuGroup[] {
+  return pluginManager().menus()
+}
+
+/** Contenu d'une entrée de menu, demandé au plugin à l'ouverture de l'écran. */
+export async function pluginItems(pluginId: string, menuId: string): Promise<PluginItem[]> {
+  const raw = await pluginManager().call(pluginId, 'items', menuId)
+  return Array.isArray(raw) ? raw.filter(isPluginItem) : []
+}
+
+/** « Ouvrir » un élément : c'est le plugin qui décide de ce que cela signifie. */
+export function activatePluginItem(
+  pluginId: string,
+  menuId: string,
+  itemId: string
+): Promise<unknown> {
+  return pluginManager().call(pluginId, 'activate', menuId, itemId)
+}
+
+/** Un plugin est du code tiers : ce qu'il renvoie est vérifié avant d'atteindre l'interface. */
+function isPluginItem(raw: unknown): raw is PluginItem {
+  const item = raw as PluginItem | null
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    typeof item.id === 'string' &&
+    typeof item.title === 'string'
+  )
 }
 
 /** Prévient les extensions qu'un événement de la bibliothèque a eu lieu. */

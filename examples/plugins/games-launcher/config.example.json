@@ -1,0 +1,17 @@
+{
+  "romsDir": "~/Jeux/roms",
+
+  "emulators": {
+    "sfc": {
+      "command": "retroarch",
+      "args": ["-L", "/usr/lib/libretro/snes9x_libretro.so", "{rom}"]
+    },
+    "nes": {
+      "command": "retroarch",
+      "args": ["-L", "/usr/lib/libretro/fceumm_libretro.so", "{rom}"]
+    },
+    "gba": { "command": "mgba-qt", "args": ["{rom}"] },
+    "n64": { "command": "mupen64plus", "args": ["{rom}"] },
+    "default": { "command": "retroarch", "args": ["{rom}"] }
+  }
+}

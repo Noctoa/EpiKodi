@@ -57,3 +57,11 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Entrées apportées par les extensions : séparées des sections intégrées, pour que l'on voie
+   d'où elles viennent. */
+.sidebar__plugins {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--surface-2);
+}

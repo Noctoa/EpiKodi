@@ -15,6 +15,8 @@ export type View =
   | { name: 'detail'; mediaId: number }
   | { name: 'search' }
   | { name: 'podcast'; podcastId: number; title: string }
+  /** Écran apporté par une extension : c'est elle qui en fournit le contenu */
+  | { name: 'plugin'; pluginId: string; menuId: string; title: string }
 
 /** Entrées de la barre latérale, dans l'ordre d'affichage. */
 export const SECTIONS = [
@@ -52,9 +54,20 @@ export function activeSection(view: View): SectionName {
     case 'detail':
     case 'search':
       return 'home'
+    case 'plugin':
+      // Un écran d'extension ne correspond à aucune section intégrée : voir `activeKey`
+      return 'home'
     default:
       return view.name
   }
+}
+
+/** Clé d'une entrée de menu d'extension, unique pour toute l'application. */
+export const menuKey = (pluginId: string, menuId: string): string => `${pluginId}:${menuId}`
+
+/** Entrée de la barre latérale à surligner : une section intégrée, ou une entrée d'extension. */
+export function activeKey(view: View): string {
+  return view.name === 'plugin' ? menuKey(view.pluginId, view.menuId) : activeSection(view)
 }
 
 /** Empile une vue (le retour ramènera à la précédente). */
@@ -104,6 +117,8 @@ export function viewTitle(view: View, mediaTitle?: string): string {
     case 'search':
       return 'Recherche'
     case 'podcast':
+      return view.title
+    case 'plugin':
       return view.title
   }
 }

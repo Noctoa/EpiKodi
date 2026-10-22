@@ -60,6 +60,10 @@ const api: EpiKodiApi = {
   themesSelect: (id) => ipcRenderer.invoke(IPC.themesSelect, id),
   pluginsList: () => ipcRenderer.invoke(IPC.pluginsList),
   pluginsSetEnabled: (id, enabled) => ipcRenderer.invoke(IPC.pluginsSetEnabled, id, enabled),
+  pluginsMenus: () => ipcRenderer.invoke(IPC.pluginsMenus),
+  pluginsItems: (pluginId, menuId) => ipcRenderer.invoke(IPC.pluginsItems, pluginId, menuId),
+  pluginsActivate: (pluginId, menuId, itemId) =>
+    ipcRenderer.invoke(IPC.pluginsActivate, pluginId, menuId, itemId),
   podcastsList: () => ipcRenderer.invoke(IPC.podcastsList),
   podcastsEpisodes: (id) => ipcRenderer.invoke(IPC.podcastsEpisodes, id),
   podcastsSubscribe: (url) => ipcRenderer.invoke(IPC.podcastsSubscribe, url),

@@ -15,7 +15,8 @@ thèmes.
 - Bibliothèque indexée (SQLite) depuis des dossiers locaux et des partages réseau (SMB, WebDAV)
 - Podcasts : abonnement RSS, recherche par nom, écoute hors ligne et reprise de lecture
 - Affiches, synopsis, notes et casting des films via TheMovieDB (clé d'API gratuite)
-- Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées
+- Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées —
+  une extension peut ajouter son propre écran, jusqu'à lancer des émulateurs de jeux
 - Thèmes clair / sombre / système, et thèmes personnalisés chargés depuis un fichier
 - Playlists (import/export M3U), favoris et reprise de lecture
 - Télécommande : manette et contrôle depuis un smartphone
@@ -56,6 +57,10 @@ Ouvrir directement un fichier : `npm run dev -- --open /chemin/vers/video.mp4`
 7. **Paramètres → Télécommande → Activer** : ouvre sur ton téléphone l'adresse affichée (même
    Wi-Fi) pour piloter la lecture. Le serveur est désactivé par défaut et protégé par un jeton.
    Une manette branchée fonctionne sans rien activer : voir [docs/remote-api.md](docs/remote-api.md).
+
+8. **Jeux** : l'extension d'exemple `examples/plugins/games-launcher` ajoute une section Jeux qui
+   liste tes ROM et les lance dans l'émulateur de ton choix. Voir son
+   [README](examples/plugins/games-launcher/README.md).
 
 Extensions reconnues : mp4, mkv, webm, avi, mov, m4v, ogv · mp3, flac, ogg, oga, m4a, wav, aac, opus.
 Les dossiers cachés (`.xxx`) sont ignorés.

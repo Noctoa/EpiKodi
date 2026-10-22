@@ -1,0 +1,26 @@
+/*
+ * `.app__view` est une boîte flex : rendre la barre et la grille côte à côte les mettrait en
+ * colonnes. La vue a donc une racine à elle, comme les autres écrans.
+ */
+.plugin-view {
+  width: 100%;
+}
+
+.plugin-view__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+/* Une extension est du code tiers : quand elle échoue, on le dit sans casser l'écran */
+.plugin-view__error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+}
