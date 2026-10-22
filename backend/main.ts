@@ -7,6 +7,7 @@ import {
   IPC,
   VIDEO_EXTENSIONS,
   toMediaUrl,
+  type IptvChannelQuery,
   type MediaListQuery,
   type OpenedMedia,
   type MetadataStatus,
@@ -21,6 +22,8 @@ import {
   applyMatchTo,
   addSource,
   cancelScan,
+  addIptvSource,
+  cacheIptvLogos,
   continueWatching,
   createPlaylist,
   databasePath,
@@ -41,6 +44,10 @@ import {
   pluginItems,
   pluginMenus,
   listThemes,
+  iptvChannels,
+  iptvGroups,
+  lastIptvChannel,
+  listIptvSources,
   listPodcasts,
   matchesFor,
   playbackStateOf,
@@ -51,9 +58,11 @@ import {
   openLibrary,
   podcastEpisodes,
   podcastUnplayed,
+  refreshIptvSource,
   refreshPodcast,
   refreshPodcasts,
   removeEpisodeDownload,
+  removeIptvSource,
   removePodcast,
   removeFromPlaylist,
   removePlaylist,
@@ -63,6 +72,8 @@ import {
   savePlaybackPosition,
   saveEpisodeProgress,
   searchPodcasts,
+  setIptvFavorite,
+  setLastIptvChannel,
   setEpisodeCompleted,
   setPluginEnabled,
   setSelectedTheme,
@@ -205,6 +216,23 @@ function registerIpc(): void {
   ipcMain.handle(IPC.podcastsRefreshAll, () => refreshPodcasts())
   ipcMain.handle(IPC.podcastsRemove, (_, id: number) => removePodcast(id))
   ipcMain.handle(IPC.podcastsSearch, (_, term: string) => searchPodcasts(term))
+
+  ipcMain.handle(IPC.iptvSources, () => listIptvSources())
+  ipcMain.handle(IPC.iptvAdd, (_, location: string, name: string | null) =>
+    addIptvSource(location, name)
+  )
+  ipcMain.handle(IPC.iptvRefresh, (_, id: number) => refreshIptvSource(id))
+  ipcMain.handle(IPC.iptvRemove, (_, id: number) => removeIptvSource(id))
+  ipcMain.handle(IPC.iptvChannels, (_, query: IptvChannelQuery) => iptvChannels(query))
+  ipcMain.handle(IPC.iptvGroups, (_, sourceId?: number) => iptvGroups(sourceId))
+  ipcMain.handle(IPC.iptvFavorite, (_, id: number, favorite: boolean) =>
+    setIptvFavorite(id, favorite)
+  )
+  ipcMain.handle(IPC.iptvCacheLogos, (_, sourceId: number, limit?: number) =>
+    cacheIptvLogos(sourceId, limit)
+  )
+  ipcMain.handle(IPC.iptvLastChannel, () => lastIptvChannel())
+  ipcMain.handle(IPC.iptvSetLastChannel, (_, id: number) => setLastIptvChannel(id))
   ipcMain.handle(IPC.episodeDownload, (event, id: number) =>
     downloadEpisode(id, (p) => event.sender.send(IPC.episodeDownloadProgress, p)).then(
       () => undefined

@@ -10,6 +10,7 @@ export type View =
   | { name: 'playlist'; playlistId: number; title: string }
   | { name: 'favorites' }
   | { name: 'podcasts' }
+  | { name: 'tv' }
   | { name: 'sources' }
   | { name: 'settings' }
   | { name: 'detail'; mediaId: number }
@@ -26,6 +27,7 @@ export const SECTIONS = [
   { name: 'playlists', label: 'Playlists', icon: '☰' },
   { name: 'favorites', label: 'Favoris', icon: '★' },
   { name: 'podcasts', label: 'Podcasts', icon: '◉' },
+  { name: 'tv', label: 'TV', icon: '⊡' },
   { name: 'sources', label: 'Sources', icon: '⌸' },
   { name: 'settings', label: 'Paramètres', icon: '⚙' }
 ] as const satisfies readonly { name: View['name']; label: string; icon: string }[]
@@ -108,6 +110,8 @@ export function viewTitle(view: View, mediaTitle?: string): string {
       return 'Favoris'
     case 'podcasts':
       return 'Podcasts'
+    case 'tv':
+      return 'TV'
     case 'sources':
       return 'Sources'
     case 'settings':

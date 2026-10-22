@@ -12,7 +12,14 @@ import {
   type PodcastWithCounts,
   type ScanProgress
 } from '@shared/ipc'
-import type { Facets, MediaQuery, MediaWithMetadata, PodcastEpisode, Source } from '@shared/models'
+import type {
+  Facets,
+  IptvChannel,
+  MediaQuery,
+  MediaWithMetadata,
+  PodcastEpisode,
+  Source
+} from '@shared/models'
 import { FilterBar } from './components/FilterBar'
 import { Grid } from './components/Grid'
 import { MediaDetail } from './components/MediaDetail'
@@ -40,6 +47,7 @@ import { HomeView, tileOf } from './views/HomeView'
 import { AlbumsView, AlbumTracksView, ArtistsView } from './views/MusicView'
 import { FavoritesView } from './views/FavoritesView'
 import { PlaylistsView, PlaylistView } from './views/PlaylistsView'
+import { IptvView } from './views/IptvView'
 import { PluginView } from './views/PluginView'
 import { PodcastEpisodesView, PodcastsView, useEpisodes } from './views/PodcastsView'
 import { SearchView } from './views/SearchView'
@@ -60,6 +68,8 @@ export default function App(): React.JSX.Element {
   const audio = useAudioPlayer()
   const [nav, setNav] = useState(initialNav)
   const [playing, setPlayingState] = useState<OpenedMedia | null>(null)
+  /** Chaînes affichées par la section TV, pour le compteur de la barre latérale */
+  const [channelCount, setChannelCount] = useState(0)
   /** Média de la bibliothèque en cours de lecture : sans lui, la position n'est pas mémorisée */
   const [playingId, setPlayingId] = useState<number | undefined>(undefined)
   const [sources, setSources] = useState<Source[]>([])
@@ -436,6 +446,23 @@ export default function App(): React.JSX.Element {
   )
   const playNext = useCallback((m: MediaWithMetadata) => audio.playNext(fromMedia(m)), [audio])
 
+  /**
+   * Une chaîne se regarde comme un fichier : le lecteur reçoit une URL `media://`, que le
+   * backend résout vers le flux distant. Ce que Chromium sait en faire — et ce qu'il faudra
+   * remuxer — est l'affaire de l'issue #28.
+   */
+  const watchChannel = useCallback(
+    (channel: IptvChannel) => {
+      audio.pause()
+      showVideo({
+        path: channel.streamUrl,
+        name: channel.name,
+        url: toMediaUrl(channel.streamUrl)
+      })
+    },
+    [audio, showVideo]
+  )
+
   function content(): React.JSX.Element {
     switch (view.name) {
       case 'home':
@@ -633,6 +660,9 @@ export default function App(): React.JSX.Element {
           />
         )
 
+      case 'tv':
+        return <IptvView onWatch={watchChannel} onCountChange={setChannelCount} />
+
       case 'settings':
         return <SettingsView />
 
@@ -680,7 +710,8 @@ export default function App(): React.JSX.Element {
     sources: sources.length,
     podcasts: podcasts.length,
     playlists: playlists.length,
-    favorites: favorites.length
+    favorites: favorites.length,
+    tv: channelCount
   }
   // Le compteur de la barre de filtres décrit ce que la vue affiche, pas le total tous types
   const filterCount =

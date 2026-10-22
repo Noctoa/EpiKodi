@@ -22,6 +22,11 @@ interface Props {
   onOpen: (key: string) => void
   /** Action secondaire (▶ au survol) : lecture directe sans passer par le détail */
   onPlay?: (key: string) => void
+  /**
+   * Habillage de cette action secondaire. Toutes les grilles ne lisent pas : celle des chaînes
+   * s'en sert pour épingler une favorite, et le symbole comme la touche doivent le dire.
+   */
+  action?: { icon: string; title: string; key: string }
   empty?: React.ReactNode
   /**
    * N'afficher que ce nombre de lignes pleines. Les cartes en trop ne sont pas rendues : une
@@ -35,7 +40,16 @@ interface Props {
  * Grille responsive avec navigation clavier « salon » : flèches pour se déplacer,
  * Entrée pour ouvrir, P pour lire. Le nombre de colonnes est déduit de la mise en page réelle.
  */
-export function Grid({ tiles, onOpen, onPlay, empty, rows }: Props): React.JSX.Element {
+const PLAY: NonNullable<Props['action']> = { icon: '▶', title: 'Lire', key: 'p' }
+
+export function Grid({
+  tiles,
+  onOpen,
+  onPlay,
+  empty,
+  rows,
+  action = PLAY
+}: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [focusState, setFocus] = useState(0)
   /** Colonnes résolues par la mise en page ; 0 tant que rien n'est mesuré. */
@@ -106,12 +120,12 @@ export function Grid({ tiles, onOpen, onPlay, empty, rows }: Props): React.JSX.E
       } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         onOpen(shown[focus].key)
-      } else if (e.key.toLowerCase() === 'p' && onPlay) {
+      } else if (e.key.toLowerCase() === action.key && onPlay) {
         e.preventDefault()
         onPlay(shown[focus].key)
       }
     },
-    [shown, focus, columns, onOpen, onPlay]
+    [shown, focus, columns, onOpen, onPlay, action.key]
   )
 
   useEffect(() => {
@@ -145,13 +159,13 @@ export function Grid({ tiles, onOpen, onPlay, empty, rows }: Props): React.JSX.E
             {onPlay && (
               <span
                 className="tile__play"
-                title="Lire"
+                title={action.title}
                 onClick={(e) => {
                   e.stopPropagation()
                   onPlay(t.key)
                 }}
               >
-                ▶
+                {action.icon}
               </span>
             )}
           </div>

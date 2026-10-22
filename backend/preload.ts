@@ -71,6 +71,17 @@ const api: EpiKodiApi = {
   podcastsRefreshAll: () => ipcRenderer.invoke(IPC.podcastsRefreshAll),
   podcastsRemove: (id) => ipcRenderer.invoke(IPC.podcastsRemove, id),
   podcastsSearch: (term) => ipcRenderer.invoke(IPC.podcastsSearch, term),
+
+  iptvSources: () => ipcRenderer.invoke(IPC.iptvSources),
+  iptvAdd: (location, name) => ipcRenderer.invoke(IPC.iptvAdd, location, name ?? null),
+  iptvRefresh: (id) => ipcRenderer.invoke(IPC.iptvRefresh, id),
+  iptvRemove: (id) => ipcRenderer.invoke(IPC.iptvRemove, id),
+  iptvChannels: (query) => ipcRenderer.invoke(IPC.iptvChannels, query ?? {}),
+  iptvGroups: (sourceId) => ipcRenderer.invoke(IPC.iptvGroups, sourceId),
+  iptvFavorite: (id, favorite) => ipcRenderer.invoke(IPC.iptvFavorite, id, favorite),
+  iptvCacheLogos: (sourceId, limit) => ipcRenderer.invoke(IPC.iptvCacheLogos, sourceId, limit),
+  iptvLastChannel: () => ipcRenderer.invoke(IPC.iptvLastChannel),
+  iptvSetLastChannel: (id) => ipcRenderer.invoke(IPC.iptvSetLastChannel, id),
   episodeDownload: (id) => ipcRenderer.invoke(IPC.episodeDownload, id),
   episodeRemoveDownload: (id) => ipcRenderer.invoke(IPC.episodeRemoveDownload, id),
   episodeProgress: (id, position, completed) =>

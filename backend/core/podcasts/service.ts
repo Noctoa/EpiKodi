@@ -4,29 +4,11 @@ import { extname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { podcasts, type Database } from '../db'
+import { fetchWithTimeout } from '../net'
 import { parseFeed, type ParsedFeed } from './rss'
 
-const FETCH_TIMEOUT_MS = 20_000
 /** Un flux de podcast dépasse rarement quelques mégaoctets ; au-delà on refuse. */
 const MAX_FEED_BYTES = 20 * 1024 * 1024
-const USER_AGENT = 'EpiKodi/0.1 (+https://github.com/Noctoa/EpiKodi)'
-
-async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  try {
-    const res = await fetch(url, {
-      ...init,
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: { 'User-Agent': USER_AGENT, ...init.headers }
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return res
-  } finally {
-    clearTimeout(timer)
-  }
-}
 
 export async function fetchFeed(url: string): Promise<ParsedFeed> {
   const res = await fetchWithTimeout(url)

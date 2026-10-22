@@ -143,3 +143,36 @@ export interface PodcastEpisode {
   position: number
   completed: boolean
 }
+
+/** Une liste de chaînes en direct : une URL de playlist M3U, ou un fichier local. */
+export interface IptvSource {
+  id: number
+  /** URL http(s) de la playlist, ou chemin absolu d'un fichier */
+  location: string
+  name: string
+  addedAt: number
+  lastFetchAt: number | null
+  /** Message du dernier rafraîchissement raté, sinon null */
+  lastError: string | null
+  channelCount: number
+  /** Chaînes connues mais absentes du dernier rafraîchissement */
+  missingCount: number
+}
+
+export interface IptvChannel {
+  id: number
+  sourceId: number
+  name: string
+  streamUrl: string
+  logoUrl: string | null
+  /** Logo mis en cache sur disque, servi sans réseau */
+  logoPath: string | null
+  group: string | null
+  /** `tvg-id` : identifiant dans un guide des programmes XMLTV */
+  epgId: string | null
+  favorite: boolean
+  /** Rang dans la playlist, pour retrouver l'ordre voulu par le fournisseur */
+  position: number
+  /** Absente du dernier rafraîchissement : gardée, mais signalée */
+  missing: boolean
+}

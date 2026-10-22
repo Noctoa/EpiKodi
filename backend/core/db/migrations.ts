@@ -223,5 +223,50 @@ export const migrations: Migration[] = [
         value BLOB
       );
     `
+  },
+  {
+    version: 9,
+    name: 'iptv',
+    // Les chaînes vivent dans leurs propres tables : ce ne sont pas des fichiers d'une source
+    // scannée, elles n'ont ni taille ni date de modification, et leur flux n'existe qu'en direct.
+    //
+    // `channel_key` porte l'identité d'une chaîne d'un rafraîchissement à l'autre. C'est l'URL du
+    // flux et non `tvg-id` : dans les listes publiques, un même `tvg-id` revient sur plusieurs
+    // entrées (qualités, flux de secours), et s'en servir comme clé en perdrait une partie.
+    //
+    // `missing_at` plutôt qu'une suppression : une chaîne absente d'un rafraîchissement peut
+    // revenir au suivant, et effacer la ligne emporterait avec elle ce que l'utilisateur en a
+    // fait — son statut de favorite.
+    sql: `
+      CREATE TABLE iptv_sources (
+        id            INTEGER PRIMARY KEY,
+        location      TEXT    NOT NULL UNIQUE,     -- URL http(s) ou chemin d'un fichier local
+        name          TEXT    NOT NULL,
+        added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_fetch_at INTEGER,
+        last_error    TEXT
+      );
+
+      CREATE TABLE iptv_channels (
+        id          INTEGER PRIMARY KEY,
+        source_id   INTEGER NOT NULL REFERENCES iptv_sources(id) ON DELETE CASCADE,
+        channel_key TEXT    NOT NULL,
+        name        TEXT    NOT NULL,
+        stream_url  TEXT    NOT NULL,
+        logo_url    TEXT,
+        logo_path   TEXT,                          -- logo mis en cache sur disque
+        group_title TEXT,
+        epg_id      TEXT,                          -- tvg-id, pour le guide des programmes
+        favorite    INTEGER NOT NULL DEFAULT 0,
+        position    INTEGER NOT NULL DEFAULT 0,    -- ordre d'apparition dans la liste
+        seen_at     INTEGER NOT NULL DEFAULT (unixepoch()),
+        missing_at  INTEGER,                       -- NULL = présente au dernier rafraîchissement
+        UNIQUE (source_id, channel_key)
+      );
+
+      CREATE INDEX iptv_channels_source_idx   ON iptv_channels(source_id, position);
+      CREATE INDEX iptv_channels_group_idx    ON iptv_channels(group_title);
+      CREATE INDEX iptv_channels_favorite_idx ON iptv_channels(favorite) WHERE favorite = 1;
+    `
   }
 ]

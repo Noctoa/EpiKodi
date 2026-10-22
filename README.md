@@ -101,6 +101,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
 - [Thèmes](docs/themes.md) — variables, thèmes intégrés, écrire le sien
 - [Playlists](docs/playlists.md) — favoris, reprise de lecture, import/export M3U
+- [IPTV](docs/iptv.md) — listes de chaînes M3U, mise à jour différentielle, logos
 - [Télécommande](docs/remote-api.md) — manette, serveur HTTP/WebSocket, API
 - [ADR](docs/adr/) — décisions d'architecture
 

@@ -11,7 +11,29 @@ export interface M3uEntry {
   title: string | null
 }
 
+/**
+ * Attributs posés sur la ligne `#EXTINF` par les listes de chaînes en direct. Ils ne font
+ * partie d'aucune norme : ce sont ceux que Kodi, VLC et les fournisseurs IPTV se sont mis à
+ * écrire, et que tout le monde lit aujourd'hui.
+ */
+export interface M3uAttributes {
+  /** `tvg-id` : identifiant de la chaîne dans un guide des programmes XMLTV */
+  tvgId: string | null
+  /** `tvg-name` : nom canonique, souvent plus propre que le titre affiché */
+  tvgName: string | null
+  /** `tvg-logo` : URL du logo */
+  tvgLogo: string | null
+  /** `group-title` : rubrique sous laquelle ranger la chaîne */
+  groupTitle: string | null
+}
+
+export interface M3uChannel extends M3uEntry {
+  attributes: M3uAttributes
+}
+
 const HEADER = '#EXTM3U'
+const EXTINF = '#EXTINF:'
+const ATTRIBUTE = /([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"/g
 
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').trim()
 
@@ -26,34 +48,81 @@ export function serializeM3u(entries: M3uEntry[]): string {
 }
 
 /**
- * Analyse un fichier M3U. Tolérant : les commentaires inconnus sont ignorés, une ligne
- * `#EXTINF` sans média qui suive est abandonnée, et l'absence d'en-tête n'est pas fatale
- * (beaucoup de fichiers M3U simples n'en ont pas).
+ * Sépare une ligne `#EXTINF` de ce qui précède la virgule — durée et attributs — et du titre
+ * qui la suit. La virgule retenue est la première **hors guillemets** : un attribut comme
+ * `group-title="Sport, France"` en contient, et couper à la première venue amputerait le titre
+ * d'une chaîne sur deux dans les grosses listes.
  */
-export function parseM3u(content: string): M3uEntry[] {
-  const entries: M3uEntry[] = []
-  let pending: { duration: number | null; title: string | null } | null = null
+function splitExtinf(body: string): { head: string; title: string | null } {
+  let quoted = false
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i]
+    if (c === '"') quoted = !quoted
+    else if (c === ',' && !quoted) {
+      return { head: body.slice(0, i), title: body.slice(i + 1).trim() || null }
+    }
+  }
+  return { head: body, title: null }
+}
+
+/** Un attribut vide (`tvg-logo=""`) vaut une absence : il ne sert à rien de la mémoriser. */
+function parseAttributes(head: string): M3uAttributes {
+  const found = new Map<string, string>()
+  for (const [, key, value] of head.matchAll(ATTRIBUTE)) {
+    const trimmed = value.trim()
+    if (trimmed) found.set(key.toLowerCase(), trimmed)
+  }
+  return {
+    tvgId: found.get('tvg-id') ?? null,
+    tvgName: found.get('tvg-name') ?? null,
+    tvgLogo: found.get('tvg-logo') ?? null,
+    groupTitle: found.get('group-title') ?? null
+  }
+}
+
+/**
+ * Analyse un fichier M3U, attributs étendus compris. Tolérant : les commentaires inconnus sont
+ * ignorés, une ligne `#EXTINF` sans média qui suive est abandonnée, et l'absence d'en-tête
+ * n'est pas fatale (beaucoup de fichiers M3U simples n'en ont pas).
+ */
+export function parseM3uChannels(content: string): M3uChannel[] {
+  const channels: M3uChannel[] = []
+  let pending: Omit<M3uChannel, 'path'> | null = null
 
   for (const raw of content.split(/\r?\n/)) {
     const line = raw.trim()
     if (!line) continue
 
     if (line.startsWith('#')) {
-      const extinf = /^#EXTINF:\s*(-?\d+(?:\.\d+)?)\s*(?:,(.*))?$/i.exec(line)
-      if (extinf) {
-        const seconds = Number(extinf[1])
+      if (line.toUpperCase().startsWith(EXTINF)) {
+        const { head, title } = splitExtinf(line.slice(EXTINF.length))
+        const seconds = Number(/^\s*(-?\d+(?:\.\d+)?)/.exec(head)?.[1])
         pending = {
           duration: Number.isFinite(seconds) && seconds > 0 ? seconds : null,
-          title: extinf[2]?.trim() || null
+          title,
+          attributes: parseAttributes(head)
         }
       }
       continue // tout autre commentaire est ignoré
     }
 
-    entries.push({ path: line, duration: pending?.duration ?? null, title: pending?.title ?? null })
+    channels.push({
+      path: line,
+      duration: pending?.duration ?? null,
+      title: pending?.title ?? null,
+      attributes: pending?.attributes ?? parseAttributes('')
+    })
     pending = null
   }
-  return entries
+  return channels
+}
+
+/**
+ * Vue « playlist » du même fichier : le chemin, la durée et le titre, sans les attributs des
+ * chaînes en direct. C'est ce dont l'import de playlists utilisateur a besoin, et rien de plus.
+ */
+export function parseM3u(content: string): M3uEntry[] {
+  return parseM3uChannels(content).map(({ path, duration, title }) => ({ path, duration, title }))
 }
 
 /** Nom de fichier sûr pour l'export : « Ma playlist ! » → « Ma playlist.m3u ». */

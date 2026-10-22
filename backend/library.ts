@@ -6,6 +6,7 @@ import { app, BrowserWindow, safeStorage } from 'electron'
 import {
   media,
   openDatabase,
+  iptv,
   playback,
   playlists as playlistRepo,
   podcasts,
@@ -27,6 +28,8 @@ import {
 } from './core/metadata/types'
 import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
 import { PluginMetadataProvider } from './core/plugins/provider-adapter'
+import * as iptvService from './core/iptv/service'
+import type { ImportResult as IptvImportResult } from './core/iptv/service'
 import * as podcastService from './core/podcasts/service'
 import { matchEntries, parseM3u, playlistFileName, serializeM3u } from './core/playlists/m3u'
 import { discoverThemes, type DiscoveredThemes } from './core/themes/loader'
@@ -53,6 +56,8 @@ import {
 import { REMOTE_DEFAULT_PORT } from '../shared/remote'
 import type {
   Facets,
+  IptvChannel,
+  IptvSource,
   MediaWithMetadata,
   Playlist,
   Podcast,
@@ -84,6 +89,11 @@ export function podcastDir(): string {
 /** Pochettes des podcasts, mises en cache pour s'afficher sans réseau. */
 export function podcastImageDir(): string {
   return join(app.getPath('userData'), 'podcast-covers')
+}
+
+/** Logos des chaînes IPTV, mis en cache pour s'afficher sans réseau. */
+export function iptvLogoDir(): string {
+  return join(app.getPath('userData'), 'iptv-logos')
 }
 
 /** Affiches et images de fond issues des sources externes. */
@@ -169,6 +179,7 @@ let thumbnails: LocalProvider | null = null
 let covers: LocalProvider | null = null
 let downloads: LocalProvider | null = null
 let posters: LocalProvider | null = null
+let logos: LocalProvider | null = null
 
 function thumbnailProvider(): LocalProvider {
   thumbnails ??= new LocalProvider(thumbnailDir())
@@ -185,6 +196,10 @@ function downloadProvider(): LocalProvider {
 function posterProvider(): LocalProvider {
   posters ??= new LocalProvider(posterDir())
   return posters
+}
+function logoProvider(): LocalProvider {
+  logos ??= new LocalProvider(iptvLogoDir())
+  return logos
 }
 
 /**
@@ -205,6 +220,13 @@ function resolve(locator: string): { provider: StorageProvider; path: string } |
 
   const poster = posterProvider().relative(locator)
   if (poster !== null) return { provider: posterProvider(), path: poster }
+
+  const logo = logoProvider().relative(locator)
+  if (logo !== null) return { provider: logoProvider(), path: logo }
+
+  // Chaîne en direct : le flux est toujours distant, il n'en existe aucune copie locale
+  const channel = iptv.channelByUrl(openLibrary(), locator)
+  if (channel) return { provider: new RemoteFileProvider(channel.streamUrl), path: '' }
 
   // Épisode de podcast : soit sa copie téléchargée, soit le flux distant
   const episode = podcasts.episodeByUrl(openLibrary(), locator)
@@ -709,6 +731,60 @@ export function setEpisodeCompleted(id: number, completed: boolean): void {
 
 export function searchPodcasts(term: string): Promise<podcastService.PodcastSearchResult[]> {
   return podcastService.search(term)
+}
+
+// ---- chaînes en direct (IPTV) ----
+
+export function listIptvSources(): IptvSource[] {
+  return iptv.listSources(openLibrary())
+}
+
+export function addIptvSource(location: string, name?: string | null): Promise<IptvImportResult> {
+  return iptvService.addSource(openLibrary(), location, name ?? null, iptvLogoDir())
+}
+
+export function refreshIptvSource(id: number): Promise<IptvImportResult> {
+  return iptvService.refresh(openLibrary(), id, iptvLogoDir())
+}
+
+export function removeIptvSource(id: number): Promise<void> {
+  return iptvService.removeSource(openLibrary(), id)
+}
+
+export function iptvChannels(query: iptv.ChannelQuery = {}): IptvChannel[] {
+  return iptv.channels(openLibrary(), query)
+}
+
+export function iptvGroups(sourceId?: number): { group: string; count: number }[] {
+  return iptv.groups(openLibrary(), sourceId)
+}
+
+export function setIptvFavorite(channelId: number, favorite: boolean): void {
+  iptv.setFavorite(openLibrary(), channelId, favorite)
+}
+
+const LAST_CHANNEL_SETTING = 'iptv.lastChannel'
+
+/**
+ * Dernière chaîne regardée, pour rouvrir la section là où on l'avait laissée. En base et non
+ * dans le stockage du rendu : c'est une trace de ce que l'utilisateur a fait, au même titre
+ * qu'une position de lecture.
+ */
+export function lastIptvChannel(): IptvChannel | null {
+  const saved = settings.getText(openLibrary(), LAST_CHANNEL_SETTING)
+  return saved ? iptv.channel(openLibrary(), Number(saved)) : null
+}
+
+export function setLastIptvChannel(channelId: number): void {
+  settings.setText(openLibrary(), LAST_CHANNEL_SETTING, String(channelId))
+}
+
+/**
+ * Complète le cache des logos d'une source. L'import n'en prend qu'une première tranche : le
+ * reste se charge quand l'interface en arrive là.
+ */
+export function cacheIptvLogos(sourceId: number, limit?: number): Promise<number> {
+  return iptvService.cacheLogos(openLibrary(), sourceId, iptvLogoDir(), limit)
 }
 
 // ---- playlists, favoris et reprise de lecture ----

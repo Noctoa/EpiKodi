@@ -1,6 +1,8 @@
 /** Contrat IPC partagé entre backend (main + preload) et frontend. */
 import type {
   Facets,
+  IptvChannel,
+  IptvSource,
   MediaQuery,
   MediaWithMetadata,
   Podcast,
@@ -64,6 +66,16 @@ export const IPC = {
   episodeProgress: 'episode:progress',
   episodeCompleted: 'episode:completed',
   episodeDownloadProgress: 'episode:download-progress',
+  iptvSources: 'iptv:sources',
+  iptvAdd: 'iptv:add',
+  iptvRefresh: 'iptv:refresh',
+  iptvRemove: 'iptv:remove',
+  iptvChannels: 'iptv:channels',
+  iptvGroups: 'iptv:groups',
+  iptvFavorite: 'iptv:favorite',
+  iptvCacheLogos: 'iptv:cache-logos',
+  iptvLastChannel: 'iptv:last-channel',
+  iptvSetLastChannel: 'iptv:set-last-channel',
   remoteStatus: 'remote:status',
   remoteSetEnabled: 'remote:set-enabled',
   remoteSetPort: 'remote:set-port',
@@ -102,6 +114,28 @@ export interface PodcastRefresh {
   added: number
   total: number
   error: string | null
+}
+
+/** Ce que rapporte l'import ou le rafraîchissement d'une liste de chaînes. */
+export interface IptvImport {
+  sourceId: number
+  name: string
+  added: number
+  /** Chaînes connues absentes de cette version de la liste, gardées mais signalées */
+  missing: number
+  total: number
+  error: string | null
+}
+
+export interface IptvChannelQuery {
+  sourceId?: number
+  group?: string
+  search?: string
+  /** Inclure les chaînes disparues de la playlist (exclues par défaut) */
+  includeMissing?: boolean
+  favoritesOnly?: boolean
+  limit?: number
+  offset?: number
 }
 
 export interface PodcastSearchResult {
@@ -371,6 +405,21 @@ export interface EpiKodiApi {
   podcastsRemove(podcastId: number): Promise<void>
   /** Recherche dans l'annuaire public d'Apple ; renvoie directement les URL de flux. */
   podcastsSearch(term: string): Promise<PodcastSearchResult[]>
+
+  iptvSources(): Promise<IptvSource[]>
+  /** Ajoute une playlist de chaînes (URL http(s) ou fichier local) et la charge aussitôt. */
+  iptvAdd(location: string, name?: string | null): Promise<IptvImport>
+  iptvRefresh(sourceId: number): Promise<IptvImport>
+  iptvRemove(sourceId: number): Promise<void>
+  iptvChannels(query?: IptvChannelQuery): Promise<IptvChannel[]>
+  /** Rubriques et effectifs, pour le filtre par groupe. */
+  iptvGroups(sourceId?: number): Promise<{ group: string; count: number }[]>
+  iptvFavorite(channelId: number, favorite: boolean): Promise<void>
+  /** Complète le cache des logos ; renvoie le nombre réellement mis en cache. */
+  iptvCacheLogos(sourceId: number, limit?: number): Promise<number>
+  /** Dernière chaîne regardée ; null si aucune, ou si elle a disparu de la liste. */
+  iptvLastChannel(): Promise<IptvChannel | null>
+  iptvSetLastChannel(channelId: number): Promise<void>
 
   /** Télécharge un épisode pour l'écoute hors ligne. */
   episodeDownload(episodeId: number): Promise<void>

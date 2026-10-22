@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchEntries, parseM3u, playlistFileName, serializeM3u } from './m3u'
+import { matchEntries, parseM3u, parseM3uChannels, playlistFileName, serializeM3u } from './m3u'
 
 describe('serializeM3u', () => {
   it('écrit un fichier lisible par les autres lecteurs', () => {
@@ -60,6 +60,70 @@ describe('parseM3u', () => {
   it('traite -1 et 0 comme une durée inconnue', () => {
     expect(parseM3u('#EXTINF:-1,A\n/a.mp3')[0].duration).toBeNull()
     expect(parseM3u('#EXTINF:0,A\n/a.mp3')[0].duration).toBeNull()
+  })
+})
+
+describe('parseM3uChannels', () => {
+  const ligne = (extinf: string, url = 'https://flux.example/a.m3u8'): string =>
+    `#EXTM3U\n${extinf}\n${url}`
+
+  it('lit les attributs des listes de chaînes', () => {
+    const [chaine] = parseM3uChannels(
+      ligne(
+        '#EXTINF:-1 tvg-id="FR.TF1" tvg-name="TF1" tvg-logo="https://img/tf1.png" ' +
+          'group-title="Généralistes",TF1 HD'
+      )
+    )
+    expect(chaine.title).toBe('TF1 HD')
+    expect(chaine.attributes).toEqual({
+      tvgId: 'FR.TF1',
+      tvgName: 'TF1',
+      tvgLogo: 'https://img/tf1.png',
+      groupTitle: 'Généralistes'
+    })
+  })
+
+  it('ne coupe pas le titre sur une virgule contenue dans un attribut', () => {
+    const [chaine] = parseM3uChannels(ligne('#EXTINF:-1 group-title="Sport, France",beIN 1'))
+    expect(chaine.attributes.groupTitle).toBe('Sport, France')
+    expect(chaine.title).toBe('beIN 1')
+  })
+
+  it('traite un attribut vide comme absent', () => {
+    const [chaine] = parseM3uChannels(ligne('#EXTINF:-1 tvg-id="" tvg-logo="  ",Sans rien'))
+    expect(chaine.attributes.tvgId).toBeNull()
+    expect(chaine.attributes.tvgLogo).toBeNull()
+  })
+
+  it('accepte une ligne sans titre après les attributs', () => {
+    const [chaine] = parseM3uChannels(ligne('#EXTINF:-1 tvg-id="X"'))
+    expect(chaine.title).toBeNull()
+    expect(chaine.attributes.tvgId).toBe('X')
+  })
+
+  it('garde la durée d’une entrée classique mêlée aux chaînes', () => {
+    const chaines = parseM3uChannels('#EXTINF:185,Artiste - Titre\n/musique/a.mp3')
+    expect(chaines[0].duration).toBe(185)
+    expect(chaines[0].attributes.groupTitle).toBeNull()
+  })
+
+  it('n’attribue pas les attributs d’une chaîne à la suivante', () => {
+    const chaines = parseM3uChannels(
+      '#EXTINF:-1 group-title="A",Un\nhttps://a\n#EXTINF:-1,Deux\nhttps://b'
+    )
+    expect(chaines.map((c) => c.attributes.groupTitle)).toEqual(['A', null])
+  })
+
+  it('laisse parseM3u aveugle aux attributs', () => {
+    const entrees = parseM3u(ligne('#EXTINF:-1 tvg-id="X" group-title="A",Chaîne'))
+    expect(entrees).toEqual([
+      { path: 'https://flux.example/a.m3u8', duration: null, title: 'Chaîne' }
+    ])
+  })
+
+  it('retrouve désormais le titre d’une ligne porteuse d’attributs', () => {
+    // Avant l'extension, la ligne ne correspondait à rien et le titre était perdu
+    expect(parseM3u(ligne('#EXTINF:-1 tvg-id="X",Chaîne'))[0].title).toBe('Chaîne')
   })
 })
 

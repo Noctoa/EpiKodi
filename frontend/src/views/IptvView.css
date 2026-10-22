@@ -1,0 +1,148 @@
+.iptv {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.iptv__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  font-size: 0.867rem;
+  color: var(--text-muted);
+}
+
+.iptv__spacer {
+  flex: 1;
+}
+
+.iptv__search {
+  font: inherit;
+  font-size: 0.867rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 200px;
+}
+
+.iptv__search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/*
+ * Un logo de chaîne n'est pas une jaquette : il est souvent transparent, de travers, et taillé
+ * pour un fond clair. On le pose entier sur la vignette plutôt que de le rogner, et on lui donne
+ * un fond neutre qui ne le fasse pas disparaître.
+ */
+.iptv .tile__thumb img {
+  object-fit: contain;
+  padding: 12px;
+}
+
+/*
+ * L'action secondaire de la grille est ici « épingler », pas « lire ». Elle ne peut donc pas
+ * couvrir toute la vignette comme pour un média : le clic au centre doit rester celui qui
+ * lance la chaîne. On la réduit à un bouton de coin.
+ */
+.iptv .tile__play {
+  inset: auto 8px 8px auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--overlay-strong);
+  font-size: 1.067rem;
+}
+
+/* Pastille des favorites : en haut à gauche, pour ne pas tomber sous le bouton d'épinglage */
+.iptv .tile__badge {
+  inset: 6px auto auto 6px;
+  color: var(--warning);
+  background: var(--overlay-strong);
+}
+
+/* ---- ajout d'une liste ---- */
+
+.iptv-add {
+  max-width: 640px;
+}
+
+.iptv-add__intro {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.iptv-add form {
+  display: flex;
+  gap: 8px;
+}
+
+.iptv-add input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.933rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.iptv-add input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.iptv-add--compact {
+  margin-top: 12px;
+}
+
+.iptv__error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-size: 0.867rem;
+}
+
+/* ---- listes déclarées ---- */
+
+.iptv__sources {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--surface-2);
+}
+
+.iptv__sources ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.iptv__sources li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.iptv__source-main {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.933rem;
+}
+
+.iptv__source-main .settings__hint {
+  word-break: break-all;
+}
