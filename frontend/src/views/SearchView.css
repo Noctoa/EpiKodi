@@ -7,7 +7,7 @@
 
 .search-results__section {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: 0.867rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);

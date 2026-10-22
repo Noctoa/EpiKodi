@@ -32,11 +32,11 @@
 
 .album__info h2 {
   margin: 0 0 6px;
-  font-size: 26px;
+  font-size: 1.733rem;
 }
 
 .album__byline {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 0.933rem;
 }

@@ -1,0 +1,162 @@
+/**
+ * Mode TV — interface « 10-foot », lisible depuis un canapé.
+ *
+ * Aucun composant n'est dupliqué : l'attribut `data-tv`, posé sur <html> par
+ * `frontend/src/tvmode.tsx`, redéfinit les variables de thème et réaménage les quelques endroits
+ * dont la mise en page — et non la taille du texte — doit changer de parti pris.
+ *
+ * L'essentiel tient dans `--font-size` : les tailles de texte des composants sont en `rem`, donc
+ * l'augmenter agrandit l'application entière, y compris les écrans qui n'ont jamais entendu
+ * parler du mode TV. Ce qui reste ci-dessous, ce sont les décisions qu'une multiplication ne sait
+ * pas prendre : replier la barre latérale, écarter les vignettes, grossir les cibles du lecteur.
+ *
+ * Le mode TV ne touche aucune couleur. C'est ce qui lui permet de se combiner avec n'importe quel
+ * thème : un thème repeint, le mode TV redimensionne. Les tailles qu'un thème personnalisé
+ * injecte dans `:root` cèdent la place tant qu'il est actif — `:root[data-tv]` est plus
+ * spécifique — et reprennent aussitôt qu'on le quitte.
+ */
+
+:root[data-tv] {
+  --font-size: 20px;
+  /* Moins de colonnes, plus grandes : une jaquette doit se reconnaître sans se lever */
+  --tile-min: 300px;
+  --radius: 14px;
+}
+
+/* ---------- barre latérale repliée en icônes ---------- */
+
+/*
+ * De loin, sept libellés alignés sont du bruit : l'icône suffit à reconnaître une section, et la
+ * place gagnée va aux vignettes. Le libellé reste porté par l'attribut `title` du bouton
+ * (`Sidebar.tsx`), qui sert à la fois d'infobulle et de nom accessible une fois le texte masqué.
+ */
+:root[data-tv] .sidebar {
+  width: 92px;
+  flex: 0 0 92px;
+  padding: 16px 10px;
+}
+
+:root[data-tv] .sidebar ul {
+  gap: 6px;
+}
+
+:root[data-tv] .sidebar__item {
+  justify-content: center;
+  padding: 16px 0;
+}
+
+:root[data-tv] .sidebar__label,
+:root[data-tv] .sidebar__count {
+  display: none;
+}
+
+:root[data-tv] .sidebar__icon {
+  width: auto;
+  font-size: 1.6rem;
+}
+
+/* ---------- en-tête et cadre de vue ---------- */
+
+:root[data-tv] .app__header {
+  gap: 24px;
+  padding: 16px 28px;
+}
+
+/* Le titre n'a plus à s'aligner sur une barre latérale large de 210 px */
+:root[data-tv] .app__title {
+  width: auto;
+}
+
+:root[data-tv] .app__main {
+  padding: 26px 32px;
+}
+
+:root[data-tv] .app__view-head {
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+:root[data-tv] .app__back {
+  padding: 8px 18px;
+}
+
+/* ---------- grilles ---------- */
+
+:root[data-tv] .grid {
+  gap: 26px 22px;
+}
+
+:root[data-tv] .tile__icon {
+  font-size: 44px;
+}
+
+/* Le liseré de navigation doit se voir de loin : c'est lui qui dit où l'on est */
+:root[data-tv] .tile:focus-visible .tile__thumb,
+:root[data-tv] .remote-nav .tile[data-cursor] .tile__thumb {
+  outline-width: 4px;
+  outline-offset: 4px;
+}
+
+/* ---------- lecteur ---------- */
+
+/*
+ * Les contrôles sont la seule chose que l'on manipule à distance pendant un film : barre de
+ * progression épaisse, boutons assez larges pour être visés à la télécommande, dégradé plus haut
+ * pour que le texte tienne sur n'importe quelle image.
+ */
+:root[data-tv] .player__controls {
+  padding: 80px 32px 26px;
+}
+
+:root[data-tv] .player__seek {
+  height: 10px;
+  border-radius: 5px;
+  margin-bottom: 16px;
+}
+
+:root[data-tv] .player__seek:hover {
+  height: 13px;
+}
+
+:root[data-tv] .player__bar {
+  gap: 8px;
+}
+
+:root[data-tv] .player__btn {
+  min-width: 52px;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+:root[data-tv] .player__volume {
+  width: 130px;
+}
+
+:root[data-tv] .player__menu {
+  bottom: 70px;
+  min-width: 240px;
+}
+
+/* Les sous-titres suivent la taille du lecteur, pas celle de l'interface */
+:root[data-tv] .player__video::cue {
+  font-size: 1.5em;
+}
+
+:root[data-tv] .mini__row {
+  padding: 12px 22px;
+}
+
+/* ---------- pointeur ---------- */
+
+/*
+ * Devant une télévision, la souris ne sert qu'à régler : laissée immobile, son pointeur n'est
+ * plus qu'une tache sur l'image. `data-idle` est posé après un temps d'inactivité par
+ * `tvmode.tsx` et retiré au premier mouvement.
+ *
+ * Les descendants sont visés explicitement : sans cela, le premier `cursor: pointer` d'un bouton
+ * ou d'une vignette le ferait réapparaître.
+ */
+:root[data-tv][data-idle] body,
+:root[data-tv][data-idle] body * {
+  cursor: none;
+}

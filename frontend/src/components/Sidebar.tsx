@@ -18,6 +18,8 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
         className={`sidebar__item ${key === active ? 'sidebar__item--active' : ''}`}
         onClick={() => onNavigate(viewFor(key))}
         aria-current={key === active ? 'page' : undefined}
+        // En mode TV le libellé est masqué : sans ce titre, le bouton n'aurait plus de nom
+        title={label}
       >
         <span className="sidebar__icon">{icon}</span>
         <span className="sidebar__label">{label}</span>

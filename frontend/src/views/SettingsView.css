@@ -18,7 +18,7 @@
 
 .settings__block h3 {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: 0.867rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -29,7 +29,7 @@
   grid-template-columns: max-content 1fr;
   gap: 10px 20px;
   margin: 0;
-  font-size: 14px;
+  font-size: 0.933rem;
 }
 
 .settings__block dt {
@@ -43,7 +43,7 @@
 }
 
 .settings__block code {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -59,7 +59,7 @@
 .settings__todo {
   margin: 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 0.933rem;
   line-height: 1.6;
 }
 
@@ -74,7 +74,7 @@
   flex: 1;
   min-width: 240px;
   font: inherit;
-  font-size: 14px;
+  font-size: 0.933rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid transparent;
@@ -89,7 +89,7 @@
 
 .settings__message {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 0.867rem;
   color: var(--text-muted);
 }
 
@@ -135,13 +135,13 @@
 .plugin__version {
   margin-left: 8px;
   font-weight: 400;
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .plugin__description {
   margin-top: 3px;
-  font-size: 13px;
+  font-size: 0.867rem;
   line-height: 1.5;
   color: var(--text-muted);
   max-width: 62ch;
@@ -149,20 +149,20 @@
 
 .plugin__meta {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .plugin__error {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--danger);
 }
 
 .plugin__errors {
   margin: 6px 0 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--danger);
 }
 
@@ -220,18 +220,18 @@
 
 .theme__name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.933rem;
 }
 
 .theme__description {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
 .theme__current {
   margin-top: auto;
-  font-size: 11px;
+  font-size: 0.733rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--accent-hover);
@@ -240,7 +240,7 @@
 .theme__errors {
   margin: 12px 0 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--danger);
 }
 
@@ -269,7 +269,7 @@
 
 .remote__url code {
   color: var(--text);
-  font-size: 13px;
+  font-size: 0.867rem;
 }
 
 /* Un numéro de port n'a pas besoin de la largeur d'une clé d'API */
@@ -282,4 +282,23 @@
 .settings__key + .settings__todo,
 .settings__message + .settings__todo {
   margin-top: 16px;
+}
+
+/* Réglage à bascule : l'explication à gauche, l'action à droite, alignée sur son titre. */
+.settings__toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.settings__toggle p {
+  margin-top: 6px;
+}
+
+.settings__toggle button {
+  flex: 0 0 auto;
 }

@@ -18,6 +18,7 @@ thèmes.
 - Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées —
   une extension peut ajouter son propre écran, jusqu'à lancer des émulateurs de jeux
 - Thèmes clair / sombre / système, et thèmes personnalisés chargés depuis un fichier
+- Mode TV : interface agrandie pour une lecture à trois mètres, **F10** depuis n'importe où
 - Playlists (import/export M3U), favoris et reprise de lecture
 - Télécommande : manette et contrôle depuis un smartphone
 

@@ -3,6 +3,7 @@ import type { MetadataStatus, PluginList, SystemInfo } from '@shared/ipc'
 import type { RemoteStatus } from '@shared/remote'
 import { useGamepadIds } from '@frontend/remote/gamepad'
 import { useTheme } from '@frontend/theme'
+import { TV_SHORTCUT, useTvMode } from '@frontend/tvmode'
 import './SettingsView.css'
 
 /** Clé TheMovieDB : saisie, enregistrement chiffré, et effacement. */
@@ -88,10 +89,31 @@ function MetadataSettings(): React.JSX.Element {
 /** Choix du thème : le clic l'applique aussitôt, sans redémarrage. */
 function ThemeSettings(): React.JSX.Element {
   const { list, select } = useTheme()
+  const tv = useTvMode()
 
   return (
     <section className="settings__block">
       <h3>Apparence</h3>
+
+      <div className="settings__toggle">
+        <div>
+          <strong>Mode TV</strong>
+          <p className="settings__todo">
+            Texte et vignettes agrandis, barre latérale repliée en icônes, pointeur masqué au
+            repos&nbsp;: l’interface devient lisible à trois mètres d’un canapé. Il se combine avec
+            n’importe quel thème, qui garde ses couleurs. Raccourci&nbsp;:{' '}
+            <strong>{TV_SHORTCUT}</strong>, depuis n’importe quel écran.
+          </p>
+        </div>
+        <button
+          className={tv.enabled ? '' : 'btn--ghost'}
+          onClick={tv.toggle}
+          aria-pressed={tv.enabled}
+        >
+          {tv.enabled ? 'Activé' : 'Activer'}
+        </button>
+      </div>
+
       <p className="settings__todo">
         Un thème est un dossier contenant un <code>theme.json</code> qui redéfinit des couleurs et
         des tailles. Le changement s’applique aussitôt, sans redémarrage. Dépose les tiens

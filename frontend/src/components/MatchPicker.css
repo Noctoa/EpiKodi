@@ -30,7 +30,7 @@
 
 .picker__head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 1rem;
 }
 
 .picker__search {
@@ -42,7 +42,7 @@
 .picker__search input {
   flex: 1;
   font: inherit;
-  font-size: 14px;
+  font-size: 0.933rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid transparent;
@@ -59,7 +59,7 @@
 .picker__error {
   margin: 0;
   padding: 0 18px 14px;
-  font-size: 13px;
+  font-size: 0.867rem;
   color: var(--text-muted);
 }
 
@@ -120,19 +120,19 @@
   border-radius: 4px;
   background: var(--surface-2);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 0.733rem;
   font-weight: 400;
 }
 
 .picker__original {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   font-style: italic;
 }
 
 .picker__overview {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: 0.867rem;
   line-height: 1.5;
   color: var(--text-muted);
   display: -webkit-box;
@@ -147,7 +147,7 @@
   border-radius: 4px;
   background: var(--accent-soft);
   color: var(--accent-hover);
-  font-size: 11px;
+  font-size: 0.733rem;
   font-weight: 400;
   white-space: nowrap;
 }

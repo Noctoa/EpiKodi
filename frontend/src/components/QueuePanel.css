@@ -23,13 +23,13 @@
 
 .queue__head h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.933rem;
 }
 
 .queue__count {
   font-weight: 400;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 0.8rem;
   margin-left: 6px;
 }
 
@@ -70,11 +70,11 @@
 .queue__grip {
   color: var(--text-muted);
   cursor: grab;
-  font-size: 12px;
+  font-size: 0.8rem;
 }
 
 .queue__num {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   text-align: right;
 }
@@ -98,12 +98,12 @@
 }
 
 .queue__sub {
-  font-size: 11px;
+  font-size: 0.733rem;
   color: var(--text-muted);
 }
 
 .queue__dur {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }

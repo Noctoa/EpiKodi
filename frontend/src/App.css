@@ -17,7 +17,7 @@
   margin: 0;
   width: 178px;
   flex: 0 0 auto;
-  font-size: 19px;
+  font-size: 1.267rem;
   letter-spacing: 0.04em;
 }
 
@@ -31,7 +31,7 @@
 .app__search input {
   width: 100%;
   font: inherit;
-  font-size: 14px;
+  font-size: 0.933rem;
   color: var(--text);
   background: var(--surface-2);
   border: 1px solid transparent;
@@ -66,7 +66,7 @@
   border: 0;
   color: var(--text-muted);
   padding: 4px 8px;
-  font-size: 13px;
+  font-size: 0.867rem;
   cursor: pointer;
 }
 
@@ -80,7 +80,7 @@
   display: flex;
   justify-content: center;
   gap: 16px;
-  font-size: 13px;
+  font-size: 0.867rem;
   color: var(--text-muted);
 }
 
@@ -123,7 +123,7 @@
 
 .app__view-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.333rem;
 }
 
 .app__back {
@@ -131,7 +131,7 @@
   border: 0;
   border-radius: 8px;
   padding: 4px 12px;
-  font-size: 16px;
+  font-size: 1.067rem;
   color: var(--text);
   cursor: pointer;
 }

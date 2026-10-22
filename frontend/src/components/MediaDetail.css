@@ -49,7 +49,7 @@
 
 .detail__title {
   margin: 0 0 6px;
-  font-size: 22px;
+  font-size: 1.467rem;
   line-height: 1.25;
 }
 
@@ -76,7 +76,7 @@
   grid-template-columns: max-content 1fr;
   gap: 8px 20px;
   margin: 0;
-  font-size: 14px;
+  font-size: 0.933rem;
 }
 
 .detail__meta dt {
@@ -89,19 +89,19 @@
 }
 
 .detail__path {
-  font-size: 12px;
+  font-size: 0.8rem;
   color: var(--text-muted);
   word-break: break-all;
 }
 
 .detail__rating {
   margin: 0 0 14px;
-  font-size: 14px;
+  font-size: 0.933rem;
   color: var(--text-muted);
 }
 
 .detail__rating strong {
-  font-size: 20px;
+  font-size: 1.333rem;
   color: var(--warning);
 }
 
@@ -111,7 +111,7 @@
 
 .detail__cast {
   margin: 0 0 20px;
-  font-size: 13px;
+  font-size: 0.867rem;
   line-height: 1.6;
   color: var(--text-muted);
   max-width: 70ch;
@@ -154,7 +154,7 @@
   background: transparent;
   color: var(--text);
   padding: 8px 10px;
-  font-size: 14px;
+  font-size: 0.933rem;
   border-radius: 6px;
 }
 
@@ -164,6 +164,6 @@
 
 .detail__playlist-empty {
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 0.867rem;
   color: var(--text-muted);
 }

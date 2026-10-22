@@ -66,6 +66,29 @@ sortie du lecteur, fermeture d'une boîte — il se repose sur le premier élém
 
 La télécommande emprunte exactement ce chemin : voir [docs/remote-api.md](remote-api.md).
 
+## Mode TV
+
+Une bascule, pas une deuxième interface : **F10** — ou Paramètres → Apparence → Mode TV — pose
+l'attribut `data-tv` sur `<html>`, et `frontend/src/styles/tv.css` fait le reste. Le choix est
+mémorisé dans le stockage local du rendu, et relu avant le premier rendu (`restoreTvModeEarly()`,
+comme pour le thème) pour éviter de voir l'application changer de taille au démarrage.
+
+L'échelle tient dans une variable. Toutes les tailles de texte des composants sont exprimées en
+`rem`, et `html` porte `font-size: var(--font-size)` : pousser `--font-size` de 15 à 20 px
+agrandit l'application entière, y compris les écrans qui ignorent tout du mode TV. Le reste de
+`tv.css` ne traite que ce qu'une multiplication ne sait pas décider — barre latérale repliée en
+icônes (le libellé passe dans l'attribut `title`, qui devient le nom accessible du bouton),
+vignettes plus larges via `--tile-min`, cibles du lecteur agrandies.
+
+Aucune couleur n'est touchée : c'est ce qui permet au mode TV de se combiner avec n'importe quel
+thème. Un thème repeint, le mode TV redimensionne. Les tailles qu'un thème personnalisé injecte
+dans `:root` cèdent la place tant qu'il est actif — `:root[data-tv]` est plus spécifique — et
+reprennent dès qu'on le quitte.
+
+Le pointeur se masque après quatre secondes sans souris (`data-idle`, posé par `tvmode.tsx`) et
+revient au premier mouvement. Le sélecteur vise aussi les descendants : sans cela, le premier
+`cursor: pointer` d'un bouton le ferait réapparaître.
+
 ## Regroupement musique
 
 `groupByArtist()` classe les pistes par `albumArtist` (sinon `artist`, sinon « Artiste inconnu »),

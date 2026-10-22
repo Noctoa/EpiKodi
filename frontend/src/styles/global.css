@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './tv.css';
 
 * {
   box-sizing: border-box;
@@ -11,11 +12,20 @@ body,
   margin: 0;
 }
 
+/*
+ * L'échelle de l'interface tient dans cette seule déclaration : toutes les tailles de texte des
+ * composants sont exprimées en `rem`, donc relatives à celle-ci. Changer `--font-size` — un
+ * thème qui l'augmente, le mode TV qui le pousse pour une lecture à trois mètres — redimensionne
+ * l'application entière sans qu'aucune feuille de composant n'ait à le savoir.
+ */
+html {
+  font-size: var(--font-size);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: var(--font-size);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -52,7 +62,7 @@ button:focus-visible {
   background: transparent;
   border: 1px solid var(--text-muted);
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: 0.8rem;
 }
 
 .btn--ghost:hover {
