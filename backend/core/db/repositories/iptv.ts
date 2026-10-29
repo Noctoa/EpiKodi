@@ -113,6 +113,8 @@ export interface ChannelInput {
   /** En-têtes exigés par le serveur du flux (voir la migration 10) */
   userAgent: string | null
   referrer: string | null
+  /** Clé de rapprochement avec le guide des programmes (voir la migration 11) */
+  epgKey: string | null
 }
 
 export interface SyncResult {
@@ -146,8 +148,8 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
         db,
         `INSERT INTO iptv_channels
            (source_id, channel_key, name, stream_url, logo_url, group_title, epg_id, position,
-            user_agent, referrer)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            user_agent, referrer, epg_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (source_id, channel_key) DO UPDATE SET
            name        = excluded.name,
            stream_url  = excluded.stream_url,
@@ -157,6 +159,7 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
            position    = excluded.position,
            user_agent  = excluded.user_agent,
            referrer    = excluded.referrer,
+           epg_key     = excluded.epg_key,
            seen_at     = unixepoch(),
            missing_at  = NULL`,
         sourceId,
@@ -168,7 +171,8 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
         c.epgId,
         position++,
         c.userAgent,
-        c.referrer
+        c.referrer,
+        c.epgKey
       )
     }
 
@@ -236,6 +240,16 @@ export function channel(db: Database, id: number): IptvChannel | null {
 export function channelByUrl(db: Database, url: string): IptvChannel | null {
   const row = one<ChannelRow>(db, 'SELECT * FROM iptv_channels WHERE stream_url = ? LIMIT 1', url)
   return row ? toChannel(row) : null
+}
+
+/** Clés de guide des chaînes présentes : ce sont les seuls programmes qui valent d'être gardés. */
+export function epgKeys(db: Database): Set<string> {
+  return new Set(
+    all<{ epg_key: string }>(
+      db,
+      'SELECT DISTINCT epg_key FROM iptv_channels WHERE epg_key IS NOT NULL AND missing_at IS NULL'
+    ).map((r) => r.epg_key)
+  )
 }
 
 /** Rubriques et effectifs, pour le filtre par groupe. Les chaînes sans rubrique sont omises. */

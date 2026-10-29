@@ -146,6 +146,28 @@ export function parseM3uChannels(content: string): M3uChannel[] {
 }
 
 /**
+ * Guides des programmes annoncés par l'en-tête d'une liste de chaînes :
+ * `#EXTM3U x-tvg-url="https://a/guide.xml.gz,https://b/guide.xml"` (`url-tvg` chez certains
+ * fournisseurs). Plusieurs adresses se séparent par des virgules.
+ */
+export function parseM3uGuides(content: string): string[] {
+  const header = content
+    .split(/\r?\n/, 5)
+    .map((l) => l.trim())
+    .find((l) => l.toUpperCase().startsWith(HEADER))
+  if (!header) return []
+  const urls: string[] = []
+  for (const [, key, value] of header.matchAll(ATTRIBUTE)) {
+    if (!['x-tvg-url', 'url-tvg'].includes(key.toLowerCase())) continue
+    for (const url of value.split(',')) {
+      const trimmed = url.trim()
+      if (/^https?:\/\//i.test(trimmed) && !urls.includes(trimmed)) urls.push(trimmed)
+    }
+  }
+  return urls
+}
+
+/**
  * Vue « playlist » du même fichier : le chemin, la durée et le titre, sans les attributs des
  * chaînes en direct. C'est ce dont l'import de playlists utilisateur a besoin, et rien de plus.
  */

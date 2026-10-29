@@ -179,3 +179,36 @@ export interface IptvChannel {
   userAgent: string | null
   referrer: string | null
 }
+
+/** Un guide des programmes XMLTV, et ce qu'il apporte aux chaînes importées. */
+export interface EpgGuide {
+  id: number
+  /** URL http(s) ou fichier local, `.xml` ou `.xml.gz` */
+  location: string
+  name: string
+  addedAt: number
+  lastFetchAt: number | null
+  lastError: string | null
+  /** Chaînes décrites par le guide, rattachées ou non */
+  channelCount: number
+  programmeCount: number
+  /** Chaînes des playlists qui ont au moins un programme dans ce guide */
+  matchedCount: number
+}
+
+export interface EpgProgramme {
+  id: number
+  /** Clé de rapprochement avec `IptvChannel.epgId` (voir la migration 11) */
+  channelKey: string
+  /** Timestamps Unix, en secondes, UTC */
+  start: number
+  /** Toujours renseignée : à défaut d'annonce, le début du programme suivant */
+  stop: number
+  title: string
+  subtitle: string | null
+  description: string | null
+  category: string | null
+  iconUrl: string | null
+  /** « S2 E5 » */
+  episode: string | null
+}

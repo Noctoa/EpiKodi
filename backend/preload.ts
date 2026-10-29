@@ -82,6 +82,12 @@ const api: EpiKodiApi = {
   iptvCacheLogos: (sourceId, limit) => ipcRenderer.invoke(IPC.iptvCacheLogos, sourceId, limit),
   iptvLastChannel: () => ipcRenderer.invoke(IPC.iptvLastChannel),
   iptvSetLastChannel: (id) => ipcRenderer.invoke(IPC.iptvSetLastChannel, id),
+  epgGuides: () => ipcRenderer.invoke(IPC.epgGuides),
+  epgAdd: (location, name) => ipcRenderer.invoke(IPC.epgAdd, location, name ?? null),
+  epgRefresh: (id) => ipcRenderer.invoke(IPC.epgRefresh, id),
+  epgRemove: (id) => ipcRenderer.invoke(IPC.epgRemove, id),
+  epgProgrammes: (channelId, from, to) =>
+    ipcRenderer.invoke(IPC.epgProgrammes, channelId, from, to),
   episodeDownload: (id) => ipcRenderer.invoke(IPC.episodeDownload, id),
   episodeRemoveDownload: (id) => ipcRenderer.invoke(IPC.episodeRemoveDownload, id),
   episodeProgress: (id, position, completed) =>

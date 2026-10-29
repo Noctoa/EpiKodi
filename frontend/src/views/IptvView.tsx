@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toImageUrl, toMediaUrl, type IptvImport } from '@shared/ipc'
-import type { IptvChannel, IptvSource } from '@shared/models'
+import type { EpgGuide, IptvChannel, IptvSource } from '@shared/models'
 import { Grid } from '@frontend/components/Grid'
 import { errorMessage } from '@frontend/format'
 import { useDebounced } from '@frontend/hooks'
@@ -75,6 +75,122 @@ function AddSource({
           Pour essayer&nbsp;: <code>https://iptv-org.github.io/iptv/countries/fr.m3u</code>
         </p>
       )}
+    </div>
+  )
+}
+
+/** Exemple de guide pour la liste française d'iptv-org : ses chaînes s'y rattachent. */
+const EXAMPLE_GUIDE = 'https://xmltvfr.fr/xmltv/xmltv_tnt.xml.gz'
+
+/**
+ * Guides des programmes (XMLTV). Ils se rattachent aux chaînes par leur `tvg-id` ; un guide qui ne
+ * rattache rien le dit, plutôt que d'avoir l'air de fonctionner.
+ */
+function EpgGuides({ revision }: { revision: number }): React.JSX.Element {
+  const [guides, setGuides] = useState<EpgGuide[]>([])
+  const [location, setLocation] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [own, setOwn] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.epikodi.epgGuides().then((g) => !cancelled && setGuides(g))
+    return () => {
+      cancelled = true
+    }
+  }, [revision, own])
+
+  const run = async (
+    task: () => Promise<{ name: string; error: string | null; programmes: number; matched: number }>
+  ): Promise<void> => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const r = await task()
+      setMessage(
+        r.error
+          ? `« ${r.name} » : ${r.error}`
+          : `« ${r.name} » : ${r.programmes} programme(s), ${r.matched} chaîne(s) rattachée(s)`
+      )
+    } catch (err) {
+      setMessage(errorMessage(err))
+    }
+    setBusy(false)
+    setOwn((n) => n + 1)
+  }
+
+  const add = (e: React.FormEvent): void => {
+    e.preventDefault()
+    if (!location.trim()) return
+    void run(async () => {
+      const r = await window.epikodi.epgAdd(location.trim())
+      if (!r.error) setLocation('')
+      return r
+    })
+  }
+
+  return (
+    <div className="iptv__guides">
+      <h3 className="home__section">Guides des programmes</h3>
+      {guides.length > 0 && (
+        <ul>
+          {guides.map((g) => (
+            <li key={g.id}>
+              <div className="iptv__source-main">
+                <strong>{g.name}</strong>
+                <span className="settings__hint">
+                  {' '}
+                  · {g.programmeCount} programme(s) · {g.matchedCount} chaîne(s) rattachée(s)
+                  {g.channelCount > 0 && ` sur ${g.channelCount} décrites`}
+                </span>
+                <div className="settings__hint">{g.location}</div>
+                {g.lastError && <div className="iptv__error">{g.lastError}</div>}
+                {!g.lastError && g.lastFetchAt !== null && g.matchedCount === 0 && (
+                  <div className="iptv__error">
+                    Aucune chaîne de vos listes ne figure dans ce guide.
+                  </div>
+                )}
+              </div>
+              <button
+                className="btn--ghost"
+                disabled={busy}
+                onClick={() => void run(() => window.epikodi.epgRefresh(g.id))}
+              >
+                Rafraîchir
+              </button>
+              <button
+                className="btn--ghost btn--danger"
+                disabled={busy}
+                onClick={async () => {
+                  await window.epikodi.epgRemove(g.id)
+                  setMessage(`« ${g.name} » retiré.`)
+                  setOwn((n) => n + 1)
+                }}
+              >
+                Retirer
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="iptv-add iptv-add--compact">
+        <form onSubmit={add}>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Adresse d’un guide XMLTV (.xml ou .xml.gz)"
+            aria-label="Adresse ou fichier du guide des programmes"
+          />
+          <button disabled={busy || !location.trim()}>{busy ? 'Chargement…' : 'Ajouter'}</button>
+        </form>
+      </div>
+      {guides.length === 0 && (
+        <p className="settings__hint">
+          Pour la liste française&nbsp;: <code>{EXAMPLE_GUIDE}</code>
+        </p>
+      )}
+      {message && <p className="settings__message">{message}</p>}
     </div>
   )
 }
@@ -311,6 +427,8 @@ export function IptvView({ onWatch, onCountChange }: Props): React.JSX.Element {
         <AddSource compact onAdded={() => setRevision((r) => r + 1)} />
         {message && <p className="settings__message">{message}</p>}
         {current?.lastError && <p className="iptv__error">{current.lastError}</p>}
+
+        <EpgGuides revision={revision} />
       </div>
     </div>
   )

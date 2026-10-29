@@ -31,7 +31,8 @@ describe('parseChannels', () => {
       group: 'Généralistes',
       epgId: 'FR.TF1',
       userAgent: null,
-      referrer: null
+      referrer: null,
+      epgKey: 'fr.tf1'
     })
   })
 

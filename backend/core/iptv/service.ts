@@ -4,9 +4,11 @@ import { basename, extname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { IptvSource } from '@shared/models'
-import { iptv, type Database } from '../db'
+import { epg, iptv, type Database } from '../db'
 import { fetchWithTimeout } from '../net'
-import { parseM3uChannels, type M3uChannel } from '../playlists/m3u'
+import { parseM3uChannels, parseM3uGuides, type M3uChannel } from '../playlists/m3u'
+import { suggestGuideName } from './epg'
+import { epgKey } from './xmltv'
 
 /**
  * Listes de chaînes en direct. Une source est une playlist M3U — une URL ou un fichier — dont
@@ -94,7 +96,8 @@ function toChannel(entry: M3uChannel): iptv.ChannelInput | null {
     group: entry.attributes.groupTitle,
     epgId: entry.attributes.tvgId,
     userAgent: entry.http.userAgent,
-    referrer: entry.http.referrer
+    referrer: entry.http.referrer,
+    epgKey: epgKey(entry.attributes.tvgId)
   }
 }
 
@@ -138,8 +141,11 @@ export async function refresh(
   if (!source) throw new Error(`source IPTV ${sourceId} introuvable`)
 
   try {
-    const channels = parseChannels(await load(source.location))
+    const content = await load(source.location)
+    const channels = parseChannels(content)
     const result = iptv.syncChannels(db, sourceId, channels)
+    // Une liste qui annonce son guide le déclare d'elle-même ; il sera chargé en tâche de fond
+    for (const url of parseM3uGuides(content)) epg.upsertGuide(db, url, suggestGuideName(url))
     iptv.markFetched(db, sourceId)
     await cacheLogos(db, sourceId, logoDir)
     return { sourceId, name: source.name, error: null, ...result }

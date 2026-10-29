@@ -24,6 +24,8 @@ describe('migrations', () => {
       .map((r) => r.name as string)
       .filter((n) => !n.startsWith('media_fts_'))
     expect(tables).toEqual([
+      'epg_guides',
+      'epg_programmes',
       'iptv_channels',
       'iptv_sources',
       'media',

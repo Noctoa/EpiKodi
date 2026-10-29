@@ -146,3 +146,8 @@
 .iptv__source-main .settings__hint {
   word-break: break-all;
 }
+
+/* Les guides suivent les listes de chaînes, dans le même cadre */
+.iptv__guides {
+  margin-top: 24px;
+}

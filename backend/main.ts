@@ -23,8 +23,14 @@ import {
   addSource,
   cancelScan,
   addIptvSource,
+  addEpgGuide,
   cacheIptvLogos,
+  epgGuides,
+  epgProgrammes,
   iptvVariants,
+  refreshEpgGuide,
+  refreshEpgInBackground,
+  removeEpgGuide,
   continueWatching,
   createPlaylist,
   databasePath,
@@ -148,6 +154,8 @@ function createWindow(): BrowserWindow {
     identifyPending()
     // Les abonnements se mettent à jour en tâche de fond : l'interface n'attend pas le réseau
     void refreshPodcasts()
+    // Le guide des programmes aussi : purge du passé, puis rechargement de ce qui a vieilli
+    void refreshEpgInBackground()
     // Les extensions démarrent après l'interface : une extension lente ne retarde pas l'affichage
     void startPlugins()
   })
@@ -235,6 +243,15 @@ function registerIpc(): void {
   )
   ipcMain.handle(IPC.iptvLastChannel, () => lastIptvChannel())
   ipcMain.handle(IPC.iptvSetLastChannel, (_, id: number) => setLastIptvChannel(id))
+  ipcMain.handle(IPC.epgGuides, () => epgGuides())
+  ipcMain.handle(IPC.epgAdd, (_, location: string, name: string | null) =>
+    addEpgGuide(location, name)
+  )
+  ipcMain.handle(IPC.epgRefresh, (_, id: number) => refreshEpgGuide(id))
+  ipcMain.handle(IPC.epgRemove, (_, id: number) => removeEpgGuide(id))
+  ipcMain.handle(IPC.epgProgrammes, (_, channelId: number, from: number, to: number) =>
+    epgProgrammes(channelId, from, to)
+  )
   ipcMain.handle(IPC.episodeDownload, (event, id: number) =>
     downloadEpisode(id, (p) => event.sender.send(IPC.episodeDownloadProgress, p)).then(
       () => undefined
@@ -402,6 +419,8 @@ function registerIpc(): void {
   })
 }
 
+const EPG_CHECK_INTERVAL_MS = 60 * 60 * 1000
+
 void app.whenReady().then(() => {
   electronApp.setAppUserModelId('fr.epitech.epikodi')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
@@ -412,6 +431,9 @@ void app.whenReady().then(() => {
   createWindow()
   // La télécommande est désactivée par défaut : sans réglage enregistré, rien n'écoute
   void applyRemoteSettings()
+  // Une application laissée ouverte des jours garde un guide à jour : chaque heure on purge, et
+  // un guide n'est rechargé que s'il a plus de douze heures (voir docs/iptv.md)
+  setInterval(() => void refreshEpgInBackground(), EPG_CHECK_INTERVAL_MS).unref()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

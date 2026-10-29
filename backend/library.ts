@@ -4,6 +4,7 @@ import { basename, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
 import {
+  epg,
   media,
   openDatabase,
   iptv,
@@ -28,7 +29,10 @@ import {
 } from './core/metadata/types'
 import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
 import { PluginMetadataProvider } from './core/plugins/provider-adapter'
+import * as epgService from './core/iptv/epg'
+import type { GuideImportResult as EpgImportResult } from './core/iptv/epg'
 import { fetchVariants } from './core/iptv/hls'
+import { epgKey } from './core/iptv/xmltv'
 import * as iptvService from './core/iptv/service'
 import type { ImportResult as IptvImportResult } from './core/iptv/service'
 import * as podcastService from './core/podcasts/service'
@@ -58,6 +62,8 @@ import {
 import { REMOTE_DEFAULT_PORT } from '../shared/remote'
 import type {
   Facets,
+  EpgGuide,
+  EpgProgramme,
   IptvChannel,
   IptvSource,
   MediaWithMetadata,
@@ -741,12 +747,29 @@ export function listIptvSources(): IptvSource[] {
   return iptv.listSources(openLibrary())
 }
 
-export function addIptvSource(location: string, name?: string | null): Promise<IptvImportResult> {
-  return iptvService.addSource(openLibrary(), location, name ?? null, iptvLogoDir())
+export async function addIptvSource(
+  location: string,
+  name?: string | null
+): Promise<IptvImportResult> {
+  const result = await iptvService.addSource(openLibrary(), location, name ?? null, iptvLogoDir())
+  afterChannelsChanged(result)
+  return result
 }
 
-export function refreshIptvSource(id: number): Promise<IptvImportResult> {
-  return iptvService.refresh(openLibrary(), id, iptvLogoDir())
+export async function refreshIptvSource(id: number): Promise<IptvImportResult> {
+  const result = await iptvService.refresh(openLibrary(), id, iptvLogoDir())
+  afterChannelsChanged(result)
+  return result
+}
+
+/**
+ * De nouvelles chaînes attendent peut-être des programmes que les guides ont écartés faute de
+ * les connaître : on les recharge, en tâche de fond. Un guide annoncé par la liste elle-même, et
+ * pas encore chargé, l'est à cette occasion.
+ */
+function afterChannelsChanged(result: IptvImportResult): void {
+  if (result.error) return
+  void refreshEpgInBackground({ force: result.added > 0 })
 }
 
 export function removeIptvSource(id: number): Promise<void> {
@@ -782,6 +805,40 @@ export async function iptvVariants(url: string): Promise<LiveVariant[]> {
     userAgent: channel.userAgent,
     referrer: channel.referrer
   })
+}
+
+// ---- guide des programmes (EPG) ----
+
+export function epgGuides(): EpgGuide[] {
+  return epg.listGuides(openLibrary())
+}
+
+export function addEpgGuide(location: string, name?: string | null): Promise<EpgImportResult> {
+  return epgService.addGuide(openLibrary(), location, name ?? null)
+}
+
+export function refreshEpgGuide(id: number): Promise<EpgImportResult> {
+  return epgService.refreshGuide(openLibrary(), id)
+}
+
+export function removeEpgGuide(id: number): void {
+  epg.removeGuide(openLibrary(), id)
+}
+
+/** Programmes d'une chaîne ; vide pour une chaîne sans guide, ce n'est pas une erreur. */
+export function epgProgrammes(channelId: number, from: number, to: number): EpgProgramme[] {
+  const channel = iptv.channel(openLibrary(), channelId)
+  const key = epgKey(channel?.epgId)
+  return key ? epg.programmes(openLibrary(), key, from, to) : []
+}
+
+/** Purge ce qui est passé et recharge les guides périmés (tous, avec `force`). */
+export async function refreshEpgInBackground({ force = false } = {}): Promise<void> {
+  try {
+    await epgService.refreshStaleGuides(openLibrary(), { force })
+  } catch (err) {
+    console.warn('[epg] rafraîchissement :', (err as Error).message)
+  }
 }
 
 const LAST_CHANNEL_SETTING = 'iptv.lastChannel'

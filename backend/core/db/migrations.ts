@@ -278,5 +278,54 @@ export const migrations: Migration[] = [
       ALTER TABLE iptv_channels ADD COLUMN user_agent TEXT;
       ALTER TABLE iptv_channels ADD COLUMN referrer   TEXT;
     `
+  },
+  {
+    version: 11,
+    name: 'epg',
+    // Guide des programmes (XMLTV). Les programmes se rattachent aux chaînes par `epg_key` :
+    // le `tvg-id` débarrassé du suffixe de flux d'iptv-org (`6ter.fr@SD` → `6ter.fr`) et mis en
+    // minuscules, faute de quoi presque rien ne correspond (voir docs/iptv.md).
+    //
+    // `run` marque le rafraîchissement qui a écrit la ligne : le nouveau guide s'écrit par-dessus
+    // l'ancien, et ce qui n'a pas été réécrit est supprimé à la fin. Le guide n'est jamais vide
+    // entre deux, et un téléchargement interrompu ne perd rien.
+    sql: `
+      CREATE TABLE epg_guides (
+        id            INTEGER PRIMARY KEY,
+        location      TEXT    NOT NULL UNIQUE,     -- URL http(s) ou fichier local, .xml ou .xml.gz
+        name          TEXT    NOT NULL,
+        added_at      INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_fetch_at INTEGER,
+        last_error    TEXT,
+        channel_count INTEGER NOT NULL DEFAULT 0   -- chaînes décrites par le guide, rattachées ou non
+      );
+
+      CREATE TABLE epg_programmes (
+        id          INTEGER PRIMARY KEY,
+        guide_id    INTEGER NOT NULL REFERENCES epg_guides(id) ON DELETE CASCADE,
+        channel_key TEXT    NOT NULL,
+        start       INTEGER NOT NULL,              -- timestamp Unix (UTC)
+        stop        INTEGER,                       -- NULL : jusqu'au programme suivant
+        title       TEXT    NOT NULL,
+        subtitle    TEXT,
+        description TEXT,
+        category    TEXT,
+        icon_url    TEXT,
+        episode     TEXT,
+        run         INTEGER NOT NULL,
+        UNIQUE (guide_id, channel_key, start)
+      );
+
+      CREATE INDEX epg_programmes_channel_idx ON epg_programmes(channel_key, start);
+      CREATE INDEX epg_programmes_stop_idx    ON epg_programmes(stop);
+
+      ALTER TABLE iptv_channels ADD COLUMN epg_key TEXT;
+      UPDATE iptv_channels
+         SET epg_key = NULLIF(lower(CASE WHEN instr(epg_id, '@') > 0
+                                         THEN substr(epg_id, 1, instr(epg_id, '@') - 1)
+                                         ELSE epg_id END), '')
+       WHERE epg_id IS NOT NULL;
+      CREATE INDEX iptv_channels_epg_idx ON iptv_channels(epg_key);
+    `
   }
 ]

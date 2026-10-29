@@ -1,5 +1,7 @@
 /** Contrat IPC partagé entre backend (main + preload) et frontend. */
 import type {
+  EpgGuide,
+  EpgProgramme,
   Facets,
   IptvChannel,
   IptvSource,
@@ -76,6 +78,11 @@ export const IPC = {
   iptvCacheLogos: 'iptv:cache-logos',
   iptvLastChannel: 'iptv:last-channel',
   iptvSetLastChannel: 'iptv:set-last-channel',
+  epgGuides: 'epg:guides',
+  epgAdd: 'epg:add',
+  epgRefresh: 'epg:refresh',
+  epgRemove: 'epg:remove',
+  epgProgrammes: 'epg:programmes',
   remoteStatus: 'remote:status',
   remoteSetEnabled: 'remote:set-enabled',
   remoteSetPort: 'remote:set-port',
@@ -126,6 +133,19 @@ export interface IptvImport {
   /** Chaînes connues absentes de cette version de la liste, gardées mais signalées */
   missing: number
   total: number
+  error: string | null
+}
+
+/** Ce que rapporte l'import ou le rafraîchissement d'un guide des programmes. */
+export interface EpgImport {
+  guideId: number
+  name: string
+  /** Chaînes décrites par le guide */
+  channels: number
+  /** Programmes gardés : chaînes importées, de l'heure passée à une semaine */
+  programmes: number
+  /** Chaînes des playlists qui ont reçu au moins un programme */
+  matched: number
   error: string | null
 }
 
@@ -424,6 +444,14 @@ export interface EpiKodiApi {
   /** Dernière chaîne regardée ; null si aucune, ou si elle a disparu de la liste. */
   iptvLastChannel(): Promise<IptvChannel | null>
   iptvSetLastChannel(channelId: number): Promise<void>
+
+  epgGuides(): Promise<EpgGuide[]>
+  /** Ajoute un guide XMLTV (URL ou fichier, `.xml` ou `.xml.gz`) et le charge aussitôt. */
+  epgAdd(location: string, name?: string | null): Promise<EpgImport>
+  epgRefresh(guideId: number): Promise<EpgImport>
+  epgRemove(guideId: number): Promise<void>
+  /** Programmes d'une chaîne qui chevauchent [from, to[, timestamps Unix en secondes. */
+  epgProgrammes(channelId: number, from: number, to: number): Promise<EpgProgramme[]>
 
   /** Télécharge un épisode pour l'écoute hors ligne. */
   episodeDownload(episodeId: number): Promise<void>

@@ -185,20 +185,100 @@ Le critère « moins de 5 s » est tenu en médiane, pas pour chaque chaîne : l
 le téléchargement du premier segment chez le fournisseur, que ni ffmpeg ni hls.js ne raccourcit.
 Réduire `-analyzeduration` a été essayé sans gain mesurable sur le HLS.
 
+## Guide des programmes (EPG)
+
+Code : `backend/core/iptv/xmltv.ts` (format), `backend/core/iptv/epg.ts` (import, tâche de fond),
+`backend/core/db/repositories/epg.ts` (stockage), migration 11.
+
+Un guide est un fichier **XMLTV** — une URL ou un fichier local, en clair ou compressé. Il se
+déclare dans la vue TV (« Guides des programmes »), ou tout seul quand la liste de chaînes
+l'annonce dans son en-tête : `#EXTM3U x-tvg-url="…"` (ou `url-tvg`, plusieurs adresses séparées
+par des virgules). Pour la liste française d'iptv-org, qui n'en annonce pas,
+`https://xmltvfr.fr/xmltv/xmltv_tnt.xml.gz` (TNT) ou `…/xmltv.xml.gz` (complet) conviennent.
+
+### Lire un guide de 144 Mo
+
+Le guide complet de xmltvfr.fr pèse 17 Mo compressé, **144 Mo** en clair, pour 782 chaînes et
+**213 087 programmes**. Le construire en un arbre XML figerait le process principal — qui sert
+aussi l'IPC et les flux vidéo — et coûterait des gigaoctets. `XmltvReader` le lit donc au fil de
+l'eau : la structure de XMLTV est plate, chaque `<channel>` et `<programme>` se suffit à lui-même,
+et seul un élément complet est confié à fast-xml-parser. Un programme d'une chaîne qu'on n'a pas
+est écarté sur son attribut `channel`, **avant** d'être analysé.
+
+- **Compression** : gzip se reconnaît à ses deux premiers octets, pas à l'extension.
+- **Garde-fous** : 512 Mo décompressés au plus (bombe gzip), et un délai d'inactivité sur le
+  corps — celui de `fetchWithTimeout` s'arrête aux en-têtes.
+- **Fenêtre utile** : on garde les programmes des chaînes importées, de l'heure passée à huit jours.
+- **Écriture** par tranches de 1 000, une transaction chacune, en rendant la main entre deux.
+
+### Fuseaux horaires
+
+La DTD le dit : `YYYYMMDDhhmmss` suivi d'un décalage (`+0100`, `-0500`) ou d'une abréviation
+(`BST`), date éventuellement tronquée (`200209`) — et **sans fuseau, c'est de l'UTC**.
+`parseXmltvTime` convertit tout en timestamp UTC ; les tests vérifient qu'un même instant écrit
+en `+0100`, `+0000`, `-0500` ou `+0830` donne la même valeur. Un fuseau inconnu n'est pas deviné :
+le programme est ignoré.
+
+### Rattacher le guide aux chaînes
+
+Par le `tvg-id`, mais pas tel quel : iptv-org suffixe ses identifiants du flux (`6ter.fr@SD`), les
+guides écrivent `6ter.fr`, et la casse varie d'un fournisseur à l'autre. Sur la liste française,
+**aucun** identifiant ne correspond tel quel ; `epgKey` ôte le suffixe et passe en minuscules, ce
+qui en rattache **54 sur 192** — et 72 chaînes, plusieurs flux partageant la même. La clé est
+calculée à l'import des chaînes (`iptv_channels.epg_key`, indexée) et, pour celles déjà en base,
+par la migration elle-même.
+
+Une chaîne sans `tvg-id`, ou dont l'identifiant ne figure dans aucun guide, n'a simplement pas de
+programmes : `epg:programmes` renvoie une liste vide, sans erreur. Un guide qui ne rattache rien le
+dit dans la vue TV, plutôt que d'avoir l'air de fonctionner. Quand deux guides couvrent la même
+chaîne, le premier ajouté l'emporte : mélangés, ils donneraient des créneaux qui se chevauchent.
+
+### Rafraîchissement et purge
+
+- **Remplacement sans trou** : chaque ligne porte le numéro du rafraîchissement qui l'a écrite
+  (`run`). Le nouveau guide s'écrit par-dessus l'ancien, et ce qui n'a pas été réécrit n'est
+  supprimé qu'à la fin d'un import réussi : le guide n'est jamais vide entre deux, un
+  téléchargement interrompu ne perd rien.
+- **Tâche de fond** : au démarrage, puis toutes les heures, on purge ce qui est fini depuis plus
+  d'une heure et on recharge les guides lus il y a plus de 12 h. Importer ou rafraîchir une liste
+  recharge aussi les guides — de nouvelles chaînes attendent peut-être des programmes écartés
+  faute de les connaître.
+- **Fin implicite** : un programme sans `stop` dure jusqu'au suivant, à défaut une heure ; la
+  purge et la lecture appliquent la même règle.
+- Comme pour les listes, une erreur est mémorisée sur le guide (`last_error`) et jamais propagée.
+
+### Mesure
+
+Dans l'application (test e2e), import du guide complet de xmltvfr.fr par son URL, avec la liste
+française d'iptv-org :
+
+- 782 chaînes décrites, **72 chaînes rattachées**, 14 012 programmes gardés sur 213 087 ;
+  **1,5 s** téléchargement compris ;
+- **l'interface ne fige pas** : pendant l'import, l'IPC — interrogé toutes les 50 ms — a répondu en
+  6 ms au pire (1 ms en médiane), contre 40 ms au pire au repos ;
+- **horaires justes** : pour les 60 chaînes vérifiées, le programme en cours renvoyé par
+  `epg:programmes` (titre et heure de début) est identique à celui que donne une lecture
+  indépendante du XML brut, faite en Python avec ses décalages déclarés.
+
 ## API
 
-| Canal IPC              | Rôle                                                       |
-| ---------------------- | ---------------------------------------------------------- |
-| `iptv:sources`         | Les listes connues, avec nombre de chaînes et de disparues |
-| `iptv:add`             | Ajoute une playlist (URL ou fichier) et la charge aussitôt |
-| `iptv:refresh`         | Recharge une liste                                         |
-| `iptv:remove`          | Supprime la liste, ses chaînes et ses logos                |
-| `iptv:channels`        | Chaînes, filtrées par source, groupe, recherche, favorites |
-| `iptv:groups`          | Rubriques et effectifs                                     |
-| `iptv:favorite`        | Épingle une chaîne                                         |
-| `iptv:cache-logos`     | Complète le cache des logos                                |
-| `player:live-error`    | Pourquoi une chaîne n'a pas démarré ou s'est arrêtée       |
-| `player:live-variants` | Qualités d’une chaîne HLS                                  |
+| Canal IPC              | Rôle                                                               |
+| ---------------------- | ------------------------------------------------------------------ |
+| `iptv:sources`         | Les listes connues, avec nombre de chaînes et de disparues         |
+| `iptv:add`             | Ajoute une playlist (URL ou fichier) et la charge aussitôt         |
+| `iptv:refresh`         | Recharge une liste                                                 |
+| `iptv:remove`          | Supprime la liste, ses chaînes et ses logos                        |
+| `iptv:channels`        | Chaînes, filtrées par source, groupe, recherche, favorites         |
+| `iptv:groups`          | Rubriques et effectifs                                             |
+| `iptv:favorite`        | Épingle une chaîne                                                 |
+| `iptv:cache-logos`     | Complète le cache des logos                                        |
+| `player:live-error`    | Pourquoi une chaîne n'a pas démarré ou s'est arrêtée               |
+| `player:live-variants` | Qualités d’une chaîne HLS                                          |
+| `epg:guides`           | Les guides, avec programmes et chaînes rattachées                  |
+| `epg:add`              | Ajoute un guide (URL ou fichier, `.xml` ou `.xml.gz`) et le charge |
+| `epg:refresh`          | Recharge un guide                                                  |
+| `epg:remove`           | Supprime le guide et ses programmes                                |
+| `epg:programmes`       | Programmes d'une chaîne sur un intervalle                          |
 
 Comme pour les podcasts, une erreur réseau est mémorisée sur la source (`last_error`) et jamais
 propagée : une liste injoignable n'empêche pas de regarder les autres.

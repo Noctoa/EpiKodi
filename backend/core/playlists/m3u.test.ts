@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { matchEntries, parseM3u, parseM3uChannels, playlistFileName, serializeM3u } from './m3u'
+import {
+  matchEntries,
+  parseM3u,
+  parseM3uChannels,
+  parseM3uGuides,
+  playlistFileName,
+  serializeM3u
+} from './m3u'
 
 describe('serializeM3u', () => {
   it('écrit un fichier lisible par les autres lecteurs', () => {
@@ -154,6 +161,21 @@ describe('parseM3uChannels', () => {
   it('retrouve désormais le titre d’une ligne porteuse d’attributs', () => {
     // Avant l'extension, la ligne ne correspondait à rien et le titre était perdu
     expect(parseM3u(ligne('#EXTINF:-1 tvg-id="X",Chaîne'))[0].title).toBe('Chaîne')
+  })
+})
+
+describe('parseM3uGuides', () => {
+  it('lit les guides annoncés dans l’en-tête, sous ses deux noms', () => {
+    expect(
+      parseM3uGuides(
+        '#EXTM3U x-tvg-url="https://a.example/g.xml.gz, https://b.example/g.xml" url-tvg="https://a.example/g.xml.gz"\n#EXTINF:-1,Une\nhttps://f/a'
+      )
+    ).toEqual(['https://a.example/g.xml.gz', 'https://b.example/g.xml'])
+  })
+
+  it('ne trouve rien sans en-tête ni attribut, et ignore ce qui n’est pas une URL web', () => {
+    expect(parseM3uGuides('#EXTM3U\n#EXTINF:-1,Une\nhttps://f/a')).toEqual([])
+    expect(parseM3uGuides('#EXTM3U x-tvg-url="file:///etc/passwd"')).toEqual([])
   })
 })
 
