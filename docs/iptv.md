@@ -129,6 +129,42 @@ qui tue ffmpeg ; `stopAllStreams()` arrête le reste à la fermeture de l'applic
 interface, le lecteur retire la source de `<video>` en se fermant : mesuré, un élément retiré de
 la page sans cela garde sa requête — et ffmpeg — plus de 8 secondes.
 
+### Coupures, chaînes mortes, qualité
+
+**Mesuré d'abord** : sur un direct local coupé en plein milieu, ffmpeg n'attend pas — il échoue
+au rechargement de la playlist (« Failed to reload playlist ») et termine le flux dans la seconde.
+Ses options `-reconnect*` rattrapent un hoquet HTTP, pas une coupure de dix secondes. La reprise
+est donc l'affaire du lecteur (`frontend/src/player/live.ts`, `Player.tsx`) :
+
+- **Reconnexion automatique** : un direct qui a déjà montré une image et qui s'arrête (fin du
+  flux, erreur) est relancé seul après 1, 2, 4, 8, puis 15 s, six fois au plus (« Connexion perdue —
+  reconnexion (n/6)… »). Le compteur repart de zéro dès qu'une image revient. Au-delà, le motif
+  s'affiche avec **Réessayer**.
+- **Image figée** : un flux peut aussi se taire sans finir ni échouer. Une image immobile plus de
+  12 s pendant la lecture déclenche la même reconnexion.
+- **Chaîne morte** : une chaîne qui n'a **jamais** démarré n'est pas relancée — elle est morte, et
+  le dire tout de suite laisse zapper ailleurs. Délai maximal au démarrage : 15 s.
+- **Qualité manuelle** : ffmpeg expose chaque variante d'un HLS comme un programme, numéroté dans
+  l'ordre de la playlist maître (vérifié avec `ffprobe -show_programs`). `fetchVariants`
+  (`backend/core/iptv/hls.ts`) lit cette playlist — en se présentant comme ffmpeg, Pluto TV
+  refusant l'agent d'EpiKodi — et le lecteur propose un menu ; le choix part en `q=<rang>` et
+  devient `-map 0:p:<rang>:v:0? -map 0:p:<rang>:a:0?`. Par défaut, ffmpeg prend la meilleure.
+  Un flux à qualité unique, ou du MPEG-TS brut, n'affiche pas de menu.
+
+Banc de test dans l'application, contre un direct local (mire générée par ffmpeg, servie en HTTP)
+qu'on coupe à volonté :
+
+| Scénario                                    | Résultat                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| Chaîne morte (port fermé)                   | erreur « serveur de la chaîne injoignable » en 4,1 s, on peut zapper    |
+| Chaîne lente (serveur qui ne répond jamais) | « Connexion à la chaîne… », interface libre, erreur à 15,0 s            |
+| Serveur coupé 10 s pendant la lecture       | « reconnexion (1/6)… », la lecture repart seule 12,5 s après la coupure |
+| Source suspendue 25 s (image figée)         | reconnexion par la surveillance, lecture repartie à 28,5 s              |
+| Qualité manuelle (Pluto TV, 5 variantes)    | 684p en automatique → 240p au choix de « 0.6 Mb/s », en 5 s             |
+
+Les 4,1 s de la chaîne morte viennent des tentatives de `-reconnect_on_network_error` sur une
+connexion refusée ; c'est le prix d'un direct qui survit aux hoquets du réseau.
+
 ### Mesure
 
 Dans l'application (test e2e, `EPIKODI_E2E`), 24 chaînes prises à intervalle régulier dans la
@@ -151,17 +187,18 @@ Réduire `-analyzeduration` a été essayé sans gain mesurable sur le HLS.
 
 ## API
 
-| Canal IPC           | Rôle                                                       |
-| ------------------- | ---------------------------------------------------------- |
-| `iptv:sources`      | Les listes connues, avec nombre de chaînes et de disparues |
-| `iptv:add`          | Ajoute une playlist (URL ou fichier) et la charge aussitôt |
-| `iptv:refresh`      | Recharge une liste                                         |
-| `iptv:remove`       | Supprime la liste, ses chaînes et ses logos                |
-| `iptv:channels`     | Chaînes, filtrées par source, groupe, recherche, favorites |
-| `iptv:groups`       | Rubriques et effectifs                                     |
-| `iptv:favorite`     | Épingle une chaîne                                         |
-| `iptv:cache-logos`  | Complète le cache des logos                                |
-| `player:live-error` | Pourquoi une chaîne n'a pas démarré ou s'est arrêtée       |
+| Canal IPC              | Rôle                                                       |
+| ---------------------- | ---------------------------------------------------------- |
+| `iptv:sources`         | Les listes connues, avec nombre de chaînes et de disparues |
+| `iptv:add`             | Ajoute une playlist (URL ou fichier) et la charge aussitôt |
+| `iptv:refresh`         | Recharge une liste                                         |
+| `iptv:remove`          | Supprime la liste, ses chaînes et ses logos                |
+| `iptv:channels`        | Chaînes, filtrées par source, groupe, recherche, favorites |
+| `iptv:groups`          | Rubriques et effectifs                                     |
+| `iptv:favorite`        | Épingle une chaîne                                         |
+| `iptv:cache-logos`     | Complète le cache des logos                                |
+| `player:live-error`    | Pourquoi une chaîne n'a pas démarré ou s'est arrêtée       |
+| `player:live-variants` | Qualités d’une chaîne HLS                                  |
 
 Comme pour les podcasts, une erreur réseau est mémorisée sur la source (`last_error`) et jamais
 propagée : une liste injoignable n'empêche pas de regarder les autres.

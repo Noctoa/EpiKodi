@@ -111,6 +111,7 @@ const api: EpiKodiApi = {
   playerSubtitles: (path) => ipcRenderer.invoke(IPC.playerSubtitles, path),
   playerSubtitleVtt: (path, track) => ipcRenderer.invoke(IPC.playerSubtitleVtt, path, track),
   playerLiveError: (streamUrl) => ipcRenderer.invoke(IPC.playerLiveError, streamUrl),
+  playerLiveVariants: (streamUrl) => ipcRenderer.invoke(IPC.playerLiveVariants, streamUrl),
   onMediaOpened: (cb) => {
     const listener = (_: Electron.IpcRendererEvent, media: OpenedMedia): void => cb(media)
     ipcRenderer.on(IPC.mediaOpened, listener)

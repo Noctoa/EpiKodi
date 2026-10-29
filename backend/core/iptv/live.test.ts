@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import type { HwEncoder } from '../transcode'
 import { buildLiveArgs, describeLiveError, parseStreams, type LiveSource } from './live'
 
-const source: LiveSource = { url: 'https://flux.example/tf1.m3u8', userAgent: null, referrer: null }
+const source: LiveSource = {
+  url: 'https://flux.example/tf1.m3u8',
+  userAgent: null,
+  referrer: null,
+  variant: null
+}
 
 /** Valeur de l'option `flag` dans la ligne de commande produite. */
 const valueOf = (args: string[], flag: string): string | undefined =>
@@ -73,6 +78,17 @@ describe('buildLiveArgs', () => {
     const args = buildLiveArgs(source, { copy: true })
     expect(args).not.toContain('-user_agent')
     expect(args).not.toContain('-referer')
+  })
+
+  it('laisse ffmpeg choisir la meilleure variante par défaut', () => {
+    expect(buildLiveArgs(source, { copy: true })).not.toContain('-map')
+  })
+
+  it('cible le programme de la variante choisie, après -i', () => {
+    const args = buildLiveArgs({ ...source, variant: 3 }, { copy: true })
+    const maps = args.flatMap((a, i) => (a === '-map' ? [args[i + 1]] : []))
+    expect(maps).toEqual(['0:p:3:v:0?', '0:p:3:a:0?'])
+    expect(args.indexOf('-map')).toBeGreaterThan(args.indexOf('-i'))
   })
 
   it('ré-encode sur l’encodeur matériel, initialisé avant -i', () => {

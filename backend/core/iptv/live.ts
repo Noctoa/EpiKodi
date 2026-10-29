@@ -31,6 +31,8 @@ export interface LiveSource {
   /** En-têtes exigés par le serveur (`#EXTVLCOPT` dans la playlist) */
   userAgent: string | null
   referrer: string | null
+  /** Variante HLS choisie à la main (son rang dans la playlist maître) ; null = la meilleure */
+  variant: number | null
 }
 
 /** La vidéo passe telle quelle, ou est ré-encodée — sur l'encodeur matériel s'il y en a un. */
@@ -47,8 +49,13 @@ export function buildLiveArgs(source: LiveSource, video: LiveVideo): string[] {
   args.push('-reconnect_delay_max', '4')
   if (source.userAgent) args.push('-user_agent', source.userAgent)
   if (source.referrer) args.push('-referer', source.referrer)
-  // Sans `-map`, ffmpeg retient la meilleure image et le meilleur son : la variante HD d'un HLS
-  args.push('-i', source.url, '-sn', '-dn')
+  args.push('-i', source.url)
+  // ffmpeg expose chaque variante HLS comme un programme, dans l'ordre de la playlist maître.
+  // Sans `-map`, il retient la meilleure image et le meilleur son : la variante HD.
+  if (source.variant !== null) {
+    args.push('-map', `0:p:${source.variant}:v:0?`, '-map', `0:p:${source.variant}:a:0?`)
+  }
+  args.push('-sn', '-dn')
   args.push(...(video.copy ? ['-c:v', 'copy'] : videoEncodeArgs(video.hw)))
   // Le son est toujours ré-encodé : l'eac3 et le mp2, courants en direct, sont illisibles par
   // Chromium, et ré-encoder une piste stéréo ne coûte presque rien.

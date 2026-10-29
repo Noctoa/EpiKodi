@@ -3,11 +3,20 @@ import {
   AUDIO_EXTENSIONS,
   toLiveUrl,
   toStreamUrl,
+  type LiveVariant,
   type OpenedMedia,
   type PlaybackPlanInfo,
   type SubtitleTrack
 } from '@shared/ipc'
 import { fmtDuration } from '@frontend/format'
+import {
+  liveStats,
+  MAX_RECONNECTS,
+  reconnectDelay,
+  sortVariants,
+  STALL_MS,
+  variantLabel
+} from '@frontend/player/live'
 import { setVideoControl, type MediaControl } from '@frontend/remote/control'
 import './Player.css'
 
@@ -38,15 +47,6 @@ const HIDE_DELAY = 2500
 /** Après une pause plus longue, reprendre un direct le rejoint là où il en est, pas là où on l'a laissé. */
 const LIVE_REJOIN_MS = 10_000
 const LIVE_STATS_MS = 2000
-
-/** « 1080p · 4,2 Mb/s » : ce que le direct envoie vraiment, pas ce que la playlist annonce. */
-function liveStats(height: number, kbps: number): string | null {
-  const parts = [
-    height > 0 ? `${height}p` : null,
-    kbps > 0 ? `${(kbps / 1000).toFixed(1)} Mb/s` : null
-  ]
-  return parts.filter(Boolean).join(' · ') || null
-}
 
 function isAudio(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase() ?? ''
@@ -79,7 +79,7 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
   const [subtitleId, setSubtitleId] = useState<string | null>(null)
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null)
   const [audioTracks, setAudioTracks] = useState<AudioTrackLike[]>([])
-  const [menu, setMenu] = useState<'subtitles' | 'audio' | null>(null)
+  const [menu, setMenu] = useState<'subtitles' | 'audio' | 'quality' | null>(null)
   /** Moment de la mise en pause, pour savoir si un direct doit être rejoint à la reprise */
   const pausedAt = useRef<number | null>(null)
 
@@ -89,13 +89,22 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
   const [attempt, setAttempt] = useState(0)
   const [starting, setStarting] = useState(isLive)
   const [stats, setStats] = useState<string | null>(null)
+  /** Qualités proposées par la chaîne, et celle choisie à la main (null = la meilleure) */
+  const [variants, setVariants] = useState<LiveVariant[]>([])
+  const [quality, setQuality] = useState<number | null>(null)
+  /** Numéro de la tentative de reconnexion en cours, null quand tout va bien */
+  const [reconnecting, setReconnecting] = useState<number | null>(null)
+  /** Le direct a déjà montré une image : une coupure se rattrape, un échec d'ouverture non */
+  const hadPlayed = useRef(false)
+  const tries = useRef(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const audio = isAudio(media.name)
   const transcoded = plan !== null && plan.mode !== 'direct'
   // Tant que le plan n'est pas connu, on ne charge rien : inutile de faire échouer une lecture
   // directe sur un .avi pour la relancer aussitôt en transcodé.
   const src = isLive
-    ? toLiveUrl(media.path, attempt)
+    ? toLiveUrl(media.path, attempt, quality)
     : plan === null
       ? null
       : transcoded
@@ -122,6 +131,44 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
   }, [media.path, audio, mediaId, isLive])
 
   useEffect(() => {
+    if (!isLive) return
+    let cancelled = false
+    void window.epikodi.playerLiveVariants(media.path).then((v) => !cancelled && setVariants(v))
+    return () => {
+      cancelled = true
+    }
+  }, [isLive, media.path])
+
+  /**
+   * Un direct coupé se relance seul, avec un délai croissant. Seulement s'il a déjà joué : une
+   * chaîne qui n'a jamais démarré est morte, et le dire tout de suite laisse zapper ailleurs.
+   * Renvoie false quand il n'y a plus rien à tenter.
+   */
+  const recover = useCallback((): boolean => {
+    if (!isLive || !hadPlayed.current || tries.current >= MAX_RECONNECTS) return false
+    const n = tries.current++
+    setReconnecting(n + 1)
+    if (retryTimer.current) clearTimeout(retryTimer.current)
+    retryTimer.current = setTimeout(() => setAttempt((a) => a + 1), reconnectDelay(n))
+    return true
+  }, [isLive])
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current)
+    },
+    []
+  )
+
+  /** Relance demandée à la main (Réessayer, changement de qualité) : le compteur repart de zéro. */
+  const restartLive = useCallback(() => {
+    tries.current = 0
+    setReconnecting(null)
+    setError(null)
+    setAttempt((a) => a + 1)
+  }, [])
+
+  useEffect(() => {
     const el = videoRef.current
     if (!el) return
     const onTime = (): void => {
@@ -140,13 +187,15 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     // `<video>` ne sait dire que « échec » : pour un direct, le backend sait pourquoi
     const liveFailure = (prefix: string): void => {
       setStarting(false)
+      setReconnecting(null)
       void window.epikodi.playerLiveError(media.path).then((reason) => {
         setError(reason ? `${prefix} : ${reason}` : prefix)
       })
     }
     const onError = (): void => {
-      if (isLive) liveFailure('Chaîne indisponible')
-      else setError(el.error?.message ?? 'Lecture impossible')
+      if (!isLive) return setError(el.error?.message ?? 'Lecture impossible')
+      if (recover()) return
+      liveFailure(hadPlayed.current ? 'Le direct s’est interrompu' : 'Chaîne indisponible')
     }
     const onVolume = (): void => {
       setVolume(el.volume)
@@ -164,7 +213,15 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     }
     const onEnded = (): void => {
       setPlaying(false)
-      if (isLive) liveFailure('Le direct s’est interrompu')
+      // Un direct ne finit pas : s'il s'arrête, c'est que le flux a coupé
+      if (isLive && !recover()) liveFailure('Le direct s’est interrompu')
+    }
+    const onPlaying = (): void => {
+      setStarting(false)
+      if (!isLive) return
+      hadPlayed.current = true
+      tries.current = 0
+      setReconnecting(null)
     }
     const handlers: [string, () => void][] = [
       ['play', onPlay],
@@ -178,7 +235,7 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
           setError(null)
         }
       ],
-      ['playing', () => setStarting(false)],
+      ['playing', onPlaying],
       ['ended', onEnded],
       ['timeupdate', onTime],
       ['progress', onTime],
@@ -189,7 +246,26 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     ]
     handlers.forEach(([e, h]) => el.addEventListener(e, h))
     return () => handlers.forEach(([e, h]) => el.removeEventListener(e, h))
-  }, [isLive, media.path])
+  }, [isLive, media.path, recover])
+
+  // Un flux peut aussi se figer sans finir ni échouer (serveur qui ne répond plus mais garde la
+  // connexion) : une image immobile pendant la lecture déclenche la même reconnexion.
+  useEffect(() => {
+    const el = videoRef.current
+    if (!isLive || !el || reconnecting !== null) return
+    let lastTime = el.currentTime
+    let lastMove = Date.now()
+    const timer = setInterval(() => {
+      if (el.paused || el.currentTime !== lastTime) {
+        lastTime = el.currentTime
+        lastMove = Date.now()
+      } else if (hadPlayed.current && Date.now() - lastMove > STALL_MS) {
+        lastMove = Date.now()
+        recover()
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [isLive, src, reconnecting, recover])
 
   // Résolution et débit du direct, relevés sur ce que le décodeur reçoit vraiment
   useEffect(() => {
@@ -462,16 +538,20 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
         <div className="player__error">
           <span>{error}</span>
           {isLive && (
-            <button className="btn--ghost" onClick={() => setAttempt((a) => a + 1)}>
+            <button className="btn--ghost" onClick={restartLive}>
               Réessayer
             </button>
           )}
         </div>
       )}
 
-      {isLive && starting && !error && (
+      {isLive && !error && (reconnecting !== null || starting) && (
         <div className="player__resume">
-          <span>Connexion à la chaîne…</span>
+          <span>
+            {reconnecting !== null
+              ? `Connexion perdue — reconnexion (${reconnecting}/${MAX_RECONNECTS})…`
+              : 'Connexion à la chaîne…'}
+          </span>
         </div>
       )}
 
@@ -559,6 +639,35 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
             onChange={(e) => changeVolume(Number(e.target.value))}
             aria-label="Volume"
           />
+
+          {isLive && variants.length > 1 && (
+            <div className="player__menu-wrap">
+              <button
+                className={`player__btn player__btn--text ${menu === 'quality' ? 'player__btn--active' : ''}`}
+                onClick={() => setMenu(menu === 'quality' ? null : 'quality')}
+                title="Qualité"
+              >
+                {quality === null ? 'Auto' : variantLabel(variants[quality]).split(' · ')[0]}
+              </button>
+              {menu === 'quality' && (
+                <ul className="player__menu">
+                  {[null, ...sortVariants(variants)].map((v) => (
+                    <li
+                      key={v?.index ?? 'auto'}
+                      className={(v?.index ?? null) === quality ? 'player__menu-item--active' : ''}
+                      onClick={() => {
+                        setMenu(null)
+                        setQuality(v?.index ?? null)
+                        restartLive()
+                      }}
+                    >
+                      {v ? variantLabel(v) : 'Auto (meilleure)'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {audioTracks.length > 1 && (
             <div className="player__menu-wrap">

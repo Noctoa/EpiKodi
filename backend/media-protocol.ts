@@ -110,14 +110,23 @@ async function handleStream(filePath: string, request: Request): Promise<Respons
  * l'interface demande ensuite la raison par `player:live-error`.
  */
 async function handleLive(request: Request): Promise<Response> {
-  const channel = iptvChannelByUrl(new URL(request.url).searchParams.get('u') ?? '')
+  const params = new URL(request.url).searchParams
+  const channel = iptvChannelByUrl(params.get('u') ?? '')
+  // Le rang d'une variante, et rien d'autre : il finit dans un `-map` de ffmpeg
+  const q = params.get('q')
+  const variant = q !== null && /^\d{1,2}$/.test(q) ? Number(q) : null
   if (!channel) return new Response('Unknown channel', { status: 404 })
   if (!/^https?:\/\//i.test(channel.streamUrl)) {
     return new Response('Unsupported scheme', { status: 400 })
   }
   try {
     const live = await startLive(
-      { url: channel.streamUrl, userAgent: channel.userAgent, referrer: channel.referrer },
+      {
+        url: channel.streamUrl,
+        userAgent: channel.userAgent,
+        referrer: channel.referrer,
+        variant
+      },
       request.signal
     )
     return new Response(Readable.toWeb(live.body) as ReadableStream, {

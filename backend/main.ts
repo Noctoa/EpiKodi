@@ -24,6 +24,7 @@ import {
   cancelScan,
   addIptvSource,
   cacheIptvLogos,
+  iptvVariants,
   continueWatching,
   createPlaylist,
   databasePath,
@@ -382,6 +383,7 @@ function registerIpc(): void {
     loadSubtitleVtt(path, track)
   )
   ipcMain.handle(IPC.playerLiveError, (_, streamUrl: string) => liveError(streamUrl))
+  ipcMain.handle(IPC.playerLiveVariants, (_, streamUrl: string) => iptvVariants(streamUrl))
 
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({

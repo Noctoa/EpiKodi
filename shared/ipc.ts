@@ -86,7 +86,8 @@ export const IPC = {
   playerPlan: 'player:plan',
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt',
-  playerLiveError: 'player:live-error'
+  playerLiveError: 'player:live-error',
+  playerLiveVariants: 'player:live-variants'
 } as const
 
 /** Une piste de sous-titres proposée par le lecteur. */
@@ -451,6 +452,8 @@ export interface EpiKodiApi {
   playerSubtitleVtt(path: string, track: SubtitleTrack): Promise<string>
   /** Pourquoi une chaîne en direct n'a pas démarré, ou s'est arrêtée ; null si rien n'est connu. */
   playerLiveError(streamUrl: string): Promise<string | null>
+  /** Qualités d'une chaîne HLS ; vide pour un flux à qualité unique ou injoignable. */
+  playerLiveVariants(streamUrl: string): Promise<LiveVariant[]>
 }
 
 export const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ogv']
@@ -481,8 +484,18 @@ export function toStreamUrl(absolutePath: string, seek = 0): string {
  * `.m3u8` ferait choisir à Chromium son lecteur HLS (voir media-protocol.ts). `attempt` change
  * l'URL à chaque relance, pour que `<video>` redemande le flux au lieu de garder l'ancien.
  */
-export function toLiveUrl(streamUrl: string, attempt = 0): string {
-  return `${MEDIA_SCHEME}://live/stream.mp4?u=${encodeURIComponent(streamUrl)}&n=${attempt}`
+export function toLiveUrl(streamUrl: string, attempt = 0, variant: number | null = null): string {
+  const base = `${MEDIA_SCHEME}://live/stream.mp4?u=${encodeURIComponent(streamUrl)}&n=${attempt}`
+  return variant === null ? base : `${base}&q=${variant}`
+}
+
+/** Une qualité proposée par une chaîne HLS ; `index` est son rang dans la playlist maître. */
+export interface LiveVariant {
+  index: number
+  /** Hauteur d'image (720 pour du 1280×720) ; absente quand la playlist ne l'annonce pas */
+  height: number | null
+  /** Débit annoncé, en bits par seconde */
+  bandwidth: number | null
 }
 
 export type PlaybackMode = 'direct' | 'remux' | 'transcode'

@@ -28,6 +28,7 @@ import {
 } from './core/metadata/types'
 import { PluginManager, type BrokenPlugin, type PluginInfo } from './core/plugins/manager'
 import { PluginMetadataProvider } from './core/plugins/provider-adapter'
+import { fetchVariants } from './core/iptv/hls'
 import * as iptvService from './core/iptv/service'
 import type { ImportResult as IptvImportResult } from './core/iptv/service'
 import * as podcastService from './core/podcasts/service'
@@ -48,6 +49,7 @@ import {
   type FfmpegStatus,
   type LibraryChanged,
   type LibraryStats,
+  type LiveVariant,
   type MediaListQuery,
   type PluginItem,
   type PluginMenuGroup,
@@ -769,6 +771,17 @@ export function setIptvFavorite(channelId: number, favorite: boolean): void {
  */
 export function iptvChannelByUrl(url: string): IptvChannel | null {
   return iptv.channelByUrl(openLibrary(), url)
+}
+
+/** Qualités d'une chaîne importée ; une URL inconnue n'est pas lue. */
+export async function iptvVariants(url: string): Promise<LiveVariant[]> {
+  const channel = iptvChannelByUrl(url)
+  if (!channel || !/^https?:\/\//i.test(channel.streamUrl)) return []
+  return fetchVariants({
+    url: channel.streamUrl,
+    userAgent: channel.userAgent,
+    referrer: channel.referrer
+  })
 }
 
 const LAST_CHANNEL_SETTING = 'iptv.lastChannel'

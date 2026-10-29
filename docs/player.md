@@ -34,7 +34,9 @@ Une chaîne s'ouvre dans ce même lecteur avec `live: true` (`OpenedMedia`) et u
 `media://live/…` : voir [docs/iptv.md](iptv.md). Ce qui n'a pas de sens en direct disparaît —
 barre de progression, sauts ↺ ↻ et ← →, temps, sous-titres, reprise — et la pastille
 « En direct » affiche la résolution et le débit réellement reçus. Une pause de plus de 10 s
-rejoint le direct à la reprise, au lieu de repartir d'un tampon périmé. En cas d'échec, le motif
+rejoint le direct à la reprise, au lieu de repartir d'un tampon périmé. Une coupure se rattrape
+seule (reconnexion à délai croissant, surveillance de l'image figée) et un menu **Qualité** apparaît
+quand la chaîne propose plusieurs variantes : voir [docs/iptv.md](iptv.md). En cas d'échec, le motif
 vient du backend (`player:live-error`) et un bouton **Réessayer** relance le flux.
 
 Fermer le lecteur retire la source de `<video>` : sans cela, Chromium garde la requête ouverte —
