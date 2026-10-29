@@ -114,6 +114,36 @@ describe('parseM3uChannels', () => {
     expect(chaines.map((c) => c.attributes.groupTitle)).toEqual(['A', null])
   })
 
+  it('lit les en-têtes HTTP exigés par un flux, avant ou après #EXTINF', () => {
+    const chaines = parseM3uChannels(
+      [
+        '#EXTM3U',
+        '#EXTINF:-1,Un',
+        '#EXTVLCOPT:http-user-agent=Mozilla/5.0 (X11; Linux x86_64)',
+        'https://a',
+        '#EXTVLCOPT:http-referrer=https://site.example/',
+        '#EXTINF:-1,Deux',
+        'https://b'
+      ].join('\n')
+    )
+    expect(chaines.map((c) => c.http)).toEqual([
+      { userAgent: 'Mozilla/5.0 (X11; Linux x86_64)', referrer: null },
+      { userAgent: null, referrer: 'https://site.example/' }
+    ])
+  })
+
+  it('accepte les deux orthographes du référent et ignore les options inconnues', () => {
+    const [chaine] = parseM3uChannels(
+      '#EXTVLCOPT:http-referer=https://r.example/\n#EXTVLCOPT:network-caching=1000\nhttps://a'
+    )
+    expect(chaine.http).toEqual({ userAgent: null, referrer: 'https://r.example/' })
+  })
+
+  it('n’attribue pas les en-têtes d’une chaîne à la suivante', () => {
+    const chaines = parseM3uChannels('#EXTVLCOPT:http-user-agent=VLC\nhttps://a\nhttps://b')
+    expect(chaines[1].http.userAgent).toBeNull()
+  })
+
   it('laisse parseM3u aveugle aux attributs', () => {
     const entrees = parseM3u(ligne('#EXTINF:-1 tvg-id="X" group-title="A",Chaîne'))
     expect(entrees).toEqual([

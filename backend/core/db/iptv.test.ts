@@ -29,7 +29,9 @@ describe('parseChannels', () => {
       streamUrl: 'https://flux.example/tf1.m3u8',
       logoUrl: 'https://img/tf1.png',
       group: 'Généralistes',
-      epgId: 'FR.TF1'
+      epgId: 'FR.TF1',
+      userAgent: null,
+      referrer: null
     })
   })
 
@@ -56,6 +58,18 @@ describe('syncChannels', () => {
     const result = iptv.syncChannels(db, sourceId, parseChannels(PLAYLIST))
     expect(result).toEqual({ added: 3, missing: 0, total: 3 })
     expect(iptv.channels(db, { sourceId })).toHaveLength(3)
+  })
+
+  it('garde les en-têtes HTTP exigés par un flux, et suit leurs changements', () => {
+    const avecAgent = `#EXTM3U\n#EXTINF:-1,Une\n#EXTVLCOPT:http-user-agent=Mozilla/5.0\nhttps://f/a\n`
+    iptv.syncChannels(db, sourceId, parseChannels(avecAgent))
+    expect(iptv.channelByUrl(db, 'https://f/a')).toMatchObject({
+      userAgent: 'Mozilla/5.0',
+      referrer: null
+    })
+
+    iptv.syncChannels(db, sourceId, parseChannels('#EXTM3U\n#EXTINF:-1,Une\nhttps://f/a\n'))
+    expect(iptv.channelByUrl(db, 'https://f/a')?.userAgent).toBeNull()
   })
 
   it('ne crée pas de doublon au rafraîchissement', () => {

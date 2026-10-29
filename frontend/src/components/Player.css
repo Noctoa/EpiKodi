@@ -52,6 +52,13 @@
   background: var(--danger-soft);
   color: var(--danger);
   border: 1px solid var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player__error span {
+  flex: 1;
 }
 
 /* ---------- contrôles ---------- */
@@ -90,6 +97,21 @@
   font-size: 0.733rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.player__badge--live {
+  background: var(--danger);
+  color: var(--on-media);
+}
+
+.player__badge--live::before {
+  content: '● ';
+}
+
+/* Résolution et débit du direct : discrets, à côté de la pastille */
+.player__stats {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .player__seek {

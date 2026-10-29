@@ -24,6 +24,8 @@ interface ChannelRow {
   favorite: number
   position: number
   missing_at: number | null
+  user_agent: string | null
+  referrer: string | null
 }
 
 const toSource = (r: SourceRow): IptvSource => ({
@@ -48,7 +50,9 @@ const toChannel = (r: ChannelRow): IptvChannel => ({
   epgId: r.epg_id,
   favorite: r.favorite === 1,
   position: r.position,
-  missing: r.missing_at !== null
+  missing: r.missing_at !== null,
+  userAgent: r.user_agent,
+  referrer: r.referrer
 })
 
 /** Les compteurs accompagnent toujours la source : une liste sans son nombre de chaînes ne dit rien. */
@@ -106,6 +110,9 @@ export interface ChannelInput {
   logoUrl: string | null
   group: string | null
   epgId: string | null
+  /** En-têtes exigés par le serveur du flux (voir la migration 10) */
+  userAgent: string | null
+  referrer: string | null
 }
 
 export interface SyncResult {
@@ -138,8 +145,9 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
       run(
         db,
         `INSERT INTO iptv_channels
-           (source_id, channel_key, name, stream_url, logo_url, group_title, epg_id, position)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           (source_id, channel_key, name, stream_url, logo_url, group_title, epg_id, position,
+            user_agent, referrer)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (source_id, channel_key) DO UPDATE SET
            name        = excluded.name,
            stream_url  = excluded.stream_url,
@@ -147,6 +155,8 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
            group_title = excluded.group_title,
            epg_id      = excluded.epg_id,
            position    = excluded.position,
+           user_agent  = excluded.user_agent,
+           referrer    = excluded.referrer,
            seen_at     = unixepoch(),
            missing_at  = NULL`,
         sourceId,
@@ -156,7 +166,9 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
         c.logoUrl,
         c.group,
         c.epgId,
-        position++
+        position++,
+        c.userAgent,
+        c.referrer
       )
     }
 

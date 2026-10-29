@@ -92,7 +92,9 @@ function toChannel(entry: M3uChannel): iptv.ChannelInput | null {
     streamUrl,
     logoUrl: entry.attributes.tvgLogo,
     group: entry.attributes.groupTitle,
-    epgId: entry.attributes.tvgId
+    epgId: entry.attributes.tvgId,
+    userAgent: entry.http.userAgent,
+    referrer: entry.http.referrer
   }
 }
 

@@ -28,6 +28,18 @@ voir [docs/transcoding.md](transcoding.md). Le lecteur affiche alors une pastill
 Les contrôles se masquent après 2,5 s sans mouvement pendant la lecture (curseur masqué aussi).
 La barre montre la partie mise en tampon et la position.
 
+## Direct (IPTV)
+
+Une chaîne s'ouvre dans ce même lecteur avec `live: true` (`OpenedMedia`) et une URL
+`media://live/…` : voir [docs/iptv.md](iptv.md). Ce qui n'a pas de sens en direct disparaît —
+barre de progression, sauts ↺ ↻ et ← →, temps, sous-titres, reprise — et la pastille
+« En direct » affiche la résolution et le débit réellement reçus. Une pause de plus de 10 s
+rejoint le direct à la reprise, au lieu de repartir d'un tampon périmé. En cas d'échec, le motif
+vient du backend (`player:live-error`) et un bouton **Réessayer** relance le flux.
+
+Fermer le lecteur retire la source de `<video>` : sans cela, Chromium garde la requête ouverte —
+et ffmpeg avec elle — jusqu'à ce que l'élément soit ramassé.
+
 ## Sous-titres
 
 `<track>` n'accepte que le **WebVTT**. Le backend fournit donc du VTT quelle que soit la source :

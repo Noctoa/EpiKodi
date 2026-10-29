@@ -85,7 +85,8 @@ export const IPC = {
   remoteChanged: 'remote:changed',
   playerPlan: 'player:plan',
   playerSubtitles: 'player:subtitles',
-  playerSubtitleVtt: 'player:subtitle-vtt'
+  playerSubtitleVtt: 'player:subtitle-vtt',
+  playerLiveError: 'player:live-error'
 } as const
 
 /** Une piste de sous-titres proposée par le lecteur. */
@@ -313,6 +314,8 @@ export interface OpenedMedia {
   name: string
   /** URL `media://` consommable par <video> / <audio> */
   url: string
+  /** Chaîne en direct : ni durée, ni saut, ni reprise (`path` est alors l'URL du flux) */
+  live?: boolean
 }
 
 export interface ScanProgress {
@@ -446,6 +449,8 @@ export interface EpiKodiApi {
   /** Pistes de sous-titres disponibles pour un fichier (internes + .srt/.vtt à côté). */
   playerSubtitles(path: string): Promise<SubtitleTrack[]>
   playerSubtitleVtt(path: string, track: SubtitleTrack): Promise<string>
+  /** Pourquoi une chaîne en direct n'a pas démarré, ou s'est arrêtée ; null si rien n'est connu. */
+  playerLiveError(streamUrl: string): Promise<string | null>
 }
 
 export const VIDEO_EXTENSIONS = ['mp4', 'mkv', 'webm', 'avi', 'mov', 'm4v', 'ogv']
@@ -469,6 +474,15 @@ export function toImageUrl(remoteUrl: string): string {
 /** Flux transcodé à la volée, repris à `seek` secondes. */
 export function toStreamUrl(absolutePath: string, seek = 0): string {
   return `${MEDIA_SCHEME}://stream/${encodeURIComponent(absolutePath)}?t=${seek.toFixed(3)}`
+}
+
+/**
+ * Chaîne en direct, remuxée par ffmpeg. Le flux passe en paramètre : un chemin finissant en
+ * `.m3u8` ferait choisir à Chromium son lecteur HLS (voir media-protocol.ts). `attempt` change
+ * l'URL à chaque relance, pour que `<video>` redemande le flux au lieu de garder l'ancien.
+ */
+export function toLiveUrl(streamUrl: string, attempt = 0): string {
+  return `${MEDIA_SCHEME}://live/stream.mp4?u=${encodeURIComponent(streamUrl)}&n=${attempt}`
 }
 
 export type PlaybackMode = 'direct' | 'remux' | 'transcode'

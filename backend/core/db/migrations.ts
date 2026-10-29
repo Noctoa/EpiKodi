@@ -268,5 +268,15 @@ export const migrations: Migration[] = [
       CREATE INDEX iptv_channels_group_idx    ON iptv_channels(group_title);
       CREATE INDEX iptv_channels_favorite_idx ON iptv_channels(favorite) WHERE favorite = 1;
     `
+  },
+  {
+    version: 10,
+    name: 'iptv-http-options',
+    // En-têtes qu'un flux exige (`#EXTVLCOPT:` dans la playlist) : sans eux, certains serveurs
+    // refusent la chaîne. Ils voyagent avec elle, pas dans l'URL du lecteur.
+    sql: `
+      ALTER TABLE iptv_channels ADD COLUMN user_agent TEXT;
+      ALTER TABLE iptv_channels ADD COLUMN referrer   TEXT;
+    `
   }
 ]

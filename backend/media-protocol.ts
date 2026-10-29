@@ -3,8 +3,9 @@ import { Readable } from 'node:stream'
 import { protocol } from 'electron'
 import { MEDIA_SCHEME } from '../shared/ipc'
 import { planPlayback, type PlaybackPlan } from './core/compat'
-import { ffmpegUrlFor, readMedia, statMedia } from './library'
+import { ffmpegUrlFor, iptvChannelByUrl, readMedia, statMedia } from './library'
 import { probe } from './core/ffmpeg'
+import { startLive } from './core/iptv/live'
 import { detectHwEncoder, startStream } from './core/transcode'
 
 /**
@@ -99,6 +100,36 @@ async function handleStream(filePath: string, request: Request): Promise<Respons
   })
 }
 
+/**
+ * `media://live/stream.mp4?u=<url du flux>` : une chaîne en direct, remuxée par ffmpeg (voir
+ * docs/iptv.md). L'URL du flux voyage en paramètre et non dans le chemin : Chromium choisit son
+ * lecteur d'après l'extension, et un chemin en `.m3u8` le fait lire notre MP4 comme une playlist
+ * HLS — l'image ne vient jamais.
+ *
+ * La réponse attend le premier octet : un flux mort répond 502 au lieu d'un 200 vide, et
+ * l'interface demande ensuite la raison par `player:live-error`.
+ */
+async function handleLive(request: Request): Promise<Response> {
+  const channel = iptvChannelByUrl(new URL(request.url).searchParams.get('u') ?? '')
+  if (!channel) return new Response('Unknown channel', { status: 404 })
+  if (!/^https?:\/\//i.test(channel.streamUrl)) {
+    return new Response('Unsupported scheme', { status: 400 })
+  }
+  try {
+    const live = await startLive(
+      { url: channel.streamUrl, userAgent: channel.userAgent, referrer: channel.referrer },
+      request.signal
+    )
+    return new Response(Readable.toWeb(live.body) as ReadableStream, {
+      status: 200,
+      headers: { 'Content-Type': 'video/mp4', 'Accept-Ranges': 'none', 'Cache-Control': 'no-store' }
+    })
+  } catch (err) {
+    console.warn(`[iptv] « ${channel.name} » : ${(err as Error).message}`)
+    return new Response('Live stream unavailable', { status: 502 })
+  }
+}
+
 const IMAGE_TIMEOUT_MS = 15_000
 /** Une pochette de podcast dépasse rarement le mégaoctet ; au-delà on refuse. */
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -144,6 +175,7 @@ async function handleImage(remoteUrl: string): Promise<Response> {
 export function registerMediaProtocol(): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
     const url = new URL(request.url)
+    if (url.host === 'live') return handleLive(request)
     const locator = decodeURIComponent(url.pathname.replace(/^\//, ''))
     if (url.host === 'image') return handleImage(locator)
     // TODO(#4): n'autoriser que les fichiers appartenant à une source de la bibliothèque.

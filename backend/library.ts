@@ -763,6 +763,14 @@ export function setIptvFavorite(channelId: number, favorite: boolean): void {
   iptv.setFavorite(openLibrary(), channelId, favorite)
 }
 
+/**
+ * La chaîne derrière une URL de flux. Le lecteur ne fait ouvrir à ffmpeg que des flux d'une liste
+ * importée : une URL arbitraire venue de l'interface ne doit rien pouvoir télécharger.
+ */
+export function iptvChannelByUrl(url: string): IptvChannel | null {
+  return iptv.channelByUrl(openLibrary(), url)
+}
+
 const LAST_CHANNEL_SETTING = 'iptv.lastChannel'
 
 /**

@@ -27,12 +27,23 @@ export interface M3uAttributes {
   groupTitle: string | null
 }
 
+/**
+ * En-têtes HTTP qu'un flux exige, déclarés par des lignes `#EXTVLCOPT:` à côté de son `#EXTINF`.
+ * Certains serveurs refusent le flux à qui ne se présente pas comme un navigateur.
+ */
+export interface M3uHttpOptions {
+  userAgent: string | null
+  referrer: string | null
+}
+
 export interface M3uChannel extends M3uEntry {
   attributes: M3uAttributes
+  http: M3uHttpOptions
 }
 
 const HEADER = '#EXTM3U'
 const EXTINF = '#EXTINF:'
+const EXTVLCOPT = '#EXTVLCOPT:'
 const ATTRIBUTE = /([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"/g
 
 const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ').trim()
@@ -80,6 +91,13 @@ function parseAttributes(head: string): M3uAttributes {
   }
 }
 
+/** VLC accepte les deux orthographes de l'en-tête, comme HTTP lui-même. */
+const VLC_OPTIONS: Record<string, keyof M3uHttpOptions> = {
+  'http-user-agent': 'userAgent',
+  'http-referrer': 'referrer',
+  'http-referer': 'referrer'
+}
+
 /**
  * Analyse un fichier M3U, attributs étendus compris. Tolérant : les commentaires inconnus sont
  * ignorés, une ligne `#EXTINF` sans média qui suive est abandonnée, et l'absence d'en-tête
@@ -87,7 +105,9 @@ function parseAttributes(head: string): M3uAttributes {
  */
 export function parseM3uChannels(content: string): M3uChannel[] {
   const channels: M3uChannel[] = []
-  let pending: Omit<M3uChannel, 'path'> | null = null
+  let pending: Omit<M3uChannel, 'path' | 'http'> | null = null
+  // Les `#EXTVLCOPT` se placent avant ou après le `#EXTINF` : ils valent pour le prochain média
+  let http: M3uHttpOptions = { userAgent: null, referrer: null }
 
   for (const raw of content.split(/\r?\n/)) {
     const line = raw.trim()
@@ -102,6 +122,12 @@ export function parseM3uChannels(content: string): M3uChannel[] {
           title,
           attributes: parseAttributes(head)
         }
+      } else if (line.toUpperCase().startsWith(EXTVLCOPT)) {
+        const option = line.slice(EXTVLCOPT.length)
+        const eq = option.indexOf('=')
+        const key = VLC_OPTIONS[option.slice(0, eq).trim().toLowerCase()]
+        const value = option.slice(eq + 1).trim()
+        if (eq > 0 && key && value) http = { ...http, [key]: value }
       }
       continue // tout autre commentaire est ignoré
     }
@@ -110,9 +136,11 @@ export function parseM3uChannels(content: string): M3uChannel[] {
       path: line,
       duration: pending?.duration ?? null,
       title: pending?.title ?? null,
-      attributes: pending?.attributes ?? parseAttributes('')
+      attributes: pending?.attributes ?? parseAttributes(''),
+      http
     })
     pending = null
+    http = { userAgent: null, referrer: null }
   }
   return channels
 }

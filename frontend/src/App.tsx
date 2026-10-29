@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AUDIO_EXTENSIONS,
+  toLiveUrl,
   toMediaUrl,
   type FfmpegStatus,
   type LibraryStats,
@@ -447,9 +448,8 @@ export default function App(): React.JSX.Element {
   const playNext = useCallback((m: MediaWithMetadata) => audio.playNext(fromMedia(m)), [audio])
 
   /**
-   * Une chaîne se regarde comme un fichier : le lecteur reçoit une URL `media://`, que le
-   * backend résout vers le flux distant. Ce que Chromium sait en faire — et ce qu'il faudra
-   * remuxer — est l'affaire de l'issue #28.
+   * Une chaîne se regarde dans le lecteur vidéo habituel, en mode direct : le backend remuxe le
+   * flux par ffmpeg derrière `media://live/` (voir docs/iptv.md).
    */
   const watchChannel = useCallback(
     (channel: IptvChannel) => {
@@ -457,7 +457,8 @@ export default function App(): React.JSX.Element {
       showVideo({
         path: channel.streamUrl,
         name: channel.name,
-        url: toMediaUrl(channel.streamUrl)
+        url: toLiveUrl(channel.streamUrl),
+        live: true
       })
     },
     [audio, showVideo]

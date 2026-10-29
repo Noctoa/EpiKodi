@@ -95,6 +95,7 @@ import {
 } from './media-protocol'
 import { applyRemoteSettings, registerRemoteIpc, stopRemote } from './remote'
 import { listSubtitles, loadSubtitleVtt } from './core/subtitles'
+import { liveError } from './core/iptv/live'
 import { stopAllStreams } from './core/transcode'
 
 registerMediaSchemePrivileges()
@@ -380,6 +381,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.playerSubtitleVtt, (_, path: string, track: SubtitleTrack) =>
     loadSubtitleVtt(path, track)
   )
+  ipcMain.handle(IPC.playerLiveError, (_, streamUrl: string) => liveError(streamUrl))
 
   ipcMain.handle(IPC.openMediaDialog, async (): Promise<OpenedMedia | null> => {
     const result = await dialog.showOpenDialog({

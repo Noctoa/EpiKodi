@@ -11,7 +11,7 @@ const exec = promisify(execFile)
  * Codecs qu'un MP4 fragmenté peut transporter tels quels. Un flux lisible par Chromium mais
  * inacceptable en MP4 (vorbis, pcm…) doit être ré-encodé même si le plan autorisait la recopie.
  */
-const MP4_VIDEO = new Set(['h264', 'hevc', 'av1', 'vp9'])
+export const MP4_VIDEO = new Set(['h264', 'hevc', 'av1', 'vp9'])
 const MP4_AUDIO = new Set(['aac', 'mp3', 'opus'])
 
 export interface HwEncoder {
@@ -35,6 +35,25 @@ export interface StreamOptions {
 }
 
 /**
+ * Sortie commune à tous les flux : un MP4 fragmenté sur la sortie standard. `empty_moov` permet
+ * de commencer à écrire sans connaître la durée ; `frag_keyframe` découpe en fragments lisibles
+ * au fil de l'eau.
+ */
+export const FRAGMENTED_MP4 = [
+  '-movflags',
+  'frag_keyframe+empty_moov+default_base_moof',
+  '-f',
+  'mp4',
+  'pipe:1'
+]
+
+/** Ré-encodage vidéo en h264, matériel si possible. L'`init` de l'encodeur se place avant `-i`. */
+export function videoEncodeArgs(hw: HwEncoder | null): string[] {
+  if (!hw) return ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p']
+  return [...(hw.filter ? ['-vf', hw.filter] : []), '-c:v', hw.encoder, '-b:v', '4M']
+}
+
+/**
  * Arguments ffmpeg produisant un MP4 fragmenté sur la sortie standard : le seul format que
  * `<video>` accepte en flux continu, sans connaître la taille à l'avance. Pure, testée.
  */
@@ -49,20 +68,9 @@ export function buildArgs(o: StreamOptions): string[] {
   if (o.seek > 0) args.push('-ss', o.seek.toFixed(3))
   args.push('-i', o.input, '-map', '0:v:0?', '-map', '0:a:0?')
 
-  if (copyVideo) {
-    args.push('-c:v', 'copy')
-  } else if (useHw) {
-    if (o.hw!.filter) args.push('-vf', o.hw!.filter)
-    args.push('-c:v', o.hw!.encoder, '-b:v', '4M')
-  } else {
-    args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p')
-  }
-
+  args.push(...(copyVideo ? ['-c:v', 'copy'] : videoEncodeArgs(useHw ? o.hw : null)))
   args.push(...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '192k', '-ac', '2']))
-
-  // `empty_moov` permet de commencer à écrire sans connaître la durée ; `frag_keyframe` découpe
-  // en fragments lisibles au fil de l'eau.
-  args.push('-movflags', 'frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4', 'pipe:1')
+  args.push(...FRAGMENTED_MP4)
   return args
 }
 
@@ -141,27 +149,40 @@ export interface Stream {
   stop: () => void
 }
 
-export function startStream(options: StreamOptions): Stream {
-  const args = buildArgs(options)
+export interface FfmpegHandle {
+  child: FfmpegProcess
+  stop: () => void
+}
+
+/**
+ * Lance ffmpeg en le comptant parmi les process à arrêter à la fermeture de l'application.
+ * Tout flux — fichier transcodé ou chaîne en direct — passe par ici, pour qu'aucun ne survive
+ * à la fenêtre.
+ */
+export function spawnFfmpeg(args: string[]): FfmpegHandle {
   const child = spawn(bin.ffmpeg, args, { stdio: ['ignore', 'pipe', 'pipe'] })
   running.add(child)
+  child.on('close', () => running.delete(child))
+  const stop = (): void => {
+    if (!child.killed) child.kill('SIGKILL')
+    running.delete(child)
+  }
+  return { child, stop }
+}
+
+export function startStream(options: StreamOptions): Stream {
+  const { child, stop } = spawnFfmpeg(buildArgs(options))
 
   let stderr = ''
   child.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString()
   })
   child.on('close', (code) => {
-    running.delete(child)
     // 255 = arrêt demandé par nous (seek, fenêtre fermée), ce n'est pas une erreur
     if (code !== 0 && code !== null && code !== 255 && stderr.trim()) {
       console.warn(`[transcode] ffmpeg (${code}) : ${stderr.trim().split('\n')[0]}`)
     }
   })
-
-  const stop = (): void => {
-    if (!child.killed) child.kill('SIGKILL')
-    running.delete(child)
-  }
   return { stdout: child.stdout, stop }
 }
 

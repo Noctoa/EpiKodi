@@ -175,4 +175,7 @@ export interface IptvChannel {
   position: number
   /** Absente du dernier rafraîchissement : gardée, mais signalée */
   missing: boolean
+  /** En-têtes que le serveur du flux exige (`#EXTVLCOPT` dans la playlist) */
+  userAgent: string | null
+  referrer: string | null
 }
