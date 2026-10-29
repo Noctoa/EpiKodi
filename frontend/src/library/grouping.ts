@@ -8,7 +8,7 @@ export interface AlbumGroup {
   artist: string
   year: number | null
   tracks: MediaWithMetadata[]
-  /** Première pochette trouvée parmi les pistes */
+  /** Pochette embarquée dans une piste, à défaut celle trouvée en ligne */
   thumbnailPath: string | null
   duration: number
 }
@@ -17,6 +17,7 @@ export interface ArtistGroup {
   artist: string
   albums: AlbumGroup[]
   trackCount: number
+  /** Photo de l'artiste, à défaut la pochette d'un de ses albums */
   thumbnailPath: string | null
 }
 
@@ -54,8 +55,11 @@ export function groupByArtist(items: MediaWithMetadata[]): ArtistGroup[] {
         artist,
         year: tracks.find((t) => t.metadata?.year)?.metadata?.year ?? null,
         tracks,
+        // La pochette embarquée est celle que l'utilisateur a choisie : elle passe avant
         thumbnailPath:
-          tracks.find((t) => t.metadata?.thumbnailPath)?.metadata?.thumbnailPath ?? null,
+          tracks.find((t) => t.metadata?.thumbnailPath)?.metadata?.thumbnailPath ??
+          tracks.find((t) => t.metadata?.posterPath)?.metadata?.posterPath ??
+          null,
         duration: tracks.reduce((s, t) => s + (t.duration ?? 0), 0)
       })
     }
@@ -64,7 +68,11 @@ export function groupByArtist(items: MediaWithMetadata[]): ArtistGroup[] {
       artist,
       albums: albumGroups,
       trackCount: albumGroups.reduce((s, a) => s + a.tracks.length, 0),
-      thumbnailPath: albumGroups.find((a) => a.thumbnailPath)?.thumbnailPath ?? null
+      thumbnailPath:
+        albumGroups.flatMap((a) => a.tracks).find((t) => t.metadata?.backdropPath)?.metadata
+          ?.backdropPath ??
+        albumGroups.find((a) => a.thumbnailPath)?.thumbnailPath ??
+        null
     })
   }
   return groups.sort(byNameWithUnknownLast((g) => g.artist, UNKNOWN_ARTIST))

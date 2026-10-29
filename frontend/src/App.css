@@ -2,146 +2,271 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--bg);
 }
-
 .app__header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--surface-2);
+  gap: 24px;
+  min-height: 72px;
+  padding: 12px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  z-index: 2;
 }
-
 .app__title {
   margin: 0;
-  width: 178px;
+  width: 204px;
   flex: 0 0 auto;
-  font-size: 1.267rem;
-  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 2rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.06em;
 }
-
+.app__brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 40px;
+  background: var(--accent);
+  color: var(--on-media);
+  font: italic 900 2rem var(--display-font);
+  clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+}
+.app__title small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.51rem;
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: 0.16em;
+}
 .app__search {
   position: relative;
-  flex: 0 1 420px;
+  flex: 0 1 440px;
+  min-width: 140px;
   display: flex;
   align-items: center;
 }
-
 .app__search input {
   width: 100%;
   font: inherit;
-  font-size: 0.933rem;
+  font-size: 0.8rem;
   color: var(--text);
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 30px 8px 30px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 32px 12px 38px;
 }
-
 .app__search input::placeholder {
   color: var(--text-muted);
 }
-
 .app__search input:focus {
-  outline: none;
-  border-color: var(--accent);
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
 }
-
 .app__search input::-webkit-search-cancel-button {
   display: none;
 }
-
 .app__search-icon {
   position: absolute;
-  left: 10px;
-  color: var(--text-muted);
+  left: 13px;
+  color: var(--accent-hover);
+  font-size: 1.4rem;
   pointer-events: none;
 }
-
 .app__search-clear {
   position: absolute;
   right: 4px;
   background: transparent;
-  border: 0;
   color: var(--text-muted);
   padding: 4px 8px;
   font-size: 0.867rem;
-  cursor: pointer;
 }
-
 .app__search-clear:hover {
-  background: transparent;
+  background: var(--surface-2);
   color: var(--text);
 }
-
 .app__status {
   flex: 1;
   display: flex;
   justify-content: center;
-  gap: 16px;
-  font-size: 0.867rem;
+  gap: 12px;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
-
 .app__warn {
   color: var(--warning);
 }
-
 .app__header-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
-
+.app__header-actions > button {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
 .app__body {
   flex: 1;
   min-height: 0;
   display: flex;
 }
-
 .app__main {
   flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px 22px;
+  padding: 30px 36px;
   overflow-y: auto;
+  background-image: linear-gradient(125deg, var(--accent-soft), transparent 42%);
 }
-
 .app__main--player {
   padding: 0;
   overflow: hidden;
+  background: #000;
 }
-
 .app__view-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 26px;
 }
-
+.app__view-head > div {
+  min-width: 0;
+}
+.app__eyebrow {
+  margin: 0 0 5px;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
 .app__view-title {
   margin: 0;
-  font-size: 1.333rem;
+  font-family: var(--display-font);
+  font-size: clamp(2.6rem, 4.5vw, 4.2rem);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
-
+.app__view-line {
+  flex: 1;
+  min-width: 24px;
+  height: 1px;
+  margin-top: 16px;
+  background: var(--line);
+}
+.app__view-line::after {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 3px;
+  margin-left: auto;
+  background: var(--accent-hover);
+}
 .app__back {
   background: var(--surface-2);
-  border: 0;
-  border-radius: 8px;
-  padding: 4px 12px;
-  font-size: 1.067rem;
+  padding: 8px 12px;
   color: var(--text);
-  cursor: pointer;
 }
-
 .app__back:hover {
-  background: var(--surface);
+  background: var(--accent-soft);
 }
-
 .app__view {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+@media (max-width: 1100px) {
+  .app__header {
+    gap: 16px;
+    padding: 14px 20px;
+  }
+  .app__title {
+    width: 174px;
+  }
+  .app__title small {
+    font-size: 0.45rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+  .app__main {
+    padding: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .app__header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .app__title {
+    width: auto;
+    margin-right: auto;
+  }
+  .app__search {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .app__status:empty {
+    display: none;
+  }
+  .app__main {
+    padding: 20px 16px;
+  }
+}
+
+/* L’accueil est une scène plein cadre, les autres vues gardent leur espace de lecture. */
+.app--home .app__main {
+  padding: 0;
+}
+.app--home .app__view-head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  margin: 0;
+}
+.app__title {
+  font-family: var(--display-font);
+  text-transform: uppercase;
+}
+.app__title small {
+  font-family: var(--font);
+}
+.app__brand-mark {
+  background: var(--cyan);
+  color: var(--ink);
+}
+.app__header-actions > button {
+  border-radius: 0;
+  transform: skewX(-7deg);
+}
+.app__view-head {
+  position: relative;
+}
+.app__view-title {
+  text-shadow: 3px 3px 0 var(--accent-soft);
+}
+.app__main:not(.app__main--player) {
+  background-image:
+    linear-gradient(135deg, var(--accent-soft), transparent 55%),
+    repeating-linear-gradient(
+      130deg,
+      transparent 0 100px,
+      var(--accent-soft) 100px 101px,
+      transparent 101px 240px
+    );
+}
+:root[data-tv] .app--home .app__main {
+  padding: 0;
 }

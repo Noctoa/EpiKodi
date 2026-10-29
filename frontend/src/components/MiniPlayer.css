@@ -1,7 +1,8 @@
 .mini {
   flex: 0 0 auto;
   background: var(--surface);
-  border-top: 1px solid var(--surface-2);
+  border-top: 1px solid var(--accent);
+  box-shadow: 0 -8px 36px var(--shadow);
   position: relative;
 }
 
@@ -18,7 +19,7 @@
 
 .mini__seek-played {
   height: 100%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
 }
 
 .mini__row {
@@ -26,7 +27,7 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
-  padding: 8px 16px;
+  padding: 14px 24px;
 }
 
 .mini__now {
@@ -42,7 +43,7 @@
   flex: 0 0 48px;
   border-radius: 6px;
   background: var(--surface-2);
-  color: var(--success);
+  color: var(--accent-hover);
   font-size: 22px;
   display: flex;
   align-items: center;
@@ -106,6 +107,24 @@
 .mini__btn--play {
   font-size: 1.333rem;
   min-width: 44px;
+  margin-inline: 8px;
+  background: var(--accent);
+  color: var(--on-media);
+}
+
+.mini__btn--play:hover {
+  background: color-mix(in srgb, var(--accent) 80%, white);
+}
+
+@media (max-width: 760px) {
+  .mini__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .mini__right {
+    grid-column: 1 / -1;
+  }
 }
 
 .mini__btn--small {

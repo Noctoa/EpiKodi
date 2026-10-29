@@ -5,7 +5,7 @@
  * serveur qui ne répond jamais resterait en attente indéfiniment.
  */
 const DEFAULT_TIMEOUT_MS = 20_000
-const USER_AGENT = 'EpiKodi/0.1 (+https://github.com/Noctoa/EpiKodi)'
+export const USER_AGENT = 'EpiKodi/0.1 (+https://github.com/Noctoa/EpiKodi)'
 
 export async function fetchWithTimeout(
   url: string,

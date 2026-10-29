@@ -3,11 +3,12 @@
   right: 16px;
   bottom: 84px;
   width: 420px;
+  max-width: calc(100vw - 32px);
   max-height: 60vh;
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--surface-2);
+  border: 1px solid var(--accent);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px var(--shadow);
   z-index: 10;
@@ -117,7 +118,8 @@
   opacity: 0;
 }
 
-.queue__item:hover .queue__remove {
+.queue__item:hover .queue__remove,
+.queue__item:focus-within .queue__remove {
   opacity: 1;
 }
 

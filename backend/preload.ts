@@ -38,6 +38,9 @@ const api: EpiKodiApi = {
   metadataSuggest: (mediaId, query) => ipcRenderer.invoke(IPC.metadataSuggest, mediaId, query),
   metadataApply: (mediaId, externalId) =>
     ipcRenderer.invoke(IPC.metadataApply, mediaId, externalId),
+  musicStatus: () => ipcRenderer.invoke(IPC.musicStatus),
+  musicSetKey: (key) => ipcRenderer.invoke(IPC.musicSetKey, key),
+  musicSetOnline: (enabled) => ipcRenderer.invoke(IPC.musicSetOnline, enabled),
   playlistsList: () => ipcRenderer.invoke(IPC.playlistsList),
   playlistsCreate: (name) => ipcRenderer.invoke(IPC.playlistsCreate, name),
   playlistsRename: (id, name) => ipcRenderer.invoke(IPC.playlistsRename, id, name),

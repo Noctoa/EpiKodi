@@ -68,7 +68,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 40px 16px 12px;
+  padding: 60px 24px 20px;
   background: linear-gradient(transparent, var(--overlay-gradient));
   transition: opacity 0.25s;
   opacity: 1;
@@ -80,9 +80,10 @@
 }
 
 .player__title {
-  font-size: 0.867rem;
-  color: var(--text-muted);
-  margin-bottom: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--on-media);
+  margin-bottom: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -141,7 +142,7 @@
 }
 
 .player__seek-played {
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
 }
 
 .player__seek input {
@@ -163,7 +164,7 @@
   background: transparent;
   border: 0;
   border-radius: 6px;
-  color: var(--text);
+  color: var(--on-media);
   padding: 6px 10px;
   font-size: 1rem;
   min-width: 36px;
@@ -197,7 +198,7 @@
 .player__time {
   font-size: 0.867rem;
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--on-media) 75%, transparent);
   margin-left: 6px;
 }
 

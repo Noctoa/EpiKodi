@@ -1,0 +1,105 @@
+/* Surfaces partagées entre les vues : les couleurs restent pilotées par le thème. */
+.settings__block,
+.source-card,
+.network-form,
+.playlist-card,
+.filters,
+.iptv__bar {
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 18%, transparent);
+}
+.settings__block {
+  padding: 24px;
+  border-top: 2px solid var(--accent);
+}
+.settings__block h3,
+.search-results__section {
+  color: var(--text);
+  font-style: italic;
+  letter-spacing: 0.06em;
+}
+.source-card {
+  padding: 20px;
+  border-left: 3px solid var(--accent);
+}
+.source-card__actions {
+  flex-wrap: wrap;
+}
+.playlist-card {
+  padding: 22px;
+}
+.playlist-card__icon {
+  border-radius: 0;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+.filters,
+.iptv__bar {
+  padding: 14px 16px;
+}
+.detail__title,
+.album__info h2,
+.podcast__info h2,
+.playlist__title h2 {
+  font-weight: 850;
+  letter-spacing: -0.04em;
+  font-size: 2rem;
+}
+.detail__art,
+.album__art,
+.podcast__cover {
+  border: 1px solid var(--line);
+  box-shadow: 8px 8px 0 var(--accent-soft);
+}
+.episode {
+  padding-block: 18px;
+}
+.episode:hover {
+  background: var(--accent-soft);
+}
+.theme--active {
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+.app :is(input:not([type='range']):not([type='checkbox']), select, textarea) {
+  border-radius: var(--radius);
+}
+
+@media (max-width: 1100px) {
+  .sources-view__head,
+  .source-card {
+    flex-wrap: wrap;
+  }
+  .sources-view__actions {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 760px) {
+  .settings__block {
+    padding: 16px;
+  }
+  .settings__toggle,
+  .plugin,
+  .podcasts__head {
+    flex-wrap: wrap;
+  }
+  .settings__key input {
+    min-width: 0;
+  }
+  .add-podcast input,
+  .iptv-add input,
+  .playlists__head input {
+    min-width: 0;
+  }
+  .add-podcast form,
+  .iptv-add form {
+    flex-wrap: wrap;
+  }
+  .detail__body,
+  .podcast__info {
+    min-width: 0;
+  }
+  .settings__block dl {
+    grid-template-columns: 1fr;
+  }
+}

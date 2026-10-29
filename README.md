@@ -15,6 +15,8 @@ thèmes.
 - Bibliothèque indexée (SQLite) depuis des dossiers locaux et des partages réseau (SMB, WebDAV)
 - Podcasts : abonnement RSS, recherche par nom, écoute hors ligne et reprise de lecture
 - Affiches, synopsis, notes et casting des films via TheMovieDB (clé d'API gratuite)
+- Musique : pochettes et photos d'artistes en ligne, reconnaissance des morceaux sans tags à
+  leur empreinte sonore (Chromaprint + AcoustID)
 - Système d'extensions : chaque plugin tourne dans son process, avec permissions déclarées —
   une extension peut ajouter son propre écran, jusqu'à lancer des émulateurs de jeux
 - Thèmes clair / sombre / système, et thèmes personnalisés chargés depuis un fichier
@@ -26,6 +28,8 @@ thèmes.
 
 - Node.js ≥ 22 (développé avec 26)
 - FFmpeg et ffprobe dans le `PATH` (`pacman -S ffmpeg`, `apt install ffmpeg`)
+- Facultatif : `fpcalc` pour reconnaître la musique sans tags (`pacman -S chromaprint`,
+  `apt install libchromaprint-tools`)
 
 ## Démarrage
 
@@ -98,6 +102,7 @@ Electron 44 · React 19 · TypeScript · electron-vite · SQLite (`node:sqlite`)
 - [Stockage réseau](docs/network-storage.md) — partages SMB, WebDAV, identifiants, pont ffmpeg
 - [Podcasts](docs/podcasts.md) — flux RSS, reprise de lecture, écoute hors ligne
 - [Métadonnées externes](docs/external-metadata.md) — TheMovieDB, affiches, identification
+- [Reconnaissance musicale](docs/music-recognition.md) — empreinte AcoustID, pochettes, photos d'artistes
 - [Extensions](docs/plugins.md) — écrire, installer et déboguer un plugin
 - [Thèmes](docs/themes.md) — variables, thèmes intégrés, écrire le sien
 - [Playlists](docs/playlists.md) — favoris, reprise de lecture, import/export M3U

@@ -41,6 +41,10 @@ import {
   getFfmpegStatus,
   identifyingCount,
   identifyPending,
+  musicStatus,
+  recognizePending,
+  setAcoustidKey,
+  setMusicOnline,
   importPlaylist,
   closeLibrary,
   libraryStats,
@@ -152,6 +156,8 @@ function createWindow(): BrowserWindow {
     // L'identification est aussi déclenchée en fin d'analyse ffprobe ; cet appel la lance quand
     // tout est déjà analysé, cas d'un démarrage sur une bibliothèque inchangée.
     identifyPending()
+    // Même chose pour la musique : reconnaissance des morceaux sans tags, pochettes, photos
+    recognizePending()
     // Les abonnements se mettent à jour en tâche de fond : l'interface n'attend pas le réseau
     void refreshPodcasts()
     // Le guide des programmes aussi : purge du passé, puis rechargement de ce qui a vieilli
@@ -281,6 +287,15 @@ function registerIpc(): void {
   ipcMain.handle(IPC.metadataApply, (_, mediaId: number, externalId: string) =>
     applyMatchTo(mediaId, externalId)
   )
+  ipcMain.handle(IPC.musicStatus, () => musicStatus())
+  ipcMain.handle(IPC.musicSetKey, (_, key: string | null) => {
+    setAcoustidKey(key)
+    return musicStatus()
+  })
+  ipcMain.handle(IPC.musicSetOnline, (_, enabled: boolean) => {
+    setMusicOnline(enabled === true)
+    return musicStatus()
+  })
 
   const pluginList = (): PluginList => {
     const { plugins, broken } = listPlugins()

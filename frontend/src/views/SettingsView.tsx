@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { MetadataStatus, PluginList, SystemInfo } from '@shared/ipc'
+import type { MetadataStatus, MusicStatus, PluginList, SystemInfo } from '@shared/ipc'
 import type { RemoteStatus } from '@shared/remote'
 import { useGamepadIds } from '@frontend/remote/gamepad'
 import { useTheme } from '@frontend/theme'
@@ -86,6 +86,156 @@ function MetadataSettings(): React.JSX.Element {
   )
 }
 
+/** Reconnaissance des morceaux sans tags (AcoustID) et recherche de pochettes en ligne. */
+function MusicSettings(): React.JSX.Element {
+  const [status, setStatus] = useState<MusicStatus | null>(null)
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  // Le compteur avance en tâche de fond : on le relit à chaque changement de la bibliothèque
+  useEffect(() => {
+    let cancelled = false
+    const load = (): void => {
+      void window.epikodi.musicStatus().then((s) => {
+        if (!cancelled) setStatus(s)
+      })
+    }
+    load()
+    const off = window.epikodi.onLibraryChanged(load)
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [])
+
+  const run = useCallback(async (action: () => Promise<MusicStatus>, done: string) => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      setStatus(await action())
+      setMessage(done)
+    } catch (err) {
+      setMessage((err as Error).message)
+    }
+    setBusy(false)
+  }, [])
+
+  const saveKey = (value: string | null): void => {
+    void run(
+      () => window.epikodi.musicSetKey(value),
+      value ? 'Clé enregistrée. La reconnaissance démarre en arrière-plan.' : 'Clé effacée.'
+    ).then(() => setKey(''))
+  }
+
+  return (
+    <section className="settings__block">
+      <h3>Musique : reconnaissance et pochettes</h3>
+      <p className="settings__todo">
+        Les albums reçoivent leur pochette et les artistes leur photo, cherchées sur{' '}
+        <strong>Cover Art Archive</strong>, <strong>MusicBrainz</strong> et <strong>Deezer</strong>{' '}
+        d’après les tags des fichiers. Une pochette embarquée dans le fichier garde la priorité.
+      </p>
+      <div className="settings__toggle">
+        <div>
+          <strong>Pochettes et photos en ligne</strong>
+          <p className="settings__todo">
+            Seuls des noms d’artistes et d’albums sont envoyés, jamais les fichiers.
+          </p>
+        </div>
+        <button
+          className={status?.online ? '' : 'btn--ghost'}
+          disabled={busy || !status}
+          aria-pressed={status?.online ?? false}
+          onClick={() =>
+            status &&
+            void run(
+              () => window.epikodi.musicSetOnline(!status.online),
+              status.online ? 'Recherche en ligne désactivée.' : 'Recherche en ligne activée.'
+            )
+          }
+        >
+          {status?.online ? 'Activée' : 'Activer'}
+        </button>
+      </div>
+      <p className="settings__todo">
+        Un morceau sans artiste ou sans album est reconnu à son empreinte sonore, comme avec Shazam
+        : <strong>Chromaprint</strong> l’écoute en local et <strong>AcoustID</strong> retrouve le
+        titre, l’artiste et l’album. Seule l’empreinte est envoyée. Il faut une clé d’application
+        gratuite, à créer sur acoustid.org (rubrique « Applications »).
+      </p>
+      <dl>
+        <dt>État</dt>
+        <dd>
+          {!status ? null : !status.fpcalc ? (
+            <span className="settings__warn">
+              fpcalc introuvable — installe le paquet chromaprint
+            </span>
+          ) : status.keyConfigured ? (
+            <span className="settings__ok">clé enregistrée</span>
+          ) : (
+            <span className="settings__warn">aucune clé — reconnaissance désactivée</span>
+          )}
+          {status && status.pending > 0 && (
+            <span className="settings__hint"> · {status.pending} morceau(x) en attente</span>
+          )}
+        </dd>
+        {status && (
+          <>
+            <dt>Résultats</dt>
+            <dd>
+              {status.recognized} morceau(x) reconnu(s) · {status.albumsWithCover} pochette(s) ·{' '}
+              {status.artistsWithImage} photo(s) d’artiste
+              {status.unrecognized > 0 && (
+                <span className="settings__hint">
+                  {' '}
+                  · {status.unrecognized} morceau(x) sans tags inconnu(s) d’AcoustID
+                </span>
+              )}
+            </dd>
+          </>
+        )}
+        {status && status.notFound.length > 0 && (
+          <>
+            <dt>Introuvables</dt>
+            <dd>
+              <span className="settings__hint">
+                Aucune source n’a d’image pour : {status.notFound.join(' · ')}
+              </span>
+            </dd>
+          </>
+        )}
+        {status?.lastError && (
+          <>
+            <dt>Dernière erreur</dt>
+            <dd>
+              <span className="settings__warn">{status.lastError}</span>
+            </dd>
+          </>
+        )}
+      </dl>
+      <div className="settings__key">
+        <input
+          type="password"
+          value={key}
+          placeholder={status?.keyConfigured ? 'Remplacer la clé…' : 'Colle ta clé AcoustID'}
+          onChange={(e) => setKey(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && key.trim() && saveKey(key.trim())}
+        />
+        <button disabled={busy || !key.trim()} onClick={() => saveKey(key.trim())}>
+          Enregistrer
+        </button>
+        {status?.keyConfigured && (
+          <button className="btn--ghost btn--danger" disabled={busy} onClick={() => saveKey(null)}>
+            Effacer
+          </button>
+        )}
+      </div>
+      {message && <p className="settings__message">{message}</p>}
+    </section>
+  )
+}
+
 /** Choix du thème : le clic l'applique aussitôt, sans redémarrage. */
 function ThemeSettings(): React.JSX.Element {
   const { list, select } = useTheme()
@@ -141,16 +291,16 @@ function ThemeSettings(): React.JSX.Element {
                         t.tokens[token] ??
                         (t.base === 'light'
                           ? {
-                              '--bg': '#f4f5f8',
-                              '--surface-2': '#e6e9ef',
-                              '--accent': '#2f5fe0',
-                              '--text': '#16181d'
+                              '--bg': '#eaf2fc',
+                              '--surface-2': '#dce8f8',
+                              '--accent': '#145bd7',
+                              '--text': '#0b2145'
                             }[token]
                           : {
-                              '--bg': '#0f1115',
-                              '--surface-2': '#222630',
-                              '--accent': '#4f7cff',
-                              '--text': '#e8eaf0'
+                              '--bg': '#050d24',
+                              '--surface-2': '#12294a',
+                              '--accent': '#1765ed',
+                              '--text': '#f0f7ff'
                             }[token])
                     }}
                   />
@@ -489,6 +639,7 @@ export function SettingsView(): React.JSX.Element {
       <ThemeSettings />
 
       <MetadataSettings />
+      <MusicSettings />
 
       <PluginSettings />
 

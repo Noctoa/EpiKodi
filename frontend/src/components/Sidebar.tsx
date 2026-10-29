@@ -21,7 +21,9 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
         // En mode TV le libellé est masqué : sans ce titre, le bouton n'aurait plus de nom
         title={label}
       >
-        <span className="sidebar__icon">{icon}</span>
+        <span className="sidebar__icon" aria-hidden="true">
+          {icon}
+        </span>
         <span className="sidebar__label">{label}</span>
         {count !== undefined && <span className="sidebar__count">{count}</span>}
       </button>
@@ -47,7 +49,21 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
 
   return (
     <nav className="sidebar" aria-label="Navigation principale">
-      <ul>{SECTIONS.map((s) => entry(s.name, s.icon, s.label, counts[s.name]))}</ul>
+      <p className="sidebar__heading">
+        EXPLORER <span aria-hidden="true">↘</span>
+      </p>
+      <ul>
+        {SECTIONS.filter((s) => s.name !== 'sources' && s.name !== 'settings').map((s) =>
+          entry(s.name, s.icon, s.label, counts[s.name])
+        )}
+      </ul>
+
+      <p className="sidebar__heading sidebar__heading--manage">MON ESPACE</p>
+      <ul>
+        {SECTIONS.filter((s) => s.name === 'sources' || s.name === 'settings').map((s) =>
+          entry(s.name, s.icon, s.label, counts[s.name])
+        )}
+      </ul>
 
       {pluginMenus.length > 0 && (
         <ul className="sidebar__plugins">
@@ -58,6 +74,11 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
           )}
         </ul>
       )}
+      <div className="sidebar__footer" aria-hidden="true">
+        <span className="sidebar__wave">▂ ▅ ▃ ▇ ▄ ▆ ▂</span>
+        <strong>À ton rythme.</strong>
+        <span>PLAY. PAUSE. REPEAT.</span>
+      </div>
     </nav>
   )
 }

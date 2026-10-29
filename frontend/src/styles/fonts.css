@@ -1,0 +1,14 @@
+@font-face {
+  font-family: 'Urbanist';
+  src: url('../assets/persona/Urbanist.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('../assets/persona/BarlowCondensed-ExtraBoldItalic.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 800 900;
+  font-display: swap;
+}

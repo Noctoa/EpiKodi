@@ -71,6 +71,10 @@
   padding: 26px 32px;
 }
 
+:root[data-tv] .app__main--player {
+  padding: 0;
+}
+
 :root[data-tv] .app__view-head {
   gap: 16px;
   margin-bottom: 22px;

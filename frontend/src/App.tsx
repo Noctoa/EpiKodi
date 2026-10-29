@@ -475,6 +475,7 @@ export default function App(): React.JSX.Element {
             onOpen={(id) => open({ name: 'detail', mediaId: id })}
             onPlay={(id) => playById(id)}
             onAddSource={addSource}
+            onNavigate={(section) => go({ name: section })}
           />
         )
 
@@ -719,9 +720,16 @@ export default function App(): React.JSX.Element {
     view.name === 'videos' ? videos.length : view.name === 'music' ? audioCount : results.length
 
   return (
-    <div className="app">
+    <div className={`app ${view.name === 'home' && !playing ? 'app--home' : ''}`}>
       <header className="app__header">
-        <h1 className="app__title">EpiKodi</h1>
+        <h1 className="app__title">
+          <span className="app__brand-mark" aria-hidden="true">
+            E
+          </span>
+          <span>
+            EpiKodi<small>TON UNIVERS MULTIMÉDIA</small>
+          </span>
+        </h1>
 
         <div className="app__search">
           <span className="app__search-icon">⌕</span>
@@ -763,7 +771,9 @@ export default function App(): React.JSX.Element {
               ← Bibliothèque
             </button>
           )}
-          <button onClick={openFile}>Ouvrir un média…</button>
+          <button onClick={openFile}>
+            <span aria-hidden="true">↗ </span>Ouvrir un média
+          </button>
         </div>
       </header>
 
@@ -785,7 +795,11 @@ export default function App(): React.JSX.Element {
                     ←
                   </button>
                 )}
-                <h2 className="app__view-title">{viewTitle(view, detailMedia?.title)}</h2>
+                <div>
+                  <p className="app__eyebrow">EPIKODI / BIBLIOTHÈQUE</p>
+                  <h2 className="app__view-title">{viewTitle(view, detailMedia?.title)}</h2>
+                </div>
+                <span className="app__view-line" aria-hidden="true" />
               </div>
               {FILTERABLE.has(view.name) && (
                 <FilterBar

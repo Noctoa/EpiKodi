@@ -79,6 +79,22 @@ describe('groupByArtist', () => {
     )
     expect(disco).toMatchObject({ year: 2001, thumbnailPath: '/a.jpg', duration: 300 })
   })
+
+  it('complète avec les images trouvées en ligne, sans masquer la pochette embarquée', () => {
+    const groups = groupByArtist([
+      track('A', {
+        artist: 'X',
+        album: 'Embarquée',
+        thumbnailPath: '/e.jpg',
+        posterPath: '/p1.jpg'
+      }),
+      track('B', { artist: 'X', album: 'En ligne', posterPath: '/p2.jpg', backdropPath: '/x.jpg' })
+    ])
+    expect(groups[0].albums.map((a) => a.thumbnailPath)).toEqual(['/e.jpg', '/p2.jpg'])
+    // La vignette d'un artiste est sa photo, pas l'une de ses pochettes
+    expect(groups[0].thumbnailPath).toBe('/x.jpg')
+    expect(groupByArtist(items)[0].thumbnailPath).toBe('/a.jpg')
+  })
 })
 
 describe('sortTracks', () => {

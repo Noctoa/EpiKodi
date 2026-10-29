@@ -327,5 +327,46 @@ export const migrations: Migration[] = [
        WHERE epg_id IS NOT NULL;
       CREATE INDEX iptv_channels_epg_idx ON iptv_channels(epg_key);
     `
+  },
+  {
+    version: 12,
+    name: 'music-artwork',
+    // Pochettes et photos d'artistes trouvées en ligne. Elles appartiennent à un album ou à un
+    // artiste, pas à une piste : une ligne par album (`key` = artiste et album normalisés) ou par
+    // artiste, partagée par toutes leurs pistes, et cherchée une seule fois.
+    //
+    // `image_path` NULL : rien trouvé. La ligne reste, pour ne pas réinterroger les services à
+    // chaque démarrage ; `looked_up_at` permet de retenter un jour.
+    //
+    // Les pistes reçoivent le chemin dans `poster_path` (pochette) et `backdrop_path` (photo de
+    // l'artiste, l'« image de fond » de Kodi) ; une pochette embarquée garde la priorité.
+    sql: `
+      CREATE TABLE music_artwork (
+        kind         TEXT    NOT NULL CHECK (kind IN ('album', 'artist')),
+        key          TEXT    NOT NULL,
+        name         TEXT    NOT NULL,              -- tel qu'affiché, pour le journal
+        image_path   TEXT,
+        source       TEXT,                          -- coverartarchive, deezer
+        mbid         TEXT,                          -- identifiant MusicBrainz, quand on le connaît
+        looked_up_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (kind, key)
+      );
+
+      CREATE INDEX media_audio_unidentified_idx ON media(type) WHERE identified_at IS NULL;
+    `
+  },
+  {
+    version: 13,
+    name: 'music-filename-guess',
+    // La reconnaissance lit désormais « Artiste - Titre » dans le nom des fichiers sans tags, et
+    // retrouve l'album d'après l'artiste et le titre : les morceaux sans artiste ou sans album
+    // déjà traités sont repris.
+    sql: `
+      UPDATE media SET identified_at = NULL
+       WHERE type = 'audio'
+         AND NOT EXISTS (SELECT 1 FROM media_metadata md
+                          WHERE md.media_id = media.id AND md.artist IS NOT NULL
+                            AND md.album IS NOT NULL);
+    `
   }
 ]

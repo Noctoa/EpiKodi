@@ -199,6 +199,12 @@ export function upsert(db: Database, input: MediaInput): Media {
          WHEN excluded.mtime != media.mtime OR excluded.size != media.size THEN NULL
          ELSE media.probed_at
        END,
+       -- Un morceau modifié est réanalysé, et ses tags relus : la reconnaissance doit suivre
+       identified_at = CASE
+         WHEN media.type = 'audio' AND (excluded.mtime != media.mtime OR excluded.size != media.size)
+           THEN NULL
+         ELSE media.identified_at
+       END,
        updated_at = unixepoch()
      RETURNING id`,
     input.sourceId,

@@ -16,7 +16,8 @@
   grid-template-columns: 96px 1fr auto auto;
   align-items: center;
   gap: 14px;
-  padding: 6px 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
   border-radius: var(--radius);
 }
 
@@ -26,7 +27,7 @@
 }
 
 .media-item:hover {
-  background: var(--surface);
+  background: var(--accent-soft);
 }
 
 .media-item__num {
@@ -52,7 +53,7 @@
 .media-item__thumb--audio {
   width: 54px;
   margin: 0 21px;
-  color: var(--success);
+  color: var(--accent-hover);
 }
 
 .media-item__thumb img {
@@ -109,6 +110,7 @@
 }
 
 .media-item:hover .media-item__actions,
+.media-item:focus-within .media-item__actions,
 .media-item__actions:focus-within {
   opacity: 1;
 }

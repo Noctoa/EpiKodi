@@ -5,6 +5,7 @@ import { AudioPlayerProvider } from './player/AudioPlayerContext'
 import { restoreThemeEarly, ThemeProvider } from './theme'
 import { restoreTvModeEarly, TvModeProvider } from './tvmode'
 import './styles/global.css'
+import './styles/surfaces.css'
 
 // Avant le premier rendu : évite un passage visible du sombre au clair, ou du bureau au salon
 restoreThemeEarly()

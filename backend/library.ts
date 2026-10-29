@@ -6,6 +6,7 @@ import { app, BrowserWindow, safeStorage } from 'electron'
 import {
   epg,
   media,
+  music,
   openDatabase,
   iptv,
   playback,
@@ -21,6 +22,8 @@ import { scanSource } from './core/scanner'
 import { startBridge, type Bridge } from './core/storage/bridge'
 import { applyMatch, Identifier, suggestMatches } from './core/metadata/identify'
 import { TmdbProvider } from './core/metadata/tmdb'
+import { fpcalcAvailable } from './core/music/acoustid'
+import { MusicRecognizer } from './core/music/recognizer'
 import {
   listProviders,
   registerProvider,
@@ -55,6 +58,7 @@ import {
   type LibraryStats,
   type LiveVariant,
   type MediaListQuery,
+  type MusicStatus,
   type PluginItem,
   type PluginMenuGroup,
   type ScanProgress
@@ -109,6 +113,11 @@ export function posterDir(): string {
   return join(app.getPath('userData'), 'posters')
 }
 
+/** Pochettes d'albums et photos d'artistes trouvées en ligne. */
+export function musicArtDir(): string {
+  return join(app.getPath('userData'), 'music-art')
+}
+
 /** Un sous-dossier par extension installée. */
 export function pluginsDir(): string {
   return join(app.getPath('userData'), 'plugins')
@@ -141,6 +150,7 @@ export function openLibrary(): Database {
       onIdle: () => {
         notifyChanged()
         identifyPending()
+        recognizePending()
       }
     })
   }
@@ -188,6 +198,7 @@ let covers: LocalProvider | null = null
 let downloads: LocalProvider | null = null
 let posters: LocalProvider | null = null
 let logos: LocalProvider | null = null
+let musicArt: LocalProvider | null = null
 
 function thumbnailProvider(): LocalProvider {
   thumbnails ??= new LocalProvider(thumbnailDir())
@@ -208,6 +219,10 @@ function posterProvider(): LocalProvider {
 function logoProvider(): LocalProvider {
   logos ??= new LocalProvider(iptvLogoDir())
   return logos
+}
+function musicArtProvider(): LocalProvider {
+  musicArt ??= new LocalProvider(musicArtDir())
+  return musicArt
 }
 
 /**
@@ -231,6 +246,9 @@ function resolve(locator: string): { provider: StorageProvider; path: string } |
 
   const logo = logoProvider().relative(locator)
   if (logo !== null) return { provider: logoProvider(), path: logo }
+
+  const art = musicArtProvider().relative(locator)
+  if (art !== null) return { provider: musicArtProvider(), path: art }
 
   // Chaîne en direct : le flux est toujours distant, il n'en existe aucune copie locale
   const channel = iptv.channelByUrl(openLibrary(), locator)
@@ -280,9 +298,9 @@ const tmdb = new TmdbProvider(null)
 registerProvider(tmdb)
 let identifier: Identifier | null = null
 
-/** La clé est chiffrée par le trousseau du système, jamais écrite en clair. */
-export function tmdbApiKey(): string | null {
-  const stored = settings.getRaw(openLibrary(), TMDB_KEY_SETTING)
+/** Les clés d'API sont chiffrées par le trousseau du système, jamais écrites en clair. */
+function readSecret(setting: string): string | null {
+  const stored = settings.getRaw(openLibrary(), setting)
   if (!stored) return null
   try {
     return safeStorage.decryptString(Buffer.from(stored))
@@ -292,17 +310,25 @@ export function tmdbApiKey(): string | null {
   }
 }
 
-export function setTmdbApiKey(key: string | null): void {
+function writeSecret(setting: string, value: string | null): void {
   const d = openLibrary()
-  const trimmed = key?.trim() || null
-  if (!trimmed) {
-    settings.setRaw(d, TMDB_KEY_SETTING, null)
+  if (!value) {
+    settings.setRaw(d, setting, null)
   } else if (safeStorage.isEncryptionAvailable()) {
-    settings.setRaw(d, TMDB_KEY_SETTING, safeStorage.encryptString(trimmed))
+    settings.setRaw(d, setting, safeStorage.encryptString(value))
   } else {
-    console.warn('[tmdb] trousseau indisponible : la clé est stockée sans chiffrement')
-    settings.setText(d, TMDB_KEY_SETTING, trimmed)
+    console.warn(`[library] trousseau indisponible : ${setting} est stocké sans chiffrement`)
+    settings.setText(d, setting, value)
   }
+}
+
+export function tmdbApiKey(): string | null {
+  return readSecret(TMDB_KEY_SETTING)
+}
+
+export function setTmdbApiKey(key: string | null): void {
+  const trimmed = key?.trim() || null
+  writeSecret(TMDB_KEY_SETTING, trimmed)
   tmdb.setApiKey(trimmed)
   if (trimmed) identifyPending()
 }
@@ -349,6 +375,75 @@ export async function applyMatchTo(mediaId: number, externalId: string): Promise
   const provider = listProviders().find((p) => externalId.startsWith(`${p.id}:`)) ?? tmdb
   const details: MetadataDetails | null = await provider.details(externalId)
   if (details) await applyMatch(openLibrary(), mediaId, details, posterDir())
+}
+
+// ---- musique : reconnaissance par empreinte, pochettes et photos d'artistes ----
+
+const ACOUSTID_KEY_SETTING = 'acoustid.apiKey'
+const MUSIC_ONLINE_SETTING = 'music.onlineArtwork'
+let recognizer: MusicRecognizer | null = null
+let acoustidKey: string | null | undefined
+let fpcalcFound: Promise<boolean> | null = null
+
+function currentAcoustidKey(): string | null {
+  if (acoustidKey === undefined) acoustidKey = readSecret(ACOUSTID_KEY_SETTING)
+  return acoustidKey
+}
+
+/** Activée par défaut : seuls des noms d'artistes et d'albums sont envoyés. */
+function musicOnline(): boolean {
+  return settings.getText(openLibrary(), MUSIC_ONLINE_SETTING) !== 'off'
+}
+
+function canFingerprint(): Promise<boolean> {
+  fpcalcFound ??= fpcalcAvailable().then((found) => {
+    if (!found) console.warn('[music] fpcalc introuvable : pas de reconnaissance par empreinte')
+    return found
+  })
+  return fpcalcFound
+}
+
+/** Met en file la musique pas encore traitée. */
+export function recognizePending(): void {
+  recognizer ??= new MusicRecognizer(openLibrary(), {
+    artDir: musicArtDir(),
+    acoustidKey: currentAcoustidKey,
+    canFingerprint,
+    online: musicOnline,
+    resolveUrl: ffmpegUrlFor,
+    onDone: () => notifyChanged(),
+    onIdle: () => notifyChanged()
+  })
+  // Un album absent des bases il y a un mois y est peut-être aujourd'hui
+  music.forgetMisses(openLibrary(), Math.floor(Date.now() / 1000) - music.MISS_TTL_SECONDS)
+  recognizer.enqueuePending()
+}
+
+export async function musicStatus(): Promise<MusicStatus> {
+  return {
+    ...music.stats(openLibrary()),
+    keyConfigured: currentAcoustidKey() !== null,
+    fpcalc: await canFingerprint(),
+    online: musicOnline(),
+    lastError: recognizer?.lastError ?? null
+  }
+}
+
+export function setAcoustidKey(key: string | null): void {
+  const trimmed = key?.trim() || null
+  writeSecret(ACOUSTID_KEY_SETTING, trimmed)
+  acoustidKey = trimmed
+  recognizer?.keyChanged()
+  if (trimmed) music.requeueUntagged(openLibrary())
+  recognizePending()
+}
+
+export function setMusicOnline(enabled: boolean): void {
+  settings.setText(openLibrary(), MUSIC_ONLINE_SETTING, enabled ? 'on' : 'off')
+  if (enabled) {
+    music.requeueWithoutArtwork(openLibrary())
+    recognizePending()
+  }
 }
 
 // ---- thèmes ----
@@ -521,6 +616,9 @@ export function closeLibrary(): void {
   enricher = null
   identifier?.stop()
   identifier = null
+  recognizer?.stop()
+  recognizer = null
+  acoustidKey = undefined
   plugins?.stopAll()
   plugins = null
   for (const provider of providers.values()) provider.close()

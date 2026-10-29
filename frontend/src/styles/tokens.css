@@ -8,19 +8,25 @@
  */
 
 :root {
+  color-scheme: dark;
+  --line: color-mix(in srgb, var(--text-muted) 22%, transparent);
+  --display-font: 'Barlow Condensed', Impact, 'Arial Narrow', sans-serif;
+  --electric: #1765ed;
+  --cyan: #69e8ff;
+  --ink: #050d24;
   /* fonds, du plus profond au plus clair */
-  --bg: #0f1115;
-  --surface: #181b22;
-  --surface-2: #222630;
+  --bg: #050d24;
+  --surface: #0b1935;
+  --surface-2: #12294a;
 
   /* texte */
-  --text: #e8eaf0;
-  --text-muted: #9aa0ad;
+  --text: #f0f7ff;
+  --text-muted: #9bb0cf;
 
   /* couleur d'accent et ses déclinaisons */
-  --accent: #4f7cff;
-  --accent-hover: #6b91ff;
-  --accent-soft: rgba(79, 124, 255, 0.18);
+  --accent: #1765ed;
+  --accent-hover: #42d9f3;
+  --accent-soft: rgba(36, 151, 244, 0.16);
 
   /* couleurs d'état */
   --danger: #ff6b6b;
@@ -41,24 +47,25 @@
   --shadow: rgba(0, 0, 0, 0.5);
 
   /* formes et tailles */
-  --radius: 10px;
-  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius: 4px;
+  --font: 'Urbanist', 'Segoe UI', sans-serif;
   --font-size: 15px;
   /* largeur minimale d'une vignette : un thème « salon » l'augmente pour une lecture à distance */
   --tile-min: 190px;
 }
 
 [data-theme='light'] {
-  --bg: #f4f5f8;
+  color-scheme: light;
+  --bg: #eaf2fc;
   --surface: #ffffff;
-  --surface-2: #e6e9ef;
+  --surface-2: #dce8f8;
 
-  --text: #16181d;
-  --text-muted: #5c6370;
+  --text: #0b2145;
+  --text-muted: #4c6382;
 
-  --accent: #2f5fe0;
-  --accent-hover: #1f49bd;
-  --accent-soft: rgba(47, 95, 224, 0.14);
+  --accent: #145bd7;
+  --accent-hover: #0847b6;
+  --accent-soft: rgba(20, 91, 215, 0.1);
 
   --danger: #c7362f;
   --danger-soft: rgba(199, 54, 47, 0.12);
@@ -72,14 +79,15 @@
 /* « Système » : aucun attribut n'est posé, on suit la préférence du bureau */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg: #f4f5f8;
+    color-scheme: light;
+    --bg: #eaf2fc;
     --surface: #ffffff;
-    --surface-2: #e6e9ef;
-    --text: #16181d;
-    --text-muted: #5c6370;
-    --accent: #2f5fe0;
-    --accent-hover: #1f49bd;
-    --accent-soft: rgba(47, 95, 224, 0.14);
+    --surface-2: #dce8f8;
+    --text: #0b2145;
+    --text-muted: #4c6382;
+    --accent: #145bd7;
+    --accent-hover: #0847b6;
+    --accent-soft: rgba(20, 91, 215, 0.1);
     --danger: #c7362f;
     --danger-soft: rgba(199, 54, 47, 0.12);
     --warning: #9a6200;

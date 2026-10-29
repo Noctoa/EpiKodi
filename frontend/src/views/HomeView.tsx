@@ -2,6 +2,11 @@ import { toMediaUrl } from '@shared/ipc'
 import type { ContinueItem, LibraryStats } from '@shared/ipc'
 import type { MediaWithMetadata } from '@shared/models'
 import { Grid, type GridTile } from '@frontend/components/Grid'
+import { PersonaScene } from '@frontend/components/PersonaScene'
+import type { SectionName } from '@frontend/navigation'
+import makoto from '../assets/persona/makoto.webp'
+import makotoBattle from '../assets/persona/makoto-battle.webp'
+import aigis from '../assets/persona/aigis.webp'
 import { fmtDuration } from '@frontend/format'
 import { recentlyAdded } from '@frontend/library/grouping'
 import './HomeView.css'
@@ -23,6 +28,7 @@ interface Props {
   onOpen: (id: number) => void
   onPlay: (id: number) => void
   onAddSource: () => void
+  onNavigate: (section: SectionName) => void
 }
 
 export function tileOf(m: MediaWithMetadata, currentKey?: string | null): GridTile {
@@ -46,37 +52,139 @@ export function HomeView({
   stats,
   onOpen,
   onPlay,
-  onAddSource
+  onAddSource,
+  onNavigate
 }: Props): React.JSX.Element {
   const recent = recentlyAdded(items, RECENT_POOL)
-
-  if (items.length === 0) {
-    return (
-      <div className="home__welcome">
-        <h2>Bienvenue dans EpiKodi</h2>
-        <p>
-          Ta bibliothèque est vide. Ajoute un dossier contenant des vidéos ou de la musique : les
-          fichiers sont indexés, analysés et prêts à lire en quelques secondes.
-        </p>
-        <button onClick={onAddSource}>+ Ajouter un dossier</button>
-      </div>
-    )
-  }
+  const resume = continueWatching[0]
+  const empty = items.length === 0
 
   return (
     <div className="home">
-      {stats && (
+      <section className="home__hero" aria-labelledby="home-hero-title">
+        <PersonaScene />
+        <span className="home__hero-edition" aria-hidden="true">
+          P3R / PERSONAL MEDIA SYSTEM
+        </span>
+        <div className="home__hero-copy">
+          <p className="home__eyebrow">
+            <span /> TA BIBLIOTHÈQUE, AUTREMENT.
+          </p>
+          <h2 id="home-hero-title">
+            Change
+            <br />
+            <em>de rythme.</em>
+          </h2>
+          <p className="home__intro">
+            {empty
+              ? 'Tes films. Tes sons. Ton moment. Toute ta collection, dans une autre dimension.'
+              : 'Le monde peut attendre. Retrouve tes films, tes sons et la suite de ton histoire.'}
+          </p>
+          <div className="home__hero-actions">
+            {resume ? (
+              <button className="home__cta" onClick={() => onPlay(resume.id)}>
+                <span aria-hidden="true">▶</span> Reprendre la lecture
+              </button>
+            ) : (
+              <button className="home__cta" onClick={onAddSource}>
+                <span aria-hidden="true">＋</span>{' '}
+                {empty ? 'Créer ma collection' : 'Ajouter un dossier'}
+              </button>
+            )}
+            <span className="home__hero-note">
+              {resume ? resume.title : 'Ta collection. Tes règles.'}
+            </span>
+          </div>
+        </div>
+        <span className="home__hero-word" aria-hidden="true">
+          RELOAD
+        </span>
+      </section>
+      <div className="home__ticker" aria-hidden="true">
+        <span>YOUR LIFE. YOUR SOUNDTRACK.</span>
+        <span>映画 / 音楽 / ライブ</span>
+        <span>PRESS PLAY ↗</span>
+      </div>
+      {(stats || empty) && (
         <div className="home__stats">
           <span>
-            <strong>{stats.videos}</strong> vidéo(s)
+            <span className="home__stat-icon" aria-hidden="true">
+              ▶
+            </span>
+            <strong>{stats?.videos ?? 0}</strong> vidéos
           </span>
           <span>
-            <strong>{stats.audio}</strong> piste(s)
+            <span className="home__stat-icon" aria-hidden="true">
+              ♪
+            </span>
+            <strong>{stats?.audio ?? 0}</strong> pistes audio
           </span>
           <span>
-            <strong>{stats.sources}</strong> source(s)
+            <span className="home__stat-icon" aria-hidden="true">
+              ⌸
+            </span>
+            <strong>{stats?.sources ?? 0}</strong> sources
           </span>
         </div>
+      )}
+      <div className="home__portals" aria-label="Explorer la collection">
+        {[
+          {
+            section: 'videos' as const,
+            number: '01',
+            title: 'Vidéos',
+            label: 'CHANGER DE DÉCOR',
+            image: makotoBattle
+          },
+          {
+            section: 'music' as const,
+            number: '02',
+            title: 'Musique',
+            label: 'TROUVER SA FRÉQUENCE',
+            image: makoto
+          },
+          {
+            section: 'tv' as const,
+            number: '03',
+            title: 'En direct',
+            label: 'VIVRE L’INSTANT',
+            image: aigis
+          }
+        ].map((portal) => (
+          <button
+            className={`home__portal home__portal--${portal.section}`}
+            key={portal.section}
+            onClick={() => onNavigate(portal.section)}
+          >
+            <span className="home__portal-number" aria-hidden="true">
+              {portal.number}
+            </span>
+            <img src={portal.image} alt="" loading="lazy" />
+            <span className="home__portal-copy">
+              <small>{portal.label}</small>
+              <strong>{portal.title}</strong>
+            </span>
+            <span className="home__portal-arrow" aria-hidden="true">
+              ↗
+            </span>
+          </button>
+        ))}
+      </div>
+      {empty && (
+        <section className="home__welcome">
+          <span className="home__welcome-index" aria-hidden="true">
+            01
+          </span>
+          <div>
+            <h3>Tout commence par ta collection.</h3>
+            <p>
+              Ajoute un dossier de vidéos ou de musique. EpiKodi s’occupe de l’indexer pour toi.
+            </p>
+          </div>
+          <button className="btn--ghost" onClick={onAddSource}>
+            Ajouter une source <span aria-hidden="true">↗</span>
+          </button>
+        </section>
       )}
       {continueWatching.length > 0 && (
         <>
@@ -94,13 +202,15 @@ export function HomeView({
         </>
       )}
 
-      <h3 className="home__section">Récemment ajoutés</h3>
-      <Grid
-        tiles={recent.map((m) => tileOf(m))}
-        onOpen={(k) => onOpen(Number(k))}
-        onPlay={(k) => onPlay(Number(k))}
-        rows={RECENT_ROWS}
-      />
+      {!empty && <h3 className="home__section">Récemment ajoutés</h3>}
+      {!empty && (
+        <Grid
+          tiles={recent.map((m) => tileOf(m))}
+          onOpen={(k) => onOpen(Number(k))}
+          onPlay={(k) => onPlay(Number(k))}
+          rows={RECENT_ROWS}
+        />
+      )}
     </div>
   )
 }

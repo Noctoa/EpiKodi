@@ -31,6 +31,7 @@ describe('migrations', () => {
       'media',
       'media_fts',
       'media_metadata',
+      'music_artwork',
       'playback_state',
       'playlist_items',
       'playlists',

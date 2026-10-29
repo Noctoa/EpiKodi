@@ -34,6 +34,9 @@ export const IPC = {
   metadataSetKey: 'metadata:set-key',
   metadataSuggest: 'metadata:suggest',
   metadataApply: 'metadata:apply',
+  musicStatus: 'music:status',
+  musicSetKey: 'music:set-key',
+  musicSetOnline: 'music:set-online',
   playlistsList: 'playlists:list',
   playlistsCreate: 'playlists:create',
   playlistsRename: 'playlists:rename',
@@ -308,6 +311,27 @@ export interface MetadataStatus {
   pending: number
 }
 
+/** Reconnaissance de la musique et recherche de pochettes (Paramètres). */
+export interface MusicStatus {
+  /** Une clé AcoustID est enregistrée */
+  keyConfigured: boolean
+  /** fpcalc (paquet chromaprint) est installé */
+  fpcalc: boolean
+  /** Recherche de pochettes et photos d'artistes en ligne */
+  online: boolean
+  /** Morceaux en attente de traitement */
+  pending: number
+  /** Morceaux reconnus à leur empreinte */
+  recognized: number
+  albumsWithCover: number
+  artistsWithImage: number
+  /** Morceaux sans tags qu'AcoustID n'a pas reconnus */
+  unrecognized: number
+  /** « Artiste — Album » ou « Artiste » qu'aucune source ne connaît */
+  notFound: string[]
+  lastError: string | null
+}
+
 export interface FfmpegStatus {
   ffprobe: boolean
   ffmpeg: boolean
@@ -384,6 +408,10 @@ export interface EpiKodiApi {
   /** Candidats pour un média ; `query` remplace le titre deviné lors d'une correction manuelle. */
   metadataSuggest(mediaId: number, query?: string): Promise<MetadataMatch[]>
   metadataApply(mediaId: number, externalId: string): Promise<void>
+  musicStatus(): Promise<MusicStatus>
+  /** Enregistre (ou efface avec `null`) la clé AcoustID, chiffrée par le trousseau système. */
+  musicSetKey(key: string | null): Promise<MusicStatus>
+  musicSetOnline(enabled: boolean): Promise<MusicStatus>
 
   playlistsList(): Promise<PlaylistSummary[]>
   playlistsCreate(name: string): Promise<PlaylistSummary[]>
