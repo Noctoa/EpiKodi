@@ -12,3 +12,12 @@
   font-weight: 800 900;
   font-display: swap;
 }
+
+/* Variante droite réservée à la navigation. */
+@font-face {
+  font-family: 'Barlow Condensed Upright';
+  src: url('../assets/persona/BarlowCondensed-ExtraBold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}

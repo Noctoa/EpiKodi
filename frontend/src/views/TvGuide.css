@@ -1,0 +1,366 @@
+/*
+ * Grille des programmes. Le défilement est natif (molette, barres, clavier) ; seules les lignes et
+ * les cases visibles existent dans le DOM. La colonne des chaînes et l'en-tête des heures restent
+ * collés grâce à `position: sticky`, dans le même conteneur de défilement que les cases.
+ */
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.guide__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.guide__bar button {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.guide__sep {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.guide__bar .guide__day--on {
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+.guide__scroller {
+  position: relative;
+  /* Assez haut pour une dizaine de chaînes, sans pousser la gestion des listes hors de vue */
+  height: max(360px, calc(100vh - 260px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+
+.guide__canvas {
+  position: relative;
+}
+
+/* ---- en-tête des heures ---- */
+
+.guide__head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.guide__corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  background: var(--surface-2);
+  border-right: 1px solid var(--line);
+}
+
+.guide__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  border-left: 1px solid var(--line);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.guide__tick--day {
+  color: var(--text);
+  font-weight: 700;
+  text-transform: capitalize;
+  border-left: 2px solid var(--text-muted);
+}
+
+.guide__now-head {
+  position: absolute;
+  bottom: 4px;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--on-media);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- lignes ---- */
+
+.guide__row {
+  position: absolute;
+  left: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide__channel {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 0;
+  background: var(--surface-2);
+  border-right: 1px solid var(--line);
+  color: var(--text);
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.guide__channel:hover {
+  background: var(--accent-soft);
+}
+
+.guide__row--current .guide__channel {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Comme sur les vignettes : un logo est souvent transparent et fait pour un fond clair */
+.guide__channel img,
+.guide__logo {
+  flex: none;
+  width: 44px;
+  height: 32px;
+  object-fit: contain;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--overlay);
+}
+
+.guide__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* ---- cases ---- */
+
+.guide__cell {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  overflow: visible;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  font-size: 0.8rem;
+  /* Pas de transform au survol : la case est large, le décalage se verrait */
+  transition: background 120ms ease;
+}
+
+.guide__cell:hover,
+.guide__cell:focus-visible,
+.remote-nav .guide__cell[data-cursor] {
+  background: var(--accent-soft);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.guide__cell--live {
+  border-color: var(--accent);
+}
+
+.guide__cell--past {
+  opacity: 0.55;
+}
+
+.guide__cell--gap {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+/*
+ * Le libellé colle au bord gauche de la zone visible : le titre d'un programme commencé avant
+ * l'écran reste lisible, au lieu de défiler hors de vue avec le début de sa case.
+ */
+.guide__label {
+  position: sticky;
+  left: var(--guide-channel, 200px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 10px;
+  overflow: hidden;
+}
+
+.guide__label strong,
+.guide__label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guide__label span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.guide__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0 0 0 8px;
+  background: var(--accent);
+}
+
+.guide__now {
+  position: absolute;
+  z-index: 1;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--danger);
+  pointer-events: none;
+}
+
+/* ---- fiche programme ---- */
+
+.guide-detail__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--overlay-strong);
+}
+
+.guide-detail {
+  display: flex;
+  width: min(760px, 100%);
+  max-height: min(80vh, 640px);
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.guide-detail__image {
+  flex: none;
+  width: 34%;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.guide-detail__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px 24px;
+  overflow-y: auto;
+}
+
+.guide-detail__body h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.guide-detail__channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.guide-detail__channel img {
+  width: 36px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.guide-detail__live {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--on-media);
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.guide-detail__sub {
+  margin: 0;
+  font-weight: 600;
+}
+
+.guide-detail__slot {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.guide-detail__progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.guide-detail__progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.guide-detail__desc {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.guide-detail__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .guide-detail {
+    flex-direction: column;
+  }
+
+  .guide-detail__image {
+    width: 100%;
+    max-height: 200px;
+  }
+}

@@ -723,11 +723,8 @@ export default function App(): React.JSX.Element {
     <div className={`app ${view.name === 'home' && !playing ? 'app--home' : ''}`}>
       <header className="app__header">
         <h1 className="app__title">
-          <span className="app__brand-mark" aria-hidden="true">
-            E
-          </span>
           <span>
-            EpiKodi<small>TON UNIVERS MULTIMÉDIA</small>
+            EpiKodi
           </span>
         </h1>
 

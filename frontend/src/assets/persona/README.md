@@ -15,3 +15,5 @@ Les illustrations et la vidéo Persona 3 Reload appartiennent à ATLUS / SEGA. E
 
 Les deux polices sont distribuées sous SIL Open Font License 1.1 ; les licences sont conservées dans ce dossier.
 Tous les fichiers sont embarqués par Vite : aucun appel au site tiers n’est effectué par l’application.
+
+Variante droite du menu : `BarlowCondensed-ExtraBold.ttf`, issue de https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-ExtraBold.ttf (même licence BarlowCondensed-OFL.txt).

@@ -74,11 +74,6 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
           )}
         </ul>
       )}
-      <div className="sidebar__footer" aria-hidden="true">
-        <span className="sidebar__wave">▂ ▅ ▃ ▇ ▄ ▆ ▂</span>
-        <strong>À ton rythme.</strong>
-        <span>PLAY. PAUSE. REPEAT.</span>
-      </div>
     </nav>
   )
 }

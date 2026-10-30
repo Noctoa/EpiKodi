@@ -244,8 +244,7 @@
   font-family: var(--font);
 }
 .app__brand-mark {
-  background: var(--cyan);
-  color: var(--ink);
+  background: var(--foo, red, blue);
 }
 .app__header-actions > button {
   border-radius: 0;
