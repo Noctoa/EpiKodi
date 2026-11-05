@@ -11,7 +11,7 @@ intégré à Node (aucune dépendance native à compiler).
 Pour l'ouvrir à la main : `sqlite3 ~/.config/epikodi/epikodi.db` puis `.tables`, `.schema media`,
 `SELECT * FROM sources;`. Le client `sqlite3` s'installe avec `pacman -S sqlite` / `apt install sqlite3`.
 
-## Schéma (v8)
+## Schéma (v16)
 
 ```
 sources 1 ──< media 1 ──1 media_metadata
@@ -29,6 +29,55 @@ sources 1 ──< media 1 ──1 media_metadata
 | `playlists`      | Listes de lecture nommées                                        | UI (#17)                 |
 | `playlist_items` | Contenu ordonné d'une playlist (`position`)                      | UI (#17)                 |
 | `playback_state` | Position de reprise, terminé, favori, nombre de lectures         | Lecteur (#17)            |
+| `profiles`       | Personnes du foyer : nom, avatar                                 | Écran des profils (#33)  |
+
+Les tables des podcasts, de l'IPTV et du guide des programmes sont décrites dans
+[podcasts.md](podcasts.md) et [iptv.md](iptv.md).
+
+## Profils (v14)
+
+Plusieurs personnes partagent la machine. **La bibliothèque est commune** (sources, médias,
+métadonnées, flux de podcasts et leurs épisodes, chaînes, guides) : on ne scanne pas deux fois le
+même disque. **Ce qui relève de la personne porte un `profile_id`** et part avec son profil
+(`ON DELETE CASCADE`) :
+
+| Table                   | Contenu personnel                                       |
+| ----------------------- | ------------------------------------------------------- |
+| `playback_state`        | Reprise, terminé, favori — clé `(profile_id, media_id)` |
+| `playlists`             | Playlists (leurs `playlist_items` suivent par cascade)  |
+| `podcast_subscriptions` | Qui suit quel flux ; un flux sans abonné est supprimé   |
+| `podcast_progress`      | Position et « écouté » d'un épisode                     |
+| `iptv_favorites`        | Chaînes favorites                                       |
+| `profile_settings`      | Réglages personnels : `ui.theme`, `iptv.lastChannel`    |
+
+Le **profil actif est tenu par le backend** (`activeProfileId()` dans `backend/library.ts`) :
+chaque repository reçoit le `profileId` en paramètre et filtre dessus, l'interface n'a aucun
+moyen de demander les données d'un autre profil. Le dernier profil utilisé est mémorisé dans
+`settings` (`profiles.last`) ; le dernier profil restant ne peut pas être supprimé.
+
+La migration 14 crée le profil 1, « Profil principal », et lui rattache toutes les données
+existantes. Elle reconstruit `playback_state` et `playlists` : elle est marquée
+`rebuildsTables`, ce qui coupe les clés étrangères le temps de la migration (sans quoi
+`DROP TABLE playlists` viderait `playlist_items` par cascade) puis vérifie
+`PRAGMA foreign_key_check` avant de valider. Tests : `backend/core/db/profiles.test.ts`.
+
+## Watchlist du foyer (v15)
+
+La seule donnée **commune à tous les profils**. `shared_watchlist` a une ligne par média, avec le
+profil qui l'a proposé (`added_by`, mis à `NULL` si ce profil est supprimé : l'entrée reste pour
+les autres). `shared_watchlist_seen` note qui a terminé le média : la ligne est posée quand un
+profil arrive au bout (`savePlaybackPosition(…, completed)`), et à l'ajout pour ceux qui l'avaient
+déjà terminé. Tests : `backend/core/db/watchlist.test.ts`.
+
+## Journal de lecture (v16)
+
+`play_log` alimente les statistiques : une ligne par séance d'écoute, avec le **temps réellement
+passé à lire**. Le lecteur le mesure (`frontend/src/player/tracker.ts` : horloge murale entre deux
+`timeupdate` pendant la lecture, pauses et sauts exclus) et l'envoie toutes les 15 s sous un
+identifiant de séance ; le backend additionne. Titre, artiste et genre sont recopiés au moment de
+la lecture, pour que les chiffres survivent à la suppression du fichier. Une séance de moins de
+30 s (`MIN_PLAY_SECONDS`) compte dans le temps total mais pas comme une lecture. Fichiers ouverts
+hors bibliothèque exclus. Tests : `backend/core/db/stats.test.ts`.
 
 Conventions :
 
@@ -61,7 +110,8 @@ media.upsert(db, {
 media.list(db, { type: 'video', search: 'a' })
 ```
 
-Modules : `sources`, `media` (+ `getMetadata` / `setMetadata`), `playlists`, `playback`.
+Modules : `sources`, `media` (+ `getMetadata` / `setMetadata`), `playlists`, `playback`,
+`profiles`, `podcasts`, `iptv`, `epg`, `music`, `settings`.
 Helpers dans `database.ts` : `all<T>`, `one<T>`, `run`, `transaction`.
 
 ## Migrations

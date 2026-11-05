@@ -182,6 +182,8 @@ export function syncChannels(db: Database, sourceId: number, channels: ChannelIn
 }
 
 export interface ChannelQuery {
+  /** Profil dont on affiche les favorites ; sans lui, aucune chaîne n'est favorite */
+  profileId?: number
   sourceId?: number
   group?: string
   search?: string
@@ -198,7 +200,7 @@ export interface ChannelQuery {
  */
 export function channels(db: Database, query: ChannelQuery = {}): IptvChannel[] {
   const where: string[] = []
-  const params: (string | number)[] = []
+  const params: (string | number | null)[] = [query.profileId ?? null]
 
   if (query.sourceId !== undefined) {
     where.push('source_id = ?')
@@ -218,7 +220,7 @@ export function channels(db: Database, query: ChannelQuery = {}): IptvChannel[] 
   params.push(query.limit ?? 500, query.offset ?? 0)
   return all<ChannelRow>(
     db,
-    `SELECT * FROM iptv_channels
+    `SELECT * FROM (${CHANNEL_SELECT})
      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY favorite DESC, position, name COLLATE NOCASE
      LIMIT ? OFFSET ?`,
@@ -226,19 +228,32 @@ export function channels(db: Database, query: ChannelQuery = {}): IptvChannel[] 
   ).map(toChannel)
 }
 
+/**
+ * Les favorites sont propres à chaque profil (table `iptv_favorites`) : la colonne `favorite`
+ * est recalculée pour le profil passé en premier paramètre.
+ */
+const CHANNEL_SELECT = `
+  SELECT c.*, EXISTS (SELECT 1 FROM iptv_favorites f
+                       WHERE f.channel_id = c.id AND f.profile_id = ?) AS favorite
+    FROM iptv_channels c`
+
 /** `%` et `_` sont des jokers en SQL : tapés dans la recherche, ils doivent rester littéraux. */
 function escapeLike(term: string): string {
   return term.replace(/[\\%_]/g, (c) => `\\${c}`)
 }
 
-export function channel(db: Database, id: number): IptvChannel | null {
-  const row = one<ChannelRow>(db, 'SELECT * FROM iptv_channels WHERE id = ?', id)
+export function channel(
+  db: Database,
+  id: number,
+  profileId: number | null = null
+): IptvChannel | null {
+  const row = one<ChannelRow>(db, `${CHANNEL_SELECT} WHERE c.id = ?`, profileId, id)
   return row ? toChannel(row) : null
 }
 
 /** Sert à retrouver la chaîne derrière une URL jouée, comme pour les épisodes de podcast. */
 export function channelByUrl(db: Database, url: string): IptvChannel | null {
-  const row = one<ChannelRow>(db, 'SELECT * FROM iptv_channels WHERE stream_url = ? LIMIT 1', url)
+  const row = one<ChannelRow>(db, `${CHANNEL_SELECT} WHERE c.stream_url = ? LIMIT 1`, null, url)
   return row ? toChannel(row) : null
 }
 
@@ -264,21 +279,33 @@ export function groups(db: Database, sourceId?: number): { group: string; count:
   ).map((r) => ({ group: r.group_title, count: r.n }))
 }
 
-export function setFavorite(db: Database, id: number, favorite: boolean): void {
-  run(db, 'UPDATE iptv_channels SET favorite = ? WHERE id = ?', favorite ? 1 : 0, id)
+export function setFavorite(db: Database, profileId: number, id: number, favorite: boolean): void {
+  run(
+    db,
+    favorite
+      ? 'INSERT OR IGNORE INTO iptv_favorites (profile_id, channel_id) VALUES (?, ?)'
+      : 'DELETE FROM iptv_favorites WHERE profile_id = ? AND channel_id = ?',
+    profileId,
+    id
+  )
 }
 
 export function setLogoPath(db: Database, id: number, path: string | null): void {
   run(db, 'UPDATE iptv_channels SET logo_path = ? WHERE id = ?', path, id)
 }
 
-/** Chaînes dont le logo n'est pas encore en cache, favorites d'abord : on cache ce qui se verra. */
+/**
+ * Chaînes dont le logo n'est pas encore en cache, favorites d'abord : on cache ce qui se verra.
+ * Le cache est commun, donc les favorites de n'importe quel profil passent devant.
+ */
 export function withoutLogo(db: Database, sourceId: number, limit: number): IptvChannel[] {
   return all<ChannelRow>(
     db,
-    `SELECT * FROM iptv_channels
-      WHERE source_id = ? AND missing_at IS NULL AND logo_path IS NULL AND logo_url IS NOT NULL
-      ORDER BY favorite DESC, position LIMIT ?`,
+    `SELECT c.*, EXISTS (SELECT 1 FROM iptv_favorites f WHERE f.channel_id = c.id) AS favorite
+       FROM iptv_channels c
+      WHERE c.source_id = ? AND c.missing_at IS NULL AND c.logo_path IS NULL
+        AND c.logo_url IS NOT NULL
+      ORDER BY favorite DESC, c.position LIMIT ?`,
     sourceId,
     limit
   ).map(toChannel)

@@ -28,14 +28,19 @@ export interface RefreshResult {
   error: string | null
 }
 
-/** S'abonne à un flux, ou met à jour l'abonnement existant. */
+/**
+ * Abonne le profil à un flux. Le flux n'est téléchargé et stocké qu'une fois, même si plusieurs
+ * profils le suivent ; un nouvel abonnement à un flux déjà connu le met à jour.
+ */
 export async function subscribe(
   db: Database,
+  profileId: number,
   feedUrl: string,
   imageDir: string
 ): Promise<RefreshResult> {
   const { feed, episodes } = await fetchFeed(feedUrl)
   const podcast = podcasts.upsert(db, feedUrl, feed)
+  podcasts.subscribe(db, profileId, podcast.id)
   const added = podcasts.upsertEpisodes(db, podcast.id, episodes)
   podcasts.markFetched(db, podcast.id)
   await cacheCover(db, podcast.id, feed.imageUrl, imageDir)

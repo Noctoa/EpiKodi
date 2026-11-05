@@ -4,6 +4,8 @@ import type { EpisodeInput } from './repositories/podcasts'
 
 let db: Database
 let id: number
+/** Profil créé par la migration 14 */
+const P = 1
 
 const INFO = {
   title: 'Radio Démo',
@@ -77,7 +79,7 @@ describe('épisodes', () => {
 
   it('les rend du plus récent au plus ancien', () => {
     podcasts.upsertEpisodes(db, id, [ep(1), ep(3), ep(2)])
-    expect(podcasts.episodes(db, id).map((e) => e.title)).toEqual([
+    expect(podcasts.episodes(db, P, id).map((e) => e.title)).toEqual([
       'Épisode 3',
       'Épisode 2',
       'Épisode 1'
@@ -86,12 +88,12 @@ describe('épisodes', () => {
 
   it('un rafraîchissement ne réinitialise ni la progression ni le téléchargement', () => {
     podcasts.upsertEpisodes(db, id, [ep(1)])
-    const [episode] = podcasts.episodes(db, id)
-    podcasts.saveProgress(db, episode.id, 120)
+    const [episode] = podcasts.episodes(db, P, id)
+    podcasts.saveProgress(db, P, episode.id, 120)
     podcasts.setLocalPath(db, episode.id, '/tmp/1.mp3')
 
     podcasts.upsertEpisodes(db, id, [ep(1, { title: 'Titre corrigé' })])
-    const after = podcasts.episode(db, episode.id)!
+    const after = podcasts.episode(db, episode.id, P)!
     expect(after.title).toBe('Titre corrigé')
     expect(after.position).toBe(120)
     expect(after.localPath).toBe('/tmp/1.mp3')
@@ -99,7 +101,7 @@ describe('épisodes', () => {
 
   it('retrouve un épisode par son URL distante ou par sa copie locale', () => {
     podcasts.upsertEpisodes(db, id, [ep(1)])
-    const [episode] = podcasts.episodes(db, id)
+    const [episode] = podcasts.episodes(db, P, id)
     expect(podcasts.episodeByUrl(db, 'https://demo.example/1.mp3')?.id).toBe(episode.id)
     podcasts.setLocalPath(db, episode.id, '/tmp/1.mp3')
     expect(podcasts.episodeByUrl(db, '/tmp/1.mp3')?.id).toBe(episode.id)
@@ -111,30 +113,30 @@ describe('état de lecture', () => {
   beforeEach(() => podcasts.upsertEpisodes(db, id, [ep(1), ep(2), ep(3)]))
 
   it('mémorise la position sans toucher à l’état « lu »', () => {
-    const [episode] = podcasts.episodes(db, id)
-    podcasts.saveProgress(db, episode.id, 42.5)
-    expect(podcasts.episode(db, episode.id)).toMatchObject({ position: 42.5, completed: false })
+    const [episode] = podcasts.episodes(db, P, id)
+    podcasts.saveProgress(db, P, episode.id, 42.5)
+    expect(podcasts.episode(db, episode.id, P)).toMatchObject({ position: 42.5, completed: false })
   })
 
   it('marquer lu remet la position à zéro, marquer non lu la conserve', () => {
-    const [episode] = podcasts.episodes(db, id)
-    podcasts.saveProgress(db, episode.id, 300)
-    podcasts.setCompleted(db, episode.id, true)
-    expect(podcasts.episode(db, episode.id)).toMatchObject({ completed: true, position: 0 })
-    podcasts.setCompleted(db, episode.id, false)
-    expect(podcasts.episode(db, episode.id)?.completed).toBe(false)
+    const [episode] = podcasts.episodes(db, P, id)
+    podcasts.saveProgress(db, P, episode.id, 300)
+    podcasts.setCompleted(db, P, episode.id, true)
+    expect(podcasts.episode(db, episode.id, P)).toMatchObject({ completed: true, position: 0 })
+    podcasts.setCompleted(db, P, episode.id, false)
+    expect(podcasts.episode(db, episode.id, P)?.completed).toBe(false)
   })
 
   it('compte les épisodes non écoutés', () => {
-    expect(podcasts.unplayedCount(db, id)).toBe(3)
-    const [first] = podcasts.episodes(db, id)
-    podcasts.setCompleted(db, first.id, true)
-    expect(podcasts.unplayedCount(db, id)).toBe(2)
+    expect(podcasts.unplayedCount(db, P, id)).toBe(3)
+    const [first] = podcasts.episodes(db, P, id)
+    podcasts.setCompleted(db, P, first.id, true)
+    expect(podcasts.unplayedCount(db, P, id)).toBe(2)
   })
 
   it('la fin de lecture marque l’épisode comme écouté', () => {
-    const [episode] = podcasts.episodes(db, id)
-    podcasts.saveProgress(db, episode.id, 60, true)
-    expect(podcasts.episode(db, episode.id)?.completed).toBe(true)
+    const [episode] = podcasts.episodes(db, P, id)
+    podcasts.saveProgress(db, P, episode.id, 60, true)
+    expect(podcasts.episode(db, episode.id, P)?.completed).toBe(true)
   })
 })

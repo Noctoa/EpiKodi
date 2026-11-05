@@ -1,3 +1,4 @@
+import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AUDIO_EXTENSIONS,
@@ -11,7 +12,8 @@ import {
   type PluginMenuGroup,
   type PlaylistSummary,
   type PodcastWithCounts,
-  type ScanProgress
+  type ScanProgress,
+  type WatchlistItem
 } from '@shared/ipc'
 import type {
   Facets,
@@ -54,6 +56,8 @@ import { PodcastEpisodesView, PodcastsView, useEpisodes } from './views/Podcasts
 import { SearchView } from './views/SearchView'
 import { SettingsView } from './views/SettingsView'
 import { SourcesView } from './views/SourcesView'
+import { StatsView } from './views/StatsView'
+import { WatchlistView } from './views/WatchlistView'
 import './App.css'
 
 const isAudioFile = (name: string): boolean =>
@@ -86,6 +90,8 @@ export default function App(): React.JSX.Element {
   const [playlistContent, setPlaylistContent] = useState<MediaWithMetadata[]>([])
   const [favorites, setFavorites] = useState<MediaWithMetadata[]>([])
   const [continueItems, setContinueItems] = useState<ContinueItem[]>([])
+  /** Watchlist du foyer : commune à tous les profils */
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [enrichPending, setEnrichPending] = useState(0)
   const [ffmpeg, setFfmpeg] = useState<FfmpegStatus | null>(null)
   /** Entrées de barre latérale apportées par les extensions actives */
@@ -177,6 +183,7 @@ export default function App(): React.JSX.Element {
   )
 
   const reloadPodcasts = useCallback(() => window.epikodi.podcastsList().then(setPodcasts), [])
+  const reloadWatchlist = useCallback(() => window.epikodi.watchlistList().then(setWatchlist), [])
   const reloadPluginMenus = useCallback(
     () => window.epikodi.pluginsMenus().then(setPluginMenus),
     []
@@ -193,13 +200,15 @@ export default function App(): React.JSX.Element {
       window.epikodi.podcastsList(),
       window.epikodi.playlistsList(),
       window.epikodi.favoritesList(),
-      window.epikodi.playbackContinue()
-    ]).then(([p, l, f, c]) => {
+      window.epikodi.playbackContinue(),
+      window.epikodi.watchlistList()
+    ]).then(([p, l, f, c, w]) => {
       if (cancelled) return
       setPodcasts(p)
       setPlaylists(l)
       setFavorites(f)
       setContinueItems(c)
+      setWatchlist(w)
     })
     return () => {
       cancelled = true
@@ -245,7 +254,9 @@ export default function App(): React.JSX.Element {
     if (view.name === 'favorites') void reloadFavorites()
     if (view.name === 'home') void reloadContinue()
     if (view.name === 'playlists') void reloadPlaylists()
-  }, [view.name, reloadFavorites, reloadContinue, reloadPlaylists])
+    // Les « vu » changent quand quelqu'un termine un média
+    if (view.name === 'watchlist') void reloadWatchlist()
+  }, [view.name, reloadFavorites, reloadContinue, reloadPlaylists, reloadWatchlist])
 
   const go = useCallback((v: View) => setNav((n) => navigate(n, v)), [])
   const open = useCallback((v: View) => setNav((n) => push(n, v)), [])
@@ -604,6 +615,19 @@ export default function App(): React.JSX.Element {
           />
         )
 
+      case 'watchlist':
+        return (
+          <WatchlistView
+            items={watchlist}
+            onOpenDetail={openDetail}
+            onPlay={(m) => playMedia(m)}
+            onRemove={(m) => void window.epikodi.watchlistRemove(m.id).then(setWatchlist)}
+          />
+        )
+
+      case 'stats':
+        return <StatsView />
+
       case 'podcasts':
         return (
           <PodcastsView
@@ -698,6 +722,14 @@ export default function App(): React.JSX.Element {
               void window.epikodi.playlistsAdd(playlistId, detailMedia.id).then(reloadPlaylists)
             }
             onFavoriteChanged={() => void reloadFavorites()}
+            inWatchlist={watchlist.some((w) => w.mediaId === detailMedia.id)}
+            onToggleWatchlist={() =>
+              void (
+                watchlist.some((w) => w.mediaId === detailMedia.id)
+                  ? window.epikodi.watchlistRemove(detailMedia.id)
+                  : window.epikodi.watchlistAdd(detailMedia.id)
+              ).then(setWatchlist)
+            }
           />
         ) : (
           <div className="grid__empty">Ce média n'est plus dans la bibliothèque.</div>
@@ -713,6 +745,7 @@ export default function App(): React.JSX.Element {
     podcasts: podcasts.length,
     playlists: playlists.length,
     favorites: favorites.length,
+    watchlist: watchlist.length,
     tv: channelCount
   }
   // Le compteur de la barre de filtres décrit ce que la vue affiche, pas le total tous types
@@ -763,6 +796,7 @@ export default function App(): React.JSX.Element {
         </div>
 
         <div className="app__header-actions">
+          <ThemeSwitcher />
           {playing && (
             <button className="btn--ghost" onClick={() => showVideo(null)}>
               ← Bibliothèque

@@ -6,6 +6,12 @@ export interface Migration {
   version: number
   name: string
   sql: string
+  /**
+   * Reconstruit des tables référencées par d'autres : les clés étrangères sont alors coupées le
+   * temps de la migration, sans quoi `DROP TABLE` viderait les tables filles par cascade. Leur
+   * cohérence est vérifiée avant validation (procédure « 12 étapes » de la doc SQLite).
+   */
+  rebuildsTables?: boolean
 }
 
 export const migrations: Migration[] = [
@@ -367,6 +373,154 @@ export const migrations: Migration[] = [
          AND NOT EXISTS (SELECT 1 FROM media_metadata md
                           WHERE md.media_id = media.id AND md.artist IS NOT NULL
                             AND md.album IS NOT NULL);
+    `
+  },
+  {
+    version: 14,
+    name: 'profiles',
+    // Plusieurs personnes partagent la machine. La bibliothèque (sources, médias, métadonnées,
+    // flux, chaînes, guides) reste commune : on ne scanne pas deux fois le même disque. Ce qui
+    // relève de la personne passe derrière un `profile_id` : reprises et favoris, playlists,
+    // abonnements et écoute des podcasts, chaînes favorites, et quelques réglages (thème…).
+    //
+    // Le profil 1 est créé ici et adopte tout ce qui existait : aucune donnée n'est perdue.
+    rebuildsTables: true,
+    sql: `
+      CREATE TABLE profiles (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT    NOT NULL,
+        avatar     TEXT,                           -- « icon:<nom> » ou chemin d'une image en cache
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      INSERT INTO profiles (id, name) VALUES (1, 'Profil principal');
+
+      CREATE TABLE playback_state_v14 (
+        profile_id     INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        media_id       INTEGER NOT NULL REFERENCES media(id)    ON DELETE CASCADE,
+        position       REAL    NOT NULL DEFAULT 0,
+        completed      INTEGER NOT NULL DEFAULT 0,
+        favorite       INTEGER NOT NULL DEFAULT 0,
+        play_count     INTEGER NOT NULL DEFAULT 0,
+        last_played_at INTEGER,
+        PRIMARY KEY (profile_id, media_id)
+      );
+      INSERT INTO playback_state_v14
+        SELECT 1, media_id, position, completed, favorite, play_count, last_played_at
+          FROM playback_state;
+      DROP TABLE playback_state;
+      ALTER TABLE playback_state_v14 RENAME TO playback_state;
+      CREATE INDEX playback_state_media_idx ON playback_state(media_id);
+
+      -- playlist_items la référence : reconstruite clés étrangères coupées, ses lignes restent
+      CREATE TABLE playlists_v14 (
+        id         INTEGER PRIMARY KEY,
+        profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        name       TEXT    NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+      INSERT INTO playlists_v14 (id, profile_id, name, created_at)
+        SELECT id, 1, name, created_at FROM playlists;
+      DROP TABLE playlists;
+      ALTER TABLE playlists_v14 RENAME TO playlists;
+      CREATE INDEX playlists_profile_idx ON playlists(profile_id);
+
+      -- Le flux et ses épisodes sont communs ; l'abonnement et l'écoute sont personnels
+      CREATE TABLE podcast_subscriptions (
+        profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        podcast_id INTEGER NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
+        added_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (profile_id, podcast_id)
+      );
+      INSERT INTO podcast_subscriptions (profile_id, podcast_id, added_at)
+        SELECT 1, id, added_at FROM podcasts;
+
+      CREATE TABLE podcast_progress (
+        profile_id INTEGER NOT NULL REFERENCES profiles(id)         ON DELETE CASCADE,
+        episode_id INTEGER NOT NULL REFERENCES podcast_episodes(id) ON DELETE CASCADE,
+        position   REAL    NOT NULL DEFAULT 0,
+        completed  INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (profile_id, episode_id)
+      );
+      INSERT INTO podcast_progress (profile_id, episode_id, position, completed)
+        SELECT 1, id, position, completed FROM podcast_episodes
+         WHERE position > 0 OR completed = 1;
+      ALTER TABLE podcast_episodes DROP COLUMN position;
+      ALTER TABLE podcast_episodes DROP COLUMN completed;
+
+      CREATE TABLE iptv_favorites (
+        profile_id INTEGER NOT NULL REFERENCES profiles(id)      ON DELETE CASCADE,
+        channel_id INTEGER NOT NULL REFERENCES iptv_channels(id) ON DELETE CASCADE,
+        PRIMARY KEY (profile_id, channel_id)
+      );
+      INSERT INTO iptv_favorites (profile_id, channel_id)
+        SELECT 1, id FROM iptv_channels WHERE favorite = 1;
+      DROP INDEX iptv_channels_favorite_idx;
+      ALTER TABLE iptv_channels DROP COLUMN favorite;
+
+      -- Réglages propres à une personne ; les autres restent dans settings
+      CREATE TABLE profile_settings (
+        profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        key        TEXT    NOT NULL,
+        value      TEXT,
+        PRIMARY KEY (profile_id, key)
+      );
+      INSERT INTO profile_settings (profile_id, key, value)
+        SELECT 1, key, CAST(value AS TEXT) FROM settings
+         WHERE key IN ('ui.theme', 'iptv.lastChannel') AND value IS NOT NULL;
+      DELETE FROM settings WHERE key IN ('ui.theme', 'iptv.lastChannel');
+    `
+  },
+  {
+    version: 15,
+    name: 'shared-watchlist',
+    // Seul point commun entre les profils : une liste « à voir » partagée par toute la maison.
+    // Une entrée par média. Celui qui l'a ajoutée peut partir (`SET NULL`) sans que l'entrée
+    // disparaisse pour les autres. « Vu » est une trace explicite, posée quand un profil termine
+    // le média, plutôt qu'une lecture de `playback_state` : elle survit à une remise à zéro des
+    // reprises et ne dépend pas de ce que chacun garde dans son historique.
+    sql: `
+      CREATE TABLE shared_watchlist (
+        media_id INTEGER PRIMARY KEY REFERENCES media(id)    ON DELETE CASCADE,
+        added_by INTEGER             REFERENCES profiles(id) ON DELETE SET NULL,
+        added_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+
+      CREATE TABLE shared_watchlist_seen (
+        media_id   INTEGER NOT NULL REFERENCES shared_watchlist(media_id) ON DELETE CASCADE,
+        profile_id INTEGER NOT NULL REFERENCES profiles(id)               ON DELETE CASCADE,
+        seen_at    INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (media_id, profile_id)
+      );
+    `
+  },
+  {
+    version: 16,
+    name: 'play-log',
+    // Journal de lecture, source des statistiques : une ligne par séance d'écoute, avec le temps
+    // réellement passé à lire (mesuré par le lecteur, pauses et sauts exclus) — pas la position
+    // atteinte, ni l'ouverture d'une fiche.
+    //
+    // `session` est tiré par le lecteur : il renvoie le temps écoulé par tranches, qui
+    // s'additionnent sur la même ligne. Titre, artiste et genre sont recopiés au moment de la
+    // lecture : les statistiques ne doivent pas changer parce qu'un fichier a été supprimé ou
+    // renommé.
+    sql: `
+      CREATE TABLE play_log (
+        id         INTEGER PRIMARY KEY,
+        session    TEXT    NOT NULL UNIQUE,
+        profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        kind       TEXT    NOT NULL CHECK (kind IN ('video', 'audio', 'podcast', 'live')),
+        media_id   INTEGER REFERENCES media(id) ON DELETE SET NULL,
+        title      TEXT    NOT NULL,
+        artist     TEXT,
+        genre      TEXT,
+        seconds    REAL    NOT NULL DEFAULT 0,
+        started_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+
+      CREATE INDEX play_log_profile_idx ON play_log(profile_id, started_at);
     `
   }
 ]

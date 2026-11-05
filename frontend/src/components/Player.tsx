@@ -6,6 +6,7 @@ import {
   type LiveVariant,
   type OpenedMedia,
   type PlaybackPlanInfo,
+  type PlayTarget,
   type SubtitleTrack
 } from '@shared/ipc'
 import { fmtDuration } from '@frontend/format'
@@ -17,6 +18,7 @@ import {
   STALL_MS,
   variantLabel
 } from '@frontend/player/live'
+import { trackPlayback } from '@frontend/player/tracker'
 import { setVideoControl, type MediaControl } from '@frontend/remote/control'
 import './Player.css'
 
@@ -299,6 +301,19 @@ export function Player({ media, mediaId, onClose }: PlayerProps): React.JSX.Elem
     lastSaved.current = time
     void window.epikodi.playbackSave(mediaId, finished ? 0 : time, finished)
   }, [mediaId, time, duration])
+
+  // Journal de lecture : le temps réellement regardé, direct compris (voir tracker.ts). Un
+  // fichier ouvert hors bibliothèque n'y entre pas : rien ne permet de le retrouver ensuite.
+  useEffect(() => {
+    const el = videoRef.current
+    const target: PlayTarget | null = isLive
+      ? { kind: 'channel', streamUrl: media.path }
+      : mediaId !== undefined
+        ? { kind: 'media', mediaId }
+        : null
+    if (!el || !target) return
+    return trackPlayback(el, target)
+  }, [isLive, media.path, mediaId])
 
   // Fermeture du lecteur : on enregistre la position exacte, sans attendre le prochain tour
   useEffect(() => {

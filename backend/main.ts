@@ -13,6 +13,8 @@ import {
   type MetadataStatus,
   type PluginList,
   type PlaybackPlanInfo,
+  type PlayTarget,
+  type ProfilesState,
   type SubtitleTrack,
   type SystemInfo
 } from '../shared/ipc'
@@ -51,6 +53,19 @@ import {
   listMedia,
   listPlaylists,
   activatePluginItem,
+  activeProfileId,
+  addToWatchlist,
+  listWatchlist,
+  profileStats,
+  recordPlay,
+  removeFromWatchlist,
+  resetStats,
+  createProfile,
+  importAvatar,
+  listProfiles,
+  removeProfile,
+  selectProfile,
+  updateProfile,
   listPlugins,
   pluginItems,
   pluginMenus,
@@ -191,6 +206,59 @@ function createWindow(): BrowserWindow {
 }
 
 function registerIpc(): void {
+  const profilesState = (): ProfilesState => ({
+    profiles: listProfiles(),
+    activeId: activeProfileId()
+  })
+  ipcMain.handle(IPC.profilesList, () => profilesState())
+  ipcMain.handle(IPC.profilesSelect, (_, id: number) => {
+    selectProfile(id)
+    return profilesState()
+  })
+  ipcMain.handle(IPC.profilesCreate, (_, name: string, avatar: string | null) => {
+    createProfile(name, avatar)
+    return profilesState()
+  })
+  ipcMain.handle(
+    IPC.profilesUpdate,
+    async (_, id: number, patch: { name?: string; avatar?: string | null }) => {
+      await updateProfile(id, patch)
+      return profilesState()
+    }
+  )
+  ipcMain.handle(IPC.profilesRemove, async (_, id: number) => {
+    await removeProfile(id)
+    return profilesState()
+  })
+  ipcMain.handle(IPC.profilesPickAvatar, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(win!, {
+      title: 'Choisir une image de profil',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return importAvatar(result.filePaths[0])
+  })
+
+  ipcMain.handle(IPC.watchlistList, () => listWatchlist())
+  ipcMain.handle(IPC.watchlistAdd, (_, mediaId: number) => {
+    addToWatchlist(mediaId)
+    return listWatchlist()
+  })
+  ipcMain.handle(IPC.watchlistRemove, (_, mediaId: number) => {
+    removeFromWatchlist(mediaId)
+    return listWatchlist()
+  })
+  ipcMain.handle(IPC.statsRecord, (_, session: string, target: PlayTarget, seconds: number) =>
+    recordPlay(session, target, seconds)
+  )
+  ipcMain.handle(IPC.statsGet, () => profileStats())
+  ipcMain.handle(IPC.statsReset, () => {
+    resetStats()
+    return profileStats()
+  })
+
   ipcMain.handle(IPC.libraryStats, () => libraryStats())
 
   ipcMain.handle(IPC.sourcesList, () => listSources())

@@ -1,6 +1,11 @@
 import type { PluginMenuGroup } from '@shared/ipc'
 import { SECTIONS, activeKey, menuKey, type SectionName, type View } from '@frontend/navigation'
+import { useProfiles } from '@frontend/profiles'
+import { ProfileAvatar } from './ProfilePicker'
 import './Sidebar.css'
+
+/** Sections de gestion, sous « Mon espace » ; les autres servent à explorer la bibliothèque. */
+const PERSONAL = new Set<string>(['stats', 'sources', 'settings'])
 
 interface Props {
   view: View
@@ -12,6 +17,7 @@ interface Props {
 
 export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React.JSX.Element {
   const active = activeKey(view)
+  const { active: profile, openPicker } = useProfiles()
   const entry = (key: string, icon: string, label: string, count?: number): React.JSX.Element => (
     <li key={key}>
       <button
@@ -49,18 +55,31 @@ export function Sidebar({ view, counts, pluginMenus, onNavigate }: Props): React
 
   return (
     <nav className="sidebar" aria-label="Navigation principale">
+      {profile && (
+        <button
+          className="sidebar__profile"
+          onClick={() => openPicker()}
+          title={`${profile.name} — changer de profil`}
+        >
+          <ProfileAvatar profile={profile} size="md" />
+          <span className="sidebar__profile-name">{profile.name}</span>
+          <span className="sidebar__profile-switch" aria-hidden="true">
+            ⇄
+          </span>
+        </button>
+      )}
       <p className="sidebar__heading">
         EXPLORER <span aria-hidden="true">↘</span>
       </p>
       <ul>
-        {SECTIONS.filter((s) => s.name !== 'sources' && s.name !== 'settings').map((s) =>
+        {SECTIONS.filter((s) => !PERSONAL.has(s.name)).map((s) =>
           entry(s.name, s.icon, s.label, counts[s.name])
         )}
       </ul>
 
       <p className="sidebar__heading sidebar__heading--manage">MON ESPACE</p>
       <ul>
-        {SECTIONS.filter((s) => s.name === 'sources' || s.name === 'settings').map((s) =>
+        {SECTIONS.filter((s) => PERSONAL.has(s.name)).map((s) =>
           entry(s.name, s.icon, s.label, counts[s.name])
         )}
       </ul>

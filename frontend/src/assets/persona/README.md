@@ -17,3 +17,18 @@ Les deux polices sont distribuées sous SIL Open Font License 1.1 ; les licences
 Tous les fichiers sont embarqués par Vite : aucun appel au site tiers n’est effectué par l’application.
 
 Variante droite du menu : `BarlowCondensed-ExtraBold.ttf`, issue de https://raw.githubusercontent.com/google/fonts/main/ofl/barlowcondensed/BarlowCondensed-ExtraBold.ttf (même licence BarlowCondensed-OFL.txt).
+
+## Persona 5 et transitions
+
+Assets récupérés le 30 octobre 2026, embarqués localement comme ceux de P3.
+Illustrations et graphismes de jeu : ATLUS / SEGA ; ils ne sont pas couverts par la licence MIT du code.
+
+| Fichier             | Source                                                                                                                                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `joker-cutin.png`   | [SmashWiki — Joker cut-in](https://www.ssbwiki.com/File:Jokercutin.png), [PNG original](https://ssb.wiki.gallery/images/8/81/Jokercutin.png)                                                              |
+| `makoto-cutin.webp` | [The Cutting Room Floor, miroir — Persona 3 Reload, Final Cutin](https://tcrf.tiago.zip/wiki/Persona_3_Reload), [asset](https://tcrf.tiago.zip/files/a7/fd/a7fd3503eeb35fd0e5ffd86b7845f9c6da2363b9.webp) |
+| `joker.png`         | [Site officiel Persona 5 Royal — costume de voleur](https://persona.atlus.com/p5r/resources/img/p5r/chara1_costume2_f44dcfe012ae7b8b2241c093a5df2ef8.png)                                                 |
+| `ren.png`           | [Site officiel Persona 5 Royal — Ren](https://persona.atlus.com/p5r/resources/img/p5r/chara1_costume1_1547cf3551257504f0798dc89ca1be08.png)                                                               |
+| `ryuji.png`         | [Site officiel Persona 5 Royal — Ryuji](https://persona.atlus.com/p5r/resources/img/p5r/chara2_costume1_da269ff2112720df2e3ee96c4cbd5537.png)                                                             |
+
+Les déchirures, éclats et animations de transition sont dessinés en CSS autour des portraits.

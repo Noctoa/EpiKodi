@@ -55,20 +55,29 @@ export function currentVersion(db: Database): number {
   return one<{ user_version: number }>(db, 'PRAGMA user_version')!.user_version
 }
 
-function migrate(db: Database): void {
+/** Applique les migrations en attente, jusqu'à `target` (les tests s'arrêtent avant la dernière). */
+export function migrate(db: Database, target = Infinity): void {
   const applied = currentVersion(db)
   const pending = migrations
-    .filter((m) => m.version > applied)
+    .filter((m) => m.version > applied && m.version <= target)
     .sort((a, b) => a.version - b.version)
   for (const m of pending) {
+    // Ne se change pas dans une transaction : on coupe avant, on rétablit après
+    if (m.rebuildsTables) db.exec('PRAGMA foreign_keys = OFF')
     // Une migration = une transaction : soit tout passe, soit rien
     try {
       transaction(db, () => {
         db.exec(m.sql)
+        if (m.rebuildsTables) {
+          const broken = all<{ table: string }>(db, 'PRAGMA foreign_key_check')
+          if (broken.length) throw new Error(`clés étrangères rompues dans ${broken[0].table}`)
+        }
         db.exec(`PRAGMA user_version = ${m.version}`)
       })
     } catch (err) {
       throw new Error(`Migration ${m.version} (${m.name}) échouée`, { cause: err })
+    } finally {
+      if (m.rebuildsTables) db.exec('PRAGMA foreign_keys = ON')
     }
   }
 }

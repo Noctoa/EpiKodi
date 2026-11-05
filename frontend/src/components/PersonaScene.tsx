@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTheme } from '../theme'
+import joker from '../assets/persona/jokergif.gif'
 import scene from '../assets/persona/dark-hour.mp4'
 import poster from '../assets/persona/dark-hour-poster.webp'
 
 /** Une boucle décorative locale, suspendue hors écran et désactivable sans toucher au lecteur. */
 export function PersonaScene(): React.JSX.Element {
+  const { persona } = useTheme()
+  const p5 = persona === 'p5'
   const [enabled, setEnabled] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
@@ -38,13 +42,16 @@ export function PersonaScene(): React.JSX.Element {
       document.removeEventListener('visibilitychange', sync)
       video.pause()
     }
-  }, [enabled])
+  }, [enabled, p5])
 
   return (
     <>
-      <div className="home__scene" aria-hidden="true">
-        <img src={poster} alt="" className="home__scene-poster" />
-        {enabled && (
+      <div
+        className={`home__scene ${p5 ? 'home__scene--p5' : ''} ${enabled ? 'home__scene--animated' : ''}`}
+        aria-hidden="true"
+      >
+        <img src={p5 ? joker : poster} alt="" className="home__scene-poster" />
+        {enabled && !p5 && (
           <video ref={ref} src={scene} poster={poster} muted loop playsInline tabIndex={-1} />
         )}
       </div>

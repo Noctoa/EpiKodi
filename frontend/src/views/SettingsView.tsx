@@ -238,7 +238,7 @@ function MusicSettings(): React.JSX.Element {
 
 /** Choix du thème : le clic l'applique aussitôt, sans redémarrage. */
 function ThemeSettings(): React.JSX.Element {
-  const { list, select } = useTheme()
+  const { list, select, busy } = useTheme()
   const tv = useTvMode()
 
   return (
@@ -281,6 +281,8 @@ function ThemeSettings(): React.JSX.Element {
             <button
               className={`theme ${t.id === list.selected ? 'theme--active' : ''}`}
               onClick={() => void select(t.id)}
+              disabled={busy}
+              aria-pressed={t.id === list.selected}
             >
               <span className="theme__swatches" aria-hidden="true">
                 {['--bg', '--surface-2', '--accent', '--text'].map((token) => (

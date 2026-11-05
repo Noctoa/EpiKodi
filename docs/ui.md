@@ -66,6 +66,23 @@ sortie du lecteur, fermeture d'une boîte — il se repose sur le premier élém
 
 La télécommande emprunte exactement ce chemin : voir [docs/remote-api.md](remote-api.md).
 
+## Profils
+
+`ProfileProvider` (`frontend/src/profiles.tsx`) charge les profils au démarrage. S'il y en a
+plusieurs, l'écran « Qui regarde ? » (`components/ProfilePicker.tsx`) s'affiche et ne se ferme
+qu'en choisissant. Le bouton en haut de la barre latérale le rouvre pour basculer ; « Gérer les
+profils » permet de créer, renommer, changer l'avatar (icône prédéfinie, initiale ou image copiée
+dans `userData/avatars/`) et supprimer, avec une confirmation explicite.
+
+La bascule ne demande pas de redémarrage : `main.tsx` remonte `<App>` et le lecteur audio avec la
+clé du profil actif, ce qui recharge toutes les données personnelles et arrête la lecture.
+L'application est démontée **avant** l'appel `profilesSelect` (`flushSync`) : le lecteur vidéo
+enregistre sa position en partant, et cette écriture doit encore aller à l'ancien profil. Le
+thème, propre à chaque profil, est relu par `ThemeProvider` à chaque changement.
+
+Les deux écrans sont des `role="dialog"` : la navigation directionnelle et la manette y restent
+piégées. Le champ du nom rend les flèches haut/bas à la navigation, pour en sortir à la manette.
+
 ## Mode TV
 
 Une bascule, pas une deuxième interface : **F10** — ou Paramètres → Apparence → Mode TV — pose

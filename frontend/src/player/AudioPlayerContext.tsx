@@ -10,6 +10,7 @@ import {
   type ReactNode
 } from 'react'
 import * as Q from './queue'
+import { targetOfKey, trackPlayback } from './tracker'
 import type { QueueItem, QueueState, RepeatMode } from './queue'
 
 interface Status {
@@ -177,6 +178,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }): Reac
     handlers.forEach(([e, h]) => el.addEventListener(e, h))
     return () => handlers.forEach(([e, h]) => el.removeEventListener(e, h))
   }, [])
+
+  // Journal de lecture : une séance par piste, le temps réellement écouté (voir tracker.ts)
+  const currentKey = current?.key ?? null
+  useEffect(() => {
+    const el = ref.current
+    const target = currentKey ? targetOfKey(currentKey) : null
+    if (!el || !target) return
+    return trackPlayback(el, target)
+  }, [currentKey])
 
   useEffect(() => {
     try {

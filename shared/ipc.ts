@@ -9,7 +9,10 @@ import type {
   MediaWithMetadata,
   Podcast,
   PodcastEpisode,
-  Source
+  Profile,
+  ProfileStats,
+  Source,
+  WatchlistEntry
 } from './models'
 import type { RemoteCommand, RemoteState, RemoteStatus } from './remote'
 
@@ -97,8 +100,40 @@ export const IPC = {
   playerSubtitles: 'player:subtitles',
   playerSubtitleVtt: 'player:subtitle-vtt',
   playerLiveError: 'player:live-error',
-  playerLiveVariants: 'player:live-variants'
+  playerLiveVariants: 'player:live-variants',
+  profilesList: 'profiles:list',
+  profilesSelect: 'profiles:select',
+  profilesCreate: 'profiles:create',
+  profilesUpdate: 'profiles:update',
+  profilesRemove: 'profiles:remove',
+  profilesPickAvatar: 'profiles:pick-avatar',
+  watchlistList: 'watchlist:list',
+  watchlistAdd: 'watchlist:add',
+  watchlistRemove: 'watchlist:remove',
+  statsRecord: 'stats:record',
+  statsGet: 'stats:get',
+  statsReset: 'stats:reset'
 } as const
+
+/** Entrée de la watchlist du foyer, avec le média qu'elle désigne. */
+export interface WatchlistItem extends WatchlistEntry {
+  media: MediaWithMetadata
+}
+
+/**
+ * Ce qui est en cours de lecture, pour le journal. Le backend en retrouve lui-même le titre,
+ * l'artiste et le genre : le lecteur ne donne qu'une référence.
+ */
+export type PlayTarget =
+  | { kind: 'media'; mediaId: number }
+  | { kind: 'episode'; episodeId: number }
+  | { kind: 'channel'; streamUrl: string }
+
+/** Les profils du foyer et celui qui est actif. */
+export interface ProfilesState {
+  profiles: Profile[]
+  activeId: number
+}
 
 /** Une piste de sous-titres proposée par le lecteur. */
 export interface SubtitleTrack {
@@ -378,6 +413,35 @@ export interface ScanProgress {
 export type MediaListQuery = MediaQuery
 
 export interface EpiKodiApi {
+  /** Profils et profil actif. Le backend filtre toutes les données personnelles sur ce dernier. */
+  profilesList(): Promise<ProfilesState>
+  /** Bascule immédiate, sans redémarrage. */
+  profilesSelect(id: number): Promise<ProfilesState>
+  profilesCreate(name: string, avatar: string | null): Promise<ProfilesState>
+  profilesUpdate(
+    id: number,
+    patch: { name?: string; avatar?: string | null }
+  ): Promise<ProfilesState>
+  /** Supprime le profil et toutes ses données ; le dernier profil ne peut pas l'être. */
+  profilesRemove(id: number): Promise<ProfilesState>
+  /** Ouvre un sélecteur d'image et la copie dans les données de l'app ; null si annulé. */
+  profilesPickAvatar(): Promise<string | null>
+
+  /** Watchlist commune à tous les profils, plus récentes en tête. */
+  watchlistList(): Promise<WatchlistItem[]>
+  watchlistAdd(mediaId: number): Promise<WatchlistItem[]>
+  watchlistRemove(mediaId: number): Promise<WatchlistItem[]>
+
+  /**
+   * Temps réellement passé à lire depuis le dernier envoi, rattaché à une séance (identifiant
+   * tiré par le lecteur). Sans réponse : appelé régulièrement pendant la lecture.
+   */
+  statsRecord(session: string, target: PlayTarget, seconds: number): Promise<void>
+  /** Statistiques du profil actif, et totaux des autres profils pour comparer. */
+  statsGet(): Promise<ProfileStats>
+  /** Efface le journal de lecture du profil actif. */
+  statsReset(): Promise<ProfileStats>
+
   openMediaDialog(): Promise<OpenedMedia | null>
   /** Média ouvert depuis l'extérieur (ligne de commande, "ouvrir avec"). Retourne un désabonnement. */
   onMediaOpened(cb: (media: OpenedMedia) => void): () => void

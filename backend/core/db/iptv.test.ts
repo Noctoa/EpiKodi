@@ -102,11 +102,11 @@ describe('syncChannels', () => {
   it('conserve le favori d’une chaîne disparue puis revenue', () => {
     iptv.syncChannels(db, sourceId, parseChannels(PLAYLIST))
     const bein = iptv.channels(db, { sourceId }).find((c) => c.name.startsWith('beIN'))!
-    iptv.setFavorite(db, bein.id, true)
+    iptv.setFavorite(db, 1, bein.id, true)
 
     iptv.syncChannels(db, sourceId, parseChannels(PLAYLIST).slice(0, 2))
     iptv.syncChannels(db, sourceId, parseChannels(PLAYLIST))
-    expect(iptv.channel(db, bein.id)?.favorite).toBe(true)
+    expect(iptv.channel(db, bein.id, 1)?.favorite).toBe(true)
   })
 
   it('met à jour le nom, le groupe et le logo sans changer d’identité', () => {
@@ -140,8 +140,8 @@ describe('lecture des chaînes', () => {
 
   it('remonte les favorites en tête', () => {
     const bein = iptv.channels(db, { sourceId }).find((c) => c.name.startsWith('beIN'))!
-    iptv.setFavorite(db, bein.id, true)
-    expect(iptv.channels(db, { sourceId })[0].id).toBe(bein.id)
+    iptv.setFavorite(db, 1, bein.id, true)
+    expect(iptv.channels(db, { sourceId, profileId: 1 })[0].id).toBe(bein.id)
   })
 
   it('filtre par groupe', () => {

@@ -19,6 +19,9 @@ interface Props {
   onAddToPlaylist?: (playlistId: number) => void
   /** Appelé après un changement de favori */
   onFavoriteChanged?: () => void
+  /** Présent dans la watchlist du foyer ; absent = bouton masqué */
+  inWatchlist?: boolean
+  onToggleWatchlist?: () => void
 }
 
 function Row({
@@ -46,7 +49,9 @@ export function MediaDetail({
   onIdentified,
   playlists,
   onAddToPlaylist,
-  onFavoriteChanged
+  onFavoriteChanged,
+  inWatchlist,
+  onToggleWatchlist
 }: Props): React.JSX.Element {
   const [picking, setPicking] = useState(false)
   const [favorite, setFavorite] = useState(false)
@@ -115,6 +120,20 @@ export function MediaDetail({
           >
             {favorite ? '★' : '☆'} Favori
           </button>
+          {onToggleWatchlist && (
+            <button
+              className={`btn--ghost ${inWatchlist ? 'detail__favorite--on' : ''}`}
+              onClick={onToggleWatchlist}
+              aria-pressed={inWatchlist}
+              title={
+                inWatchlist
+                  ? 'Retirer de la watchlist du foyer (pour tous les profils)'
+                  : 'Proposer à tout le foyer'
+              }
+            >
+              {inWatchlist ? '◉' : '◎'} Watchlist
+            </button>
+          )}
           {playlists && onAddToPlaylist && (
             <span className="detail__playlist">
               <button className="btn--ghost" onClick={() => setPlaylistMenu((o) => !o)}>

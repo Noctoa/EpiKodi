@@ -124,8 +124,33 @@ export function parseTheme(
   }
 }
 
-/** Les deux thèmes intégrés, toujours proposés, plus le suivi du réglage du système. */
+/** Thèmes intégrés, toujours proposés, plus le suivi du réglage du système. */
 export const BUILTIN_THEMES: Theme[] = [
+  {
+    id: 'persona3',
+    name: 'Persona 3 Reload',
+    description: 'Bleu électrique · Dark Hour',
+    author: null,
+    base: 'dark',
+    tokens: {}
+  },
+  {
+    id: 'persona5',
+    name: 'Persona 5',
+    description: 'Rouge, noir et blanc · Phantom Thieves',
+    author: null,
+    base: 'dark',
+    tokens: {
+      '--bg': '#0c0c0e',
+      '--surface': '#18181b',
+      '--surface-2': '#29292e',
+      '--text': '#fffaf3',
+      '--text-muted': '#bdb8b5',
+      '--accent': '#d90826',
+      '--accent-hover': '#ff5268',
+      '--accent-soft': 'rgba(217, 8, 38, 0.16)'
+    }
+  },
   {
     id: 'system',
     name: 'Système',

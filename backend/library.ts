@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { basename, extname, join } from 'node:path'
 import type { Readable } from 'node:stream'
 import { app, BrowserWindow, safeStorage } from 'electron'
 import {
@@ -12,8 +12,11 @@ import {
   playback,
   playlists as playlistRepo,
   podcasts,
+  profiles,
   settings,
   sources,
+  stats,
+  watchlist,
   type Database
 } from './core/db'
 import { Enricher } from './core/enricher'
@@ -60,8 +63,10 @@ import {
   type MediaListQuery,
   type MusicStatus,
   type PluginItem,
+  type PlayTarget,
   type PluginMenuGroup,
-  type ScanProgress
+  type ScanProgress,
+  type WatchlistItem
 } from '../shared/ipc'
 import { REMOTE_DEFAULT_PORT } from '../shared/remote'
 import type {
@@ -74,6 +79,8 @@ import type {
   Playlist,
   Podcast,
   PodcastEpisode,
+  Profile,
+  ProfileStats,
   Source
 } from '../shared/models'
 
@@ -118,6 +125,11 @@ export function musicArtDir(): string {
   return join(app.getPath('userData'), 'music-art')
 }
 
+/** Images choisies comme avatar de profil, copiées pour survivre au fichier d'origine. */
+export function avatarDir(): string {
+  return join(app.getPath('userData'), 'avatars')
+}
+
 /** Un sous-dossier par extension installée. */
 export function pluginsDir(): string {
   return join(app.getPath('userData'), 'plugins')
@@ -132,6 +144,7 @@ export function openLibrary(): Database {
   if (!db) {
     db = openDatabase(databasePath())
     console.log(`[library] base ouverte : ${databasePath()}`)
+    activeProfile = initialProfile(db)
     tmdb.setApiKey(
       (() => {
         const stored = settings.getRaw(db, TMDB_KEY_SETTING)
@@ -199,6 +212,7 @@ let downloads: LocalProvider | null = null
 let posters: LocalProvider | null = null
 let logos: LocalProvider | null = null
 let musicArt: LocalProvider | null = null
+let avatars: LocalProvider | null = null
 
 function thumbnailProvider(): LocalProvider {
   thumbnails ??= new LocalProvider(thumbnailDir())
@@ -223,6 +237,10 @@ function logoProvider(): LocalProvider {
 function musicArtProvider(): LocalProvider {
   musicArt ??= new LocalProvider(musicArtDir())
   return musicArt
+}
+function avatarProvider(): LocalProvider {
+  avatars ??= new LocalProvider(avatarDir())
+  return avatars
 }
 
 /**
@@ -249,6 +267,9 @@ function resolve(locator: string): { provider: StorageProvider; path: string } |
 
   const art = musicArtProvider().relative(locator)
   if (art !== null) return { provider: musicArtProvider(), path: art }
+
+  const avatar = avatarProvider().relative(locator)
+  if (avatar !== null) return { provider: avatarProvider(), path: avatar }
 
   // Chaîne en direct : le flux est toujours distant, il n'en existe aucune copie locale
   const channel = iptv.channelByUrl(openLibrary(), locator)
@@ -446,17 +467,111 @@ export function setMusicOnline(enabled: boolean): void {
   }
 }
 
+// ---- profils ----
+
+/** Dernier profil utilisé : celui que l'on retrouve au démarrage. Réglage global, pas personnel. */
+const LAST_PROFILE_SETTING = 'profiles.last'
+
+/**
+ * Profil actif, tenu côté backend : chaque opération sur une donnée personnelle le lit ici, et
+ * l'interface n'a aucun moyen de demander les données d'un autre profil.
+ */
+let activeProfile = 1
+
+function initialProfile(d: Database): number {
+  const last = Number(settings.getText(d, LAST_PROFILE_SETTING))
+  if (Number.isInteger(last) && profiles.get(d, last)) return last
+  return profiles.list(d)[0].id
+}
+
+export function activeProfileId(): number {
+  openLibrary()
+  return activeProfile
+}
+
+export function listProfiles(): Profile[] {
+  return profiles.list(openLibrary())
+}
+
+export function currentProfile(): Profile {
+  return profiles.get(openLibrary(), activeProfileId())!
+}
+
+/** Bascule immédiate : les appels suivants voient les données du nouveau profil. */
+export function selectProfile(id: number): Profile {
+  const d = openLibrary()
+  const profile = profiles.get(d, id)
+  if (!profile) throw new Error('Profil introuvable.')
+  activeProfile = id
+  settings.setText(d, LAST_PROFILE_SETTING, String(id))
+  return profile
+}
+
+/** Un nom vide ou interminable ferait une tuile illisible : on le borne. */
+function cleanProfileName(name: string): string {
+  const trimmed = name.trim().replace(/\s+/g, ' ').slice(0, 40)
+  if (!trimmed) throw new Error('Le profil doit avoir un nom.')
+  return trimmed
+}
+
+export function createProfile(name: string, avatar: string | null): Profile {
+  return profiles.create(openLibrary(), cleanProfileName(name), avatar)
+}
+
+export async function updateProfile(
+  id: number,
+  patch: { name?: string; avatar?: string | null }
+): Promise<Profile> {
+  const d = openLibrary()
+  const before = profiles.get(d, id)
+  if (!before) throw new Error('Profil introuvable.')
+  profiles.update(d, id, {
+    name: patch.name === undefined ? undefined : cleanProfileName(patch.name),
+    avatar: patch.avatar
+  })
+  if (patch.avatar !== undefined && patch.avatar !== before.avatar) await forgetAvatar(before)
+  return profiles.get(d, id)!
+}
+
+/** Les images d'avatar sont copiées dans les données de l'app : le fichier d'origine peut partir. */
+export async function importAvatar(file: string): Promise<string> {
+  await mkdir(avatarDir(), { recursive: true })
+  const dest = join(avatarDir(), `${Date.now()}${extname(file).toLowerCase() || '.png'}`)
+  await copyFile(file, dest)
+  return dest
+}
+
+/** Supprime l'image d'un ancien avatar, si c'est une copie à nous et non une icône. */
+async function forgetAvatar(profile: Profile): Promise<void> {
+  if (profile.avatar && avatarProvider().relative(profile.avatar) !== null)
+    await rm(profile.avatar, { force: true }).catch(() => undefined)
+}
+
+/**
+ * Supprime un profil et tout ce qui lui appartient. Les podcasts que plus personne ne suit
+ * partent aussi, avec leurs téléchargements. Supprimer le profil actif bascule sur le premier.
+ */
+export async function removeProfile(id: number): Promise<void> {
+  const d = openLibrary()
+  const profile = profiles.get(d, id)
+  if (!profile) return
+  profiles.remove(d, id)
+  await forgetAvatar(profile)
+  if (activeProfile === id) selectProfile(profiles.list(d)[0].id)
+  await removeOrphanPodcasts()
+}
+
 // ---- thèmes ----
 
 const THEME_SETTING = 'ui.theme'
 
-/** Identifiant du thème choisi ; « system » par défaut. */
+/** Identifiant du thème choisi par le profil actif ; « system » par défaut. */
 export function selectedTheme(): string {
-  return settings.getText(openLibrary(), THEME_SETTING) ?? 'system'
+  return profiles.getSetting(openLibrary(), activeProfileId(), THEME_SETTING) ?? 'system'
 }
 
 export function setSelectedTheme(id: string): void {
-  settings.setText(openLibrary(), THEME_SETTING, id)
+  profiles.setSetting(openLibrary(), activeProfileId(), THEME_SETTING, id)
 }
 
 /**
@@ -778,7 +893,7 @@ export function cancelScan(id: number): void {
 }
 
 export function listMedia(query: MediaListQuery = {}): MediaWithMetadata[] {
-  return media.listWithMetadata(openLibrary(), query)
+  return media.listWithMetadata(openLibrary(), { ...query, profileId: activeProfileId() })
 }
 
 export function mediaFacets(): Facets {
@@ -788,19 +903,24 @@ export function mediaFacets(): Facets {
 // ---- podcasts ----
 
 export function listPodcasts(): Podcast[] {
-  return podcasts.list(openLibrary())
+  return podcasts.subscribed(openLibrary(), activeProfileId())
 }
 
 export function podcastEpisodes(podcastId: number): PodcastEpisode[] {
-  return podcasts.episodes(openLibrary(), podcastId)
+  return podcasts.episodes(openLibrary(), activeProfileId(), podcastId)
 }
 
 export function podcastUnplayed(podcastId: number): number {
-  return podcasts.unplayedCount(openLibrary(), podcastId)
+  return podcasts.unplayedCount(openLibrary(), activeProfileId(), podcastId)
 }
 
 export function subscribePodcast(feedUrl: string): Promise<podcastService.RefreshResult> {
-  return podcastService.subscribe(openLibrary(), feedUrl.trim(), podcastImageDir())
+  return podcastService.subscribe(
+    openLibrary(),
+    activeProfileId(),
+    feedUrl.trim(),
+    podcastImageDir()
+  )
 }
 
 export function refreshPodcast(id: number): Promise<podcastService.RefreshResult> {
@@ -812,8 +932,24 @@ export function refreshPodcasts(): Promise<podcastService.RefreshResult[]> {
   return podcastService.refreshAll(openLibrary(), podcastImageDir())
 }
 
-export function removePodcast(id: number): void {
-  podcasts.remove(openLibrary(), id)
+/** Désabonne le profil actif ; le flux n'est supprimé que si plus personne ne le suit. */
+export async function removePodcast(id: number): Promise<void> {
+  podcasts.unsubscribe(openLibrary(), activeProfileId(), id)
+  await removeOrphanPodcasts()
+}
+
+async function removeOrphanPodcasts(): Promise<void> {
+  const d = openLibrary()
+  for (const podcast of podcasts.orphans(d)) {
+    for (const episode of podcasts.episodes(
+      d,
+      activeProfileId(),
+      podcast.id,
+      Number.MAX_SAFE_INTEGER
+    ))
+      if (episode.localPath) await podcastService.removeDownload(d, episode.id)
+    podcasts.remove(d, podcast.id)
+  }
 }
 
 export function downloadEpisode(
@@ -828,11 +964,11 @@ export function removeEpisodeDownload(id: number): Promise<void> {
 }
 
 export function saveEpisodeProgress(id: number, position: number, completed?: boolean): void {
-  podcasts.saveProgress(openLibrary(), id, position, completed)
+  podcasts.saveProgress(openLibrary(), activeProfileId(), id, position, completed)
 }
 
 export function setEpisodeCompleted(id: number, completed: boolean): void {
-  podcasts.setCompleted(openLibrary(), id, completed)
+  podcasts.setCompleted(openLibrary(), activeProfileId(), id, completed)
 }
 
 export function searchPodcasts(term: string): Promise<podcastService.PodcastSearchResult[]> {
@@ -875,7 +1011,7 @@ export function removeIptvSource(id: number): Promise<void> {
 }
 
 export function iptvChannels(query: iptv.ChannelQuery = {}): IptvChannel[] {
-  return iptv.channels(openLibrary(), query)
+  return iptv.channels(openLibrary(), { ...query, profileId: activeProfileId() })
 }
 
 export function iptvGroups(sourceId?: number): { group: string; count: number }[] {
@@ -883,7 +1019,7 @@ export function iptvGroups(sourceId?: number): { group: string; count: number }[
 }
 
 export function setIptvFavorite(channelId: number, favorite: boolean): void {
-  iptv.setFavorite(openLibrary(), channelId, favorite)
+  iptv.setFavorite(openLibrary(), activeProfileId(), channelId, favorite)
 }
 
 /**
@@ -947,12 +1083,13 @@ const LAST_CHANNEL_SETTING = 'iptv.lastChannel'
  * qu'une position de lecture.
  */
 export function lastIptvChannel(): IptvChannel | null {
-  const saved = settings.getText(openLibrary(), LAST_CHANNEL_SETTING)
-  return saved ? iptv.channel(openLibrary(), Number(saved)) : null
+  const profileId = activeProfileId()
+  const saved = profiles.getSetting(openLibrary(), profileId, LAST_CHANNEL_SETTING)
+  return saved ? iptv.channel(openLibrary(), Number(saved), profileId) : null
 }
 
 export function setLastIptvChannel(channelId: number): void {
-  settings.setText(openLibrary(), LAST_CHANNEL_SETTING, String(channelId))
+  profiles.setSetting(openLibrary(), activeProfileId(), LAST_CHANNEL_SETTING, String(channelId))
 }
 
 /**
@@ -973,8 +1110,9 @@ export interface PlaylistSummary extends Playlist {
 
 export function listPlaylists(): PlaylistSummary[] {
   const d = openLibrary()
-  return playlistRepo.list(d).map((p) => {
-    const items = playlistRepo.items(d, p.id)
+  const profileId = activeProfileId()
+  return playlistRepo.list(d, profileId).map((p) => {
+    const items = playlistRepo.items(d, profileId, p.id)
     return {
       ...p,
       count: items.length,
@@ -984,21 +1122,21 @@ export function listPlaylists(): PlaylistSummary[] {
 }
 
 export function createPlaylist(name: string): Playlist {
-  return playlistRepo.create(openLibrary(), name.trim() || 'Nouvelle playlist')
+  return playlistRepo.create(openLibrary(), activeProfileId(), name.trim() || 'Nouvelle playlist')
 }
 
 export function renamePlaylist(id: number, name: string): void {
-  playlistRepo.rename(openLibrary(), id, name.trim() || 'Sans titre')
+  playlistRepo.rename(openLibrary(), activeProfileId(), id, name.trim() || 'Sans titre')
 }
 
 export function removePlaylist(id: number): void {
-  playlistRepo.remove(openLibrary(), id)
+  playlistRepo.remove(openLibrary(), activeProfileId(), id)
 }
 
 /** Contenu d'une playlist, avec métadonnées, dans l'ordre choisi par l'utilisateur. */
 export function playlistItems(id: number): MediaWithMetadata[] {
   const d = openLibrary()
-  const ordered = playlistRepo.items(d, id)
+  const ordered = playlistRepo.items(d, activeProfileId(), id)
   const detailed = new Map(
     media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.id, m])
   )
@@ -1006,15 +1144,15 @@ export function playlistItems(id: number): MediaWithMetadata[] {
 }
 
 export function addToPlaylist(playlistId: number, mediaId: number): void {
-  playlistRepo.addItem(openLibrary(), playlistId, mediaId)
+  playlistRepo.addItem(openLibrary(), activeProfileId(), playlistId, mediaId)
 }
 
 export function removeFromPlaylist(playlistId: number, mediaId: number): void {
-  playlistRepo.removeItem(openLibrary(), playlistId, mediaId)
+  playlistRepo.removeItem(openLibrary(), activeProfileId(), playlistId, mediaId)
 }
 
 export function reorderPlaylist(playlistId: number, mediaIds: number[]): void {
-  playlistRepo.reorder(openLibrary(), playlistId, mediaIds)
+  playlistRepo.reorder(openLibrary(), activeProfileId(), playlistId, mediaIds)
 }
 
 /** Écrit la playlist au format M3U, lisible par VLC, Kodi et les autres. */
@@ -1028,7 +1166,9 @@ export async function exportPlaylist(id: number, filePath: string): Promise<void
 }
 
 export function suggestPlaylistFileName(id: number): string {
-  return playlistFileName(playlistRepo.get(openLibrary(), id)?.name ?? 'playlist')
+  return playlistFileName(
+    playlistRepo.get(openLibrary(), activeProfileId(), id)?.name ?? 'playlist'
+  )
 }
 
 export interface ImportResult {
@@ -1052,8 +1192,9 @@ export async function importPlaylist(filePath: string, name: string): Promise<Im
   )
 
   const { mediaIds, missing } = matchEntries(entries, byPath)
-  const playlist = playlistRepo.create(d, name)
-  for (const mediaId of mediaIds) playlistRepo.addItem(d, playlist.id, mediaId)
+  const profileId = activeProfileId()
+  const playlist = playlistRepo.create(d, profileId, name)
+  for (const mediaId of mediaIds) playlistRepo.addItem(d, profileId, playlist.id, mediaId)
   return {
     playlistId: playlist.id,
     name: playlist.name,
@@ -1066,14 +1207,15 @@ export async function importPlaylist(filePath: string, name: string): Promise<Im
 
 export function toggleFavorite(mediaId: number): boolean {
   const d = openLibrary()
-  const favorite = !(playback.get(d, mediaId)?.favorite ?? false)
-  playback.setFavorite(d, mediaId, favorite)
+  const profileId = activeProfileId()
+  const favorite = !(playback.get(d, profileId, mediaId)?.favorite ?? false)
+  playback.setFavorite(d, profileId, mediaId, favorite)
   return favorite
 }
 
 export function favoriteMedia(): MediaWithMetadata[] {
   const d = openLibrary()
-  const ids = new Set(playback.favorites(d).map((s) => s.mediaId))
+  const ids = new Set(playback.favorites(d, activeProfileId()).map((s) => s.mediaId))
   return media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).filter((m) => ids.has(m.id))
 }
 
@@ -1083,7 +1225,7 @@ export function playbackStateOf(mediaId: number): {
   completed: boolean
   favorite: boolean
 } {
-  const state = playback.get(openLibrary(), mediaId)
+  const state = playback.get(openLibrary(), activeProfileId(), mediaId)
   return {
     position: state?.position ?? 0,
     completed: state?.completed ?? false,
@@ -1092,11 +1234,106 @@ export function playbackStateOf(mediaId: number): {
 }
 
 export function savePlaybackPosition(mediaId: number, position: number, completed = false): void {
-  playback.savePosition(openLibrary(), mediaId, position, completed)
+  playback.savePosition(openLibrary(), activeProfileId(), mediaId, position, completed)
+  // Terminer un média de la watchlist le marque « vu » pour ce profil, sans rien demander
+  if (completed) watchlist.markSeen(openLibrary(), activeProfileId(), mediaId)
+}
+
+// ---- watchlist du foyer ----
+
+/** Commune à tous les profils ; les entrées dont le média a disparu partent par cascade. */
+export function listWatchlist(): WatchlistItem[] {
+  const d = openLibrary()
+  const entries = watchlist.list(d)
+  if (entries.length === 0) return []
+  const detailed = new Map(
+    media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.id, m])
+  )
+  return entries.flatMap((e) => {
+    const item = detailed.get(e.mediaId)
+    return item ? [{ ...e, media: item }] : []
+  })
+}
+
+export function addToWatchlist(mediaId: number): void {
+  const d = openLibrary()
+  if (!media.get(d, mediaId)) throw new Error('Ce média n’est plus dans la bibliothèque.')
+  watchlist.add(d, activeProfileId(), mediaId)
+}
+
+export function removeFromWatchlist(mediaId: number): void {
+  watchlist.remove(openLibrary(), mediaId)
+}
+
+// ---- journal de lecture et statistiques ----
+
+/** Une tranche plus longue trahit un envoi raté ou forgé : le lecteur envoie toutes les 15 s. */
+const MAX_RECORD_SECONDS = 10 * 60
+
+/**
+ * Ajoute du temps de lecture à une séance du profil actif. La cible est résolue ici : titre,
+ * artiste et genre viennent de la base, pas de l'interface. Une cible inconnue est ignorée.
+ */
+export function recordPlay(session: string, target: PlayTarget, seconds: number): void {
+  if (typeof session !== 'string' || session.length === 0 || session.length > 64) return
+  if (!Number.isFinite(seconds) || seconds <= 0) return
+  const d = openLibrary()
+  const play = resolvePlay(d, target)
+  if (!play) return
+  stats.record(d, activeProfileId(), session, play, Math.min(seconds, MAX_RECORD_SECONDS))
+}
+
+function resolvePlay(d: Database, target: PlayTarget): stats.PlayInput | null {
+  switch (target?.kind) {
+    case 'media': {
+      const m = media.get(d, target.mediaId)
+      if (!m) return null
+      const md = media.getMetadata(d, m.id)
+      return {
+        kind: m.type,
+        mediaId: m.id,
+        title: m.title,
+        artist: md?.artist ?? md?.albumArtist ?? null,
+        genre: md?.genre || null
+      }
+    }
+    case 'episode': {
+      const episode = podcasts.episode(d, target.episodeId)
+      if (!episode) return null
+      return {
+        kind: 'podcast',
+        mediaId: null,
+        title: episode.title,
+        artist: podcasts.get(d, episode.podcastId)?.title ?? null,
+        genre: null
+      }
+    }
+    case 'channel': {
+      const channel = iptv.channelByUrl(d, target.streamUrl)
+      if (!channel) return null
+      return {
+        kind: 'live',
+        mediaId: null,
+        title: channel.name,
+        artist: null,
+        genre: channel.group
+      }
+    }
+    default:
+      return null
+  }
+}
+
+export function profileStats(): ProfileStats {
+  return stats.forProfile(openLibrary(), activeProfileId())
+}
+
+export function resetStats(): void {
+  stats.reset(openLibrary(), activeProfileId())
 }
 
 export function startedPlayback(mediaId: number): void {
-  playback.incrementPlayCount(openLibrary(), mediaId)
+  playback.incrementPlayCount(openLibrary(), activeProfileId(), mediaId)
 }
 
 /**
@@ -1107,7 +1344,7 @@ export function startedPlayback(mediaId: number): void {
  */
 export function continueWatching(limit = 30): (MediaWithMetadata & { position: number })[] {
   const d = openLibrary()
-  const states = playback.inProgress(d, limit)
+  const states = playback.inProgress(d, activeProfileId(), limit)
   const detailed = new Map(
     media.listWithMetadata(d, { limit: Number.MAX_SAFE_INTEGER }).map((m) => [m.id, m])
   )

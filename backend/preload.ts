@@ -10,6 +10,19 @@ import {
 import type { RemoteCommand, RemoteStatus } from '../shared/remote'
 
 const api: EpiKodiApi = {
+  profilesList: () => ipcRenderer.invoke(IPC.profilesList),
+  profilesSelect: (id) => ipcRenderer.invoke(IPC.profilesSelect, id),
+  profilesCreate: (name, avatar) => ipcRenderer.invoke(IPC.profilesCreate, name, avatar),
+  profilesUpdate: (id, patch) => ipcRenderer.invoke(IPC.profilesUpdate, id, patch),
+  profilesRemove: (id) => ipcRenderer.invoke(IPC.profilesRemove, id),
+  profilesPickAvatar: () => ipcRenderer.invoke(IPC.profilesPickAvatar),
+  watchlistList: () => ipcRenderer.invoke(IPC.watchlistList),
+  watchlistAdd: (mediaId) => ipcRenderer.invoke(IPC.watchlistAdd, mediaId),
+  watchlistRemove: (mediaId) => ipcRenderer.invoke(IPC.watchlistRemove, mediaId),
+  statsRecord: (session, target, seconds) =>
+    ipcRenderer.invoke(IPC.statsRecord, session, target, seconds),
+  statsGet: () => ipcRenderer.invoke(IPC.statsGet),
+  statsReset: () => ipcRenderer.invoke(IPC.statsReset),
   openMediaDialog: () => ipcRenderer.invoke(IPC.openMediaDialog),
   libraryStats: () => ipcRenderer.invoke(IPC.libraryStats),
   sourcesList: () => ipcRenderer.invoke(IPC.sourcesList),

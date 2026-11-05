@@ -7,6 +7,10 @@ import type { SectionName } from '@frontend/navigation'
 import makoto from '../assets/persona/makoto.webp'
 import makotoBattle from '../assets/persona/makoto-battle.webp'
 import aigis from '../assets/persona/aigis.webp'
+import joker from '../assets/persona/jokergif.gif'
+import ren from '../assets/persona/ren.png'
+import ryuji from '../assets/persona/ryuji.png'
+import { useTheme } from '../theme'
 import { fmtDuration } from '@frontend/format'
 import { recentlyAdded } from '@frontend/library/grouping'
 import './HomeView.css'
@@ -55,6 +59,8 @@ export function HomeView({
   onAddSource,
   onNavigate
 }: Props): React.JSX.Element {
+  const { persona } = useTheme()
+  const p5 = persona === 'p5'
   const recent = recentlyAdded(items, RECENT_POOL)
   const resume = continueWatching[0]
   const empty = items.length === 0
@@ -64,7 +70,7 @@ export function HomeView({
       <section className="home__hero" aria-labelledby="home-hero-title">
         <PersonaScene />
         <span className="home__hero-edition" aria-hidden="true">
-          P3R / PERSONAL MEDIA SYSTEM
+          {p5 ? 'P5 / PHANTOM MEDIA SYSTEM' : 'P3R / PERSONAL MEDIA SYSTEM'}
         </span>
         <div className="home__hero-copy">
           <p className="home__eyebrow">
@@ -97,7 +103,7 @@ export function HomeView({
           </div>
         </div>
         <span className="home__hero-word" aria-hidden="true">
-          RELOAD
+          {p5 ? 'TAKE YOUR TIME' : 'RELOAD'}
         </span>
       </section>
       <div className="home__ticker" aria-hidden="true">
@@ -134,21 +140,21 @@ export function HomeView({
             number: '01',
             title: 'Vidéos',
             label: 'CHANGER DE DÉCOR',
-            image: makotoBattle
+            image: p5 ? joker : makotoBattle
           },
           {
             section: 'music' as const,
             number: '02',
             title: 'Musique',
             label: 'TROUVER SA FRÉQUENCE',
-            image: makoto
+            image: p5 ? ren : makoto
           },
           {
             section: 'tv' as const,
             number: '03',
             title: 'En direct',
             label: 'VIVRE L’INSTANT',
-            image: aigis
+            image: p5 ? ryuji : aigis
           }
         ].map((portal) => (
           <button

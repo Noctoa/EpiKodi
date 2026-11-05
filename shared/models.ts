@@ -62,6 +62,15 @@ export interface MediaMetadata {
   updatedAt: number
 }
 
+/** Une personne du foyer : ses reprises, favoris, playlists et abonnements lui sont propres. */
+export interface Profile {
+  id: number
+  name: string
+  /** « icon:<nom> » pour une icône prédéfinie, sinon chemin d'une image ; null = initiale */
+  avatar: string | null
+  createdAt: number
+}
+
 export interface Playlist {
   id: number
   name: string
@@ -211,4 +220,47 @@ export interface EpgProgramme {
   iconUrl: string | null
   /** « S2 E5 » */
   episode: string | null
+}
+
+/** Une entrée de la watchlist du foyer, commune à tous les profils. */
+export interface WatchlistEntry {
+  mediaId: number
+  /** Profil qui l'a ajoutée ; null s'il a été supprimé depuis */
+  addedBy: number | null
+  addedAt: number
+  /** Profils qui ont terminé le média, avec la date */
+  seenBy: { profileId: number; seenAt: number }[]
+}
+
+export type PlayKind = 'video' | 'audio' | 'podcast' | 'live'
+
+/** Une part d'un total : par type, par genre, par mois. */
+export interface StatBucket {
+  key: string
+  seconds: number
+}
+
+/** Ce qu'un profil a regardé et écouté, d'après le journal de lecture. */
+export interface ProfileStats {
+  profileId: number
+  /** Temps réellement passé à lire, en secondes */
+  totalSeconds: number
+  /** Séances d'au moins `MIN_PLAY_SECONDS` : une ouverture de quelques secondes n'en est pas une */
+  plays: number
+  /** Premier jour du journal, null s'il est vide */
+  since: number | null
+  byKind: StatBucket[]
+  byGenre: StatBucket[]
+  /** Douze derniers mois, du plus ancien au plus récent, mois vides compris (`AAAA-MM`) */
+  byMonth: StatBucket[]
+  topMedia: {
+    title: string
+    artist: string | null
+    kind: PlayKind
+    seconds: number
+    plays: number
+  }[]
+  topArtists: { artist: string; seconds: number; plays: number }[]
+  /** Tous les profils du foyer, pour comparer */
+  household: { profileId: number; seconds: number; plays: number }[]
 }

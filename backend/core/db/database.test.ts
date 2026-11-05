@@ -7,6 +7,9 @@ beforeEach(() => {
   db = openDatabase(':memory:')
 })
 
+/** Profil créé par la migration 14 */
+const P = 1
+
 const addSource = (path = '/videos') => sources.create(db, { type: 'local', path, name: 'Vidéos' })
 const addMedia = (sourceId: number, path: string, title = 'Film') =>
   media.upsert(db, { sourceId, path, type: 'video', title, size: 100, mtime: 1 })
@@ -27,17 +30,25 @@ describe('migrations', () => {
       'epg_guides',
       'epg_programmes',
       'iptv_channels',
+      'iptv_favorites',
       'iptv_sources',
       'media',
       'media_fts',
       'media_metadata',
       'music_artwork',
+      'play_log',
       'playback_state',
       'playlist_items',
       'playlists',
       'podcast_episodes',
+      'podcast_progress',
+      'podcast_subscriptions',
       'podcasts',
+      'profile_settings',
+      'profiles',
       'settings',
+      'shared_watchlist',
+      'shared_watchlist_seen',
       'sources'
     ])
   })
@@ -152,22 +163,22 @@ describe('playlists', () => {
     const s = addSource()
     const a = addMedia(s.id, '/a')
     const b = addMedia(s.id, '/b')
-    const p = playlists.create(db, 'Soirée')
-    playlists.addItem(db, p.id, a.id)
-    playlists.addItem(db, p.id, b.id)
-    playlists.addItem(db, p.id, a.id)
-    expect(playlists.items(db, p.id).map((m) => m.id)).toEqual([a.id, b.id])
-    playlists.reorder(db, p.id, [b.id, a.id])
-    expect(playlists.items(db, p.id).map((m) => m.id)).toEqual([b.id, a.id])
+    const p = playlists.create(db, P, 'Soirée')
+    playlists.addItem(db, P, p.id, a.id)
+    playlists.addItem(db, P, p.id, b.id)
+    playlists.addItem(db, P, p.id, a.id)
+    expect(playlists.items(db, P, p.id).map((m) => m.id)).toEqual([a.id, b.id])
+    playlists.reorder(db, P, p.id, [b.id, a.id])
+    expect(playlists.items(db, P, p.id).map((m) => m.id)).toEqual([b.id, a.id])
   })
 
   it('supprimer un média le retire des playlists', () => {
     const s = addSource()
     const a = addMedia(s.id, '/a')
-    const p = playlists.create(db, 'P')
-    playlists.addItem(db, p.id, a.id)
+    const p = playlists.create(db, P, 'P')
+    playlists.addItem(db, P, p.id, a.id)
     media.remove(db, a.id)
-    expect(playlists.items(db, p.id)).toEqual([])
+    expect(playlists.items(db, P, p.id)).toEqual([])
   })
 })
 
@@ -176,22 +187,22 @@ describe('playback', () => {
     const s = addSource()
     const a = addMedia(s.id, '/a')
     const b = addMedia(s.id, '/b')
-    expect(playback.get(db, a.id)).toBeNull()
-    playback.savePosition(db, a.id, 120)
-    playback.savePosition(db, b.id, 3000, true)
-    expect(playback.get(db, a.id)?.position).toBe(120)
-    expect(playback.inProgress(db).map((p) => p.mediaId)).toEqual([a.id])
+    expect(playback.get(db, P, a.id)).toBeNull()
+    playback.savePosition(db, P, a.id, 120)
+    playback.savePosition(db, P, b.id, 3000, true)
+    expect(playback.get(db, P, a.id)?.position).toBe(120)
+    expect(playback.inProgress(db, P).map((p) => p.mediaId)).toEqual([a.id])
   })
 
   it('compte les lectures et gère les favoris', () => {
     const s = addSource()
     const a = addMedia(s.id, '/a')
-    playback.incrementPlayCount(db, a.id)
-    playback.incrementPlayCount(db, a.id)
-    playback.setFavorite(db, a.id, true)
-    const st = playback.get(db, a.id)!
+    playback.incrementPlayCount(db, P, a.id)
+    playback.incrementPlayCount(db, P, a.id)
+    playback.setFavorite(db, P, a.id, true)
+    const st = playback.get(db, P, a.id)!
     expect(st.playCount).toBe(2)
     expect(st.favorite).toBe(true)
-    expect(playback.favorites(db)).toHaveLength(1)
+    expect(playback.favorites(db, P)).toHaveLength(1)
   })
 })

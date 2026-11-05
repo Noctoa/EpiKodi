@@ -51,7 +51,11 @@ export function getByPath(db: Database, sourceId: number, path: string): Media |
   return row ? toMedia(row) : null
 }
 
-export type ListOptions = MediaQuery
+/**
+ * `profileId` n'est pas exposé à l'interface : le backend le renseigne avec le profil actif. Il
+ * ne sert qu'au filtre « non vus » ; sans lui, rien n'est considéré comme vu.
+ */
+export type ListOptions = MediaQuery & { profileId?: number }
 
 /**
  * Convertit une saisie libre en requête FTS5 : chaque mot devient une phrase entre guillemets
@@ -128,15 +132,21 @@ function buildQuery(opts: ListOptions): Query {
   return { where: where.length ? ` WHERE ${where.join(' AND ')}` : '', params, orderBy, join }
 }
 
-/** Jointures communes : métadonnées (filtres genre/année) et état de lecture (« non vus »). */
+/**
+ * Jointures communes : métadonnées (filtres genre/année) et état de lecture du profil (« non
+ * vus »). Le premier paramètre de toute requête est donc l'identifiant du profil.
+ */
 const BASE_FROM =
   ' FROM media m LEFT JOIN media_metadata md ON md.media_id = m.id' +
-  ' LEFT JOIN playback_state ps ON ps.media_id = m.id'
+  ' LEFT JOIN playback_state ps ON ps.media_id = m.id AND ps.profile_id = ?'
 
 function select(columns: string, opts: ListOptions): { sql: string; params: SqlParam[] } {
   const q = buildQuery(opts)
   const sql = `SELECT ${columns}${BASE_FROM}${q.join}${q.where} ORDER BY ${q.orderBy} LIMIT ? OFFSET ?`
-  return { sql, params: [...q.params, opts.limit ?? 500, opts.offset ?? 0] }
+  return {
+    sql,
+    params: [opts.profileId ?? null, ...q.params, opts.limit ?? 500, opts.offset ?? 0]
+  }
 }
 
 export function list(db: Database, opts: ListOptions = {}): Media[] {
@@ -297,8 +307,12 @@ export function removeMissing(db: Database, sourceId: number, keepPaths: string[
 export function count(db: Database, opts: ListOptions | MediaType = {}): number {
   const o: ListOptions = typeof opts === 'string' ? { type: opts } : opts
   const q = buildQuery(o)
-  return one<{ n: number }>(db, `SELECT COUNT(*) AS n${BASE_FROM}${q.join}${q.where}`, ...q.params)!
-    .n
+  return one<{ n: number }>(
+    db,
+    `SELECT COUNT(*) AS n${BASE_FROM}${q.join}${q.where}`,
+    o.profileId ?? null,
+    ...q.params
+  )!.n
 }
 
 interface MetaRow {

@@ -144,9 +144,9 @@ describe('filtres', () => {
 
   it('« non vus » exclut les médias terminés', () => {
     const watched = media.list(db).find((m) => m.title === 'Film A')!
-    playback.savePosition(db, watched.id, 500, true)
-    expect(titles({ unwatched: true })).toEqual(['Chanson', 'Film B', 'Film C'])
-    expect(media.count(db, { unwatched: true })).toBe(3)
+    playback.savePosition(db, 1, watched.id, 500, true)
+    expect(titles({ unwatched: true, profileId: 1 })).toEqual(['Chanson', 'Film B', 'Film C'])
+    expect(media.count(db, { unwatched: true, profileId: 1 })).toBe(3)
   })
 })
 
